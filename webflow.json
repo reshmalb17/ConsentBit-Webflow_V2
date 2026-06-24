@@ -1,0 +1,13 @@
+{
+  "name": "consentbit-webflow-app",
+  "publicDir": "public",
+  "size": "comfortable",
+  "apiVersion": "2",
+  "telemetry": {
+    "global": {
+      "allowTelemetry": true,
+      "lastPrompted": 1782150248308,
+      "version": "2.1.1"
+    }
+  }
+}

@@ -1,0 +1,105 @@
+/* Gallery chrome — prefixed gx- so it never collides with cb-* */
+html, body { margin: 0; padding: 0; height: 100%; background: var(--bg, #15112E); }
+body {
+  font-family: "DM Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  color: var(--text, #F4F2FF);
+  display: flex;
+  min-height: 100vh;
+}
+#root { display: flex; width: 100%; }
+
+.gx-sidebar {
+  width: 256px;
+  flex-shrink: 0;
+  background: var(--bg-2, #1A1633);
+  border-right: 1px solid var(--border, #3A3458);
+  padding: 18px 12px 40px;
+  overflow-y: auto;
+  height: 100vh;
+  position: sticky;
+  top: 0;
+}
+.gx-brand {
+  display: flex; align-items: center; gap: 8px;
+  font-weight: 800; font-size: 16px; letter-spacing: -0.01em;
+  padding: 6px 10px 16px;
+}
+.gx-brand-mark {
+  width: 22px; height: 22px; border-radius: 6px;
+  background: linear-gradient(135deg, #8E72FF, #4F8BFF);
+  display: grid; place-items: center; color: #fff;
+}
+.gx-group-title {
+  font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.08em;
+  color: var(--text-faint, #6E6890); padding: 14px 10px 6px;
+}
+.gx-link {
+  display: block; width: 100%; text-align: left;
+  padding: 7px 10px; margin: 1px 0; border-radius: 7px;
+  font-size: 12.5px; color: var(--text-muted, #9B96B8);
+  background: transparent; border: none; cursor: pointer;
+  font-family: inherit; text-decoration: none;
+}
+.gx-link:hover { background: var(--surface, #241F42); color: var(--text, #F4F2FF); }
+.gx-link.active {
+  background: var(--purple-soft, rgba(124,92,252,0.18));
+  color: var(--purple-hi, #8E72FF); font-weight: 600;
+}
+.gx-main {
+  flex: 1; min-width: 0;
+  display: flex; flex-direction: column; align-items: center;
+  padding: 28px 24px 64px;
+}
+.gx-head { width: 800px; max-width: 100%; margin-bottom: 14px; }
+.gx-head h1 { font-size: 16px; margin: 0 0 2px; font-weight: 700; }
+.gx-head p  { font-size: 12.5px; margin: 0; color: var(--text-muted, #9B96B8); }
+.gx-stage {
+  width: 800px; max-width: 100%;
+  box-shadow: 0 24px 60px rgba(0,0,0,0.35);
+  border-radius: 14px;
+}
+/* Let screens size to their content in the gallery (no fixed artboard height) */
+.gx-stage .cb-widget-wrap { height: auto; min-height: 0; }
+
+/* Designer Extension entry — fill the panel full-bleed (no frame chrome) */
+.cb-ext { height: 100vh; width: 100%; }
+.cb-ext .cb-widget-wrap {
+  height: 100%;
+  max-width: none;
+  border: none;
+  border-radius: 0;
+}
+/* WPage hard-codes an 800px-tall artboard height inline; override so it fits
+   the panel and scrolls instead of clipping. */
+.cb-ext .cb-app {
+  height: 100% !important;
+  min-height: 0 !important;
+  overflow: auto !important;
+}
+/* Pages that keep their header (top bar + tabs) fixed and scroll only their
+   content body, instead of scrolling the whole panel. Used by the Cookie Banner
+   editor (left column scrolls, preview stays sticky) and the Scan page (history
+   scrolls under fixed tabs). Two classes beat the single-class
+   `.cb-ext .cb-app { overflow:auto !important }` above. */
+.cb-ext .cb-app.cb-scroll-page,
+.gx-stage .cb-app.cb-scroll-page { overflow: hidden !important; }
+
+/* Preview banner buttons/link colors — override the blanket
+   `.preview-card * { color:#1a1a1a !important }` in widget-styles.css. */
+.cb-widget-wrap .preview-window .pv-solid { color: #fff !important; }
+.cb-widget-wrap .preview-window .pv-outline,
+.cb-widget-wrap .preview-window .pv-link { color: #1f6fe8 !important; }
+
+/* IAB banner/modal text: the app-wide `.cb-widget-wrap * { color: var(--text) }`
+   (light) overrides inherited dark text. Re-assert a readable dark for the IAB
+   content; inline colors on buttons/links keep winning over this. */
+.cb-widget-wrap .preview-window .cb-iab-root * { color: #1a1a1a; }
+
+/* Match the design's 528 + 32 split: a 32px top bar (vs the 48px default). */
+.cb-ext .cb-topbar { height: 32px; padding: 0 12px; }
+.cb-ext .cb-logo { font-size: 14px; }
+.cb-ext .cb-logo-mark { width: 18px; height: 18px; }
+.cb-ext .cb-icon-btn,
+.cb-ext .cb-avatar { width: 24px; height: 24px; }
+.cb-ext .cb-avatar { font-size: 10px; }
+.cb-ext .cb-plan-pill { padding: 3px 9px; font-size: 10.5px; }
