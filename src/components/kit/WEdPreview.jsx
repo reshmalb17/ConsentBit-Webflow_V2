@@ -1,7 +1,7 @@
 import React from "react";
 import { useNav } from "../../nav.jsx";
 import { WIabBanner } from "./WIabBanner.jsx";
-import { prefCategories as PREF_CATS, simpleBanner, preferenceBanner, ccpaBanner } from "../../lib/bannerContent.js";
+import { simpleBanner, preferenceBanner, ccpaBanner, localization, prefCategories as DEFAULT_CATS } from "../../lib/bannerContent.js";
 
 function WEdPreview({ variant = "default" }) {
   const nav = useNav();
@@ -9,13 +9,15 @@ function WEdPreview({ variant = "default" }) {
   const template = nav ? nav.template : "CCPA+GDPR";
   const regions = template === "GDPR (EU)" ? ["GDPR"] : template === "CCPA (USA)" ? ["CCPA"] : ["GDPR", "CCPA"];
 
-  const [region, setRegion] = React.useState(regions[0]);
+  // Active region is shared (so the Content editor can show CCPA vs GDPR fields).
+  const region = nav ? nav.activeRegion : regions[0];
+  const setRegion = (r) => nav && nav.setActiveRegion(r);
   const [device, setDevice] = React.useState("Desktop");
 
   // Keep the selected region valid when the template changes.
   React.useEffect(() => {
     if (!regions.includes(region)) setRegion(regions[0]);
-  }, [template]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [template, region]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Which banner is shown. Seeded from the `variant` prop (the Content tab's
   // Default/Preference toggle) but also switchable by clicking Preference / the
@@ -30,7 +32,9 @@ function WEdPreview({ variant = "default" }) {
   const [openAcc, setOpenAcc] = React.useState(null); // expanded accordion (one at a time)
   const [catOn, setCatOn] = React.useState({});       // GDPR category toggles
   const [ccpaCheck, setCcpaCheck] = React.useState(false); // CCPA "Do Not Share" checkbox
-  const [ccpaMore, setCcpaMore] = React.useState(false);   // CCPA opt-out body "Show more"
+  const [msgMore, setMsgMore] = React.useState(false);     // default banner message "Show more"
+  const [prefMore, setPrefMore] = React.useState(false);   // preference overview "Show more"
+  const [catMore, setCatMore] = React.useState(null);      // index of the one expanded category description
 
   // Simulated viewport width per device.
   const winWidth = device === "Phone" ? 250 : device === "Tab" ? 380 : "100%";
@@ -46,14 +50,67 @@ function WEdPreview({ variant = "default" }) {
     bannerAlign === "right" ? { bottom: 16, right: 16, width: bannerWidth } :
     { bottom: 16, left: 16, width: bannerWidth };
 
-  // Banner button styles (blue theme to match the live default design).
-  const BLUE = "#1f6fe8";
-  const solidBtn = { background: BLUE, color: "#fff", border: "none", borderRadius: 7, padding: "6px 14px", fontSize: 11, fontWeight: 600, cursor: "pointer" };
-  const outlineBtn = { background: "#fff", color: BLUE, border: "1px solid " + BLUE, borderRadius: 7, padding: "6px 14px", fontSize: 11, fontWeight: 600, cursor: "pointer" };
+  // Layout: border radius (max 25) + entrance animation.
+  const bannerRadius = nav ? nav.bannerRadius : 12;
+  const bannerAnim = nav ? nav.bannerAnim : "fade-in";
+  const centerPopup = bannerPos === "popup";
+  const animName = ({
+    "fade-in": "cbAnimFadeIn",
+    "slide-up": centerPopup ? "cbAnimSlideUpCenter" : "cbAnimSlideUp",
+    "slide-down": centerPopup ? "cbAnimSlideDownCenter" : "cbAnimSlideDown",
+    "zoom-in": centerPopup ? "cbAnimZoomInCenter" : "cbAnimZoomIn",
+  })[bannerAnim] || "cbAnimFadeIn";
+  const bannerAnimCss = `${animName} 0.4s ease-out both`;
+  // Replays the entrance animation whenever the layout/anim changes.
+  const animKey = bannerAnim + "-" + bannerPos + "-" + bannerAlign + "-" + region + "-" + view;
+
+  // Colors from the Colors tab, applied to every preview banner.
+  const colors = nav ? nav.bannerColors : { bannerBg: "#FFFFFF", textColor: "#374151", headingColor: "#0F1B2E", btnBg: "#007AFF", btnText: "#FFFFFF", prefBtnBg: "#FFFFFF", prefBtnText: "#0284C7" };
+  const bannerBtnRadius = nav ? nav.bannerBtnRadius : 4;
+  // Buttons truncate with an ellipsis to fit one row; full label shows on hover.
+  const btnText = { whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", minWidth: 0 };
+  // Accept/Reject/Cancel buttons.
+  const solidBtn = { background: colors.btnBg, color: colors.btnText, border: "1px solid " + colors.btnBg, borderRadius: bannerBtnRadius, padding: "6px 14px", fontSize: 11, fontWeight: 600, cursor: "pointer", ...btnText };
+  // Preferences buttons (Preference / Save my preferences).
+  const prefBtn = { background: colors.prefBtnBg, color: colors.prefBtnText, border: "1px solid " + colors.prefBtnText, borderRadius: bannerBtnRadius, padding: "6px 14px", fontSize: 11, fontWeight: 600, cursor: "pointer", ...btnText };
   const closeX = <span onClick={() => setView("default")} style={{ position: "absolute", top: 10, right: 12, fontSize: 13, color: "#888", cursor: "pointer" }}>✕</span>;
 
-  const cardBase = { background: "white", borderRadius: 10, padding: 14, boxShadow: "0 14px 30px rgba(0,0,0,0.4)" };
-  const bannerBody = simpleBanner.body;
+  // Type tab: font weight + text alignment.
+  const bannerWeight = nav ? nav.bannerWeight : "400";
+  const bannerTextAlign = nav ? nav.bannerTextAlign : "left";
+
+  const cardBase = { background: colors.bannerBg, borderRadius: 10, padding: 14, boxShadow: "0 14px 30px rgba(0,0,0,0.4)" };
+  const titleStyle = { fontSize: 14, fontWeight: bannerWeight, marginBottom: 6, color: colors.headingColor, textAlign: bannerTextAlign, overflowWrap: "break-word", wordBreak: "break-word" };
+  const bodyStyle = { fontSize: "11px", lineHeight: 1.5, marginBottom: 10, color: colors.textColor, fontWeight: bannerWeight, textAlign: bannerTextAlign, overflowWrap: "break-word", wordBreak: "break-word" };
+  // Live banner text from the Content editor.
+  const content = nav ? nav.bannerContent : { title: simpleBanner.title, message: simpleBanner.body, accept: simpleBanner.buttons.accept, reject: simpleBanner.buttons.reject, customize: simpleBanner.buttons.preference };
+  const prefC = nav ? nav.prefContent : { title: preferenceBanner.title, overview: preferenceBanner.overview, save: preferenceBanner.buttons.save };
+  const ccpaC = nav ? nav.ccpaContent : { doNotShare: ccpaBanner.doNotShare, optOutTitle: ccpaBanner.optOutTitle, optOutBody: ccpaBanner.optOutBody, cancel: ccpaBanner.buttons.cancel, save: ccpaBanner.buttons.save };
+  const PREF_TRUNC = preferenceBanner.overview.length;
+  const prefLong = prefC.overview.length > PREF_TRUNC;
+  const prefShown = prefMore || !prefLong ? prefC.overview : prefC.overview.slice(0, PREF_TRUNC).trimEnd() + "… ";
+  const showClose = nav ? nav.closeBtn : false; // Content "Close button" toggle
+  const showReject = nav ? nav.showReject : true;
+  const showCustomize = nav ? nav.showCustomize : true;
+  const showPolicy = nav ? nav.showPolicy : true;
+  // Cookie policy link, appended inline to the message (matches the webapp).
+  const policyHref = content.policyUrl && !/^https?:\/\//i.test(content.policyUrl) ? "https://" + content.policyUrl : content.policyUrl;
+  const policyLink = showPolicy && content.policyUrl ?
+    <> <a href={policyHref} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()} style={{ color: colors.btnBg, textDecoration: "underline", fontSize: "inherit", fontWeight: 600, overflowWrap: "anywhere", wordBreak: "break-word" }}>{content.policy || "Privacy Policy"}</a></> :
+    null;
+  // Show "Show more" only when the message is longer than the default copy;
+  // truncate back to the default length when collapsed.
+  const MSG_TRUNC = localization.English.message.length;
+  const longMsg = content.message.length > MSG_TRUNC;
+  const shownMsg = msgMore || !longMsg ? content.message : content.message.slice(0, MSG_TRUNC).trimEnd() + "… ";
+  const bodyNode =
+    <>
+      {shownMsg}
+      {longMsg &&
+      <span onClick={() => setMsgMore((m) => !m)} style={{ color: colors.btnBg, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap", fontSize: "inherit" }}>{msgMore ? " Show less" : " Show more"}</span>
+      }
+      {policyLink}
+    </>;
 
   return (
     <div style={{ width: "450px", position: "sticky", top: 0, alignSelf: "start" }}>
@@ -75,84 +132,105 @@ function WEdPreview({ variant = "default" }) {
 
         {iab ?
         /* ---- IAB / TCF banner (ported from the webapp) ---- */
-        <WIabBanner device={device === "Phone" ? "mobile" : "desktop"} alignment={bannerAlign === "right" ? "bottom-right" : "bottom-left"} config={{ isGAC: nav ? nav.gac : false, bannerType: bannerPos }} /> :
+        <WIabBanner key={animKey} device={device === "Phone" ? "mobile" : "desktop"} alignment={bannerAlign === "right" ? "bottom-right" : "bottom-left"} config={{ isGAC: nav ? nav.gac : false, bannerType: bannerPos, borderRadius: bannerRadius, buttonBorderRadius: bannerBtnRadius, bannerEntranceAnimation: bannerAnim, bannerBg: colors.bannerBg, textColor: colors.textColor, headingColor: colors.headingColor, buttonColor: colors.btnBg, buttonTextColor: colors.btnText, SecButtonColor: colors.prefBtnBg, SecButtonTextColor: colors.prefBtnText, fontWeight: bannerWeight, textAlign: bannerTextAlign }} /> :
 
         isPref ? (
         isCCPA ?
         /* ---- CCPA · Opt-out Preference ---- */
-        <div className="preview-card" style={{ position: "absolute", top: "50%", left: 16, right: 16, transform: "translateY(-50%)", maxHeight: "calc(100% - 24px)", overflowY: "auto", ...cardBase }}>
+        <div style={{ position: "absolute", top: "50%", left: 16, right: 16, transform: "translateY(-50%)", maxHeight: "calc(100% - 24px)", overflowY: "auto", ...cardBase }}>
           {closeX}
-          <div className="preview-title" style={{ marginBottom: 8 }}>{ccpaBanner.optOutTitle}</div>
-          <div style={{ fontSize: "9.5px", lineHeight: 1.5, marginBottom: 10, color: "#1a1a1a" }}>
-            {ccpaMore ? ccpaBanner.optOutBody : ccpaBanner.optOutBody.slice(0, 120).trimEnd() + "… "}
-            <span onClick={() => setCcpaMore((m) => !m)} style={{ color: "#1f6fe8", fontWeight: 600, cursor: "pointer" }}>{ccpaMore ? " Show less" : "Show more"}</span>
+          <div style={{ ...titleStyle, marginBottom: 8 }}>{ccpaC.optOutTitle}</div>
+          <div style={{ fontSize: "9.5px", lineHeight: 1.5, marginBottom: 10, color: colors.textColor, textAlign: bannerTextAlign, overflowWrap: "break-word", wordBreak: "break-word" }}>
+            {ccpaC.optOutBody}
           </div>
-          <label onClick={() => setCcpaCheck((v) => !v)} style={{ display: "flex", alignItems: "center", gap: 8, margin: "8px 0 14px", fontSize: 10.5, fontWeight: 700, cursor: "pointer" }}>
-            <span style={{ width: 15, height: 15, border: "1px solid " + (ccpaCheck ? "#1f6fe8" : "#bbb"), borderRadius: 3, flexShrink: 0, background: ccpaCheck ? "#1f6fe8" : "#fff", display: "grid", placeItems: "center" }}>
+          <label onClick={() => setCcpaCheck((v) => !v)} style={{ display: "flex", alignItems: "center", gap: 8, margin: "8px 0 14px", fontSize: 10.5, fontWeight: 700, cursor: "pointer", color: colors.headingColor }}>
+            <span style={{ width: 15, height: 15, border: "1px solid " + (ccpaCheck ? colors.btnBg : "#bbb"), borderRadius: 3, flexShrink: 0, background: ccpaCheck ? colors.btnBg : "#fff", display: "grid", placeItems: "center" }}>
               {ccpaCheck && <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>}
             </span>
-            {ccpaBanner.doNotShare}
+            {ccpaC.doNotShare}
           </label>
           <div style={{ display: "flex", flexDirection: device === "Phone" ? "column" : "row", gap: 8 }}>
-            <button className="pv-solid" style={{ ...solidBtn, flex: device === "Phone" ? undefined : 1, width: device === "Phone" ? "100%" : undefined }}>{ccpaBanner.buttons.cancel}</button>
-            <button className="pv-outline" style={{ ...outlineBtn, flex: device === "Phone" ? undefined : 1, width: device === "Phone" ? "100%" : undefined }}>{ccpaBanner.buttons.save}</button>
+            <button style={{ ...solidBtn, flex: device === "Phone" ? undefined : 1, width: device === "Phone" ? "100%" : undefined }}>{ccpaC.cancel}</button>
+            <button style={{ ...prefBtn, flex: device === "Phone" ? undefined : 1, width: device === "Phone" ? "100%" : undefined }}>{ccpaC.save}</button>
           </div>
         </div> :
         /* ---- GDPR · Cookie Preferences ---- */
-        <div className="preview-card" style={{ position: "absolute", top: "50%", left: 16, right: 16, transform: "translateY(-50%)", maxHeight: "calc(100% - 24px)", overflowY: "auto", ...cardBase }}>
+        <div style={{ position: "absolute", top: "50%", left: 16, right: 16, transform: "translateY(-50%)", maxHeight: "calc(100% - 24px)", overflowY: "auto", ...cardBase }}>
           {closeX}
-          <div className="preview-title" style={{ marginBottom: 6 }}>{preferenceBanner.title}</div>
-          <div style={{ fontSize: "10px", fontWeight: 600, marginBottom: 10, color: "#1a1a1a" }}>{preferenceBanner.overview}</div>
+          <div style={{ ...titleStyle, marginBottom: 6 }}>{prefC.title}</div>
+          <div style={{ fontSize: "10px", fontWeight: 600, marginBottom: 10, color: colors.textColor, textAlign: bannerTextAlign, overflowWrap: "break-word", wordBreak: "break-word" }}>
+            {prefShown}
+            {prefLong &&
+            <span onClick={() => setPrefMore((m) => !m)} style={{ color: colors.btnBg, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap", fontSize: "inherit" }}>{prefMore ? " Show less" : " Show more"}</span>
+            }
+            {policyLink}
+          </div>
 
           <div style={{ border: "1px solid #e4e4ea", borderRadius: 8, overflow: "hidden" }}>
-            {PREF_CATS.map((c, i) => {
-              const open = openAcc === c.l;
-              const on = !!catOn[c.l];
+            {prefC.cats.map((c, i) => {
+              const open = openAcc === i;
+              const on = !!catOn[i];
               return (
-              <div key={c.l} style={{ borderTop: i ? "1px solid #e4e4ea" : "none" }}>
-                <div onClick={() => setOpenAcc(open ? null : c.l)} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 10px", cursor: "pointer" }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <div key={i} style={{ borderTop: i ? "1px solid #e4e4ea" : "none" }}>
+                <div onClick={() => { setOpenAcc(open ? null : i); setCatMore(null); }} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 10px", cursor: "pointer" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
                     <span style={{ width: 15, height: 15, border: "1px solid #ccc", borderRadius: 3, display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 11, lineHeight: 1, color: "#555", flexShrink: 0 }}>{open ? "−" : "+"}</span>
-                    <span style={{ fontSize: 10.5, fontWeight: 700 }}>{c.l}</span>
+                    <span style={{ fontSize: 10.5, fontWeight: 700, color: colors.headingColor, overflowWrap: "break-word", wordBreak: "break-word", minWidth: 0 }}>{c.name}</span>
                   </div>
                   {c.always ?
-                  <span style={{ fontSize: 9.5, color: "#555" }}>Always Active</span> :
-                  <span onClick={(e) => { e.stopPropagation(); setCatOn((s) => ({ ...s, [c.l]: !s[c.l] })); }} style={{ width: 26, height: 15, borderRadius: 999, background: on ? "#1f6fe8" : "#d4d4dc", position: "relative", flexShrink: 0, cursor: "pointer", transition: "background 0.15s" }}>
+                  <span style={{ fontSize: 9.5, color: "#555", flexShrink: 0 }}>{prefC.alwaysActive}</span> :
+                  <span onClick={(e) => { e.stopPropagation(); setCatOn((s) => ({ ...s, [i]: !s[i] })); }} style={{ width: 26, height: 15, borderRadius: 999, background: on ? colors.btnBg : "#d4d4dc", position: "relative", flexShrink: 0, cursor: "pointer", transition: "background 0.15s" }}>
                     <span style={{ position: "absolute", top: 2, left: on ? 13 : 2, width: 11, height: 11, borderRadius: 999, background: "#fff", transition: "left 0.15s" }} />
                   </span>
                   }
                 </div>
-                {open &&
-                <div style={{ fontSize: 8.5, color: "#777", lineHeight: 1.45, padding: "0 10px 8px 33px" }}>{c.desc}</div>
-                }
+                {open && (() => {
+                  const defLen = DEFAULT_CATS[i] ? DEFAULT_CATS[i].desc.length : c.desc.length;
+                  const long = c.desc.length > defLen;
+                  const expanded = catMore === i;
+                  const shown = expanded || !long ? c.desc : c.desc.slice(0, defLen).trimEnd() + "… ";
+                  return (
+                  <div style={{ fontSize: 8.5, color: "#777", lineHeight: 1.45, padding: "0 10px 8px 33px", textAlign: bannerTextAlign, overflowWrap: "break-word", wordBreak: "break-word" }}>
+                    {shown}
+                    {long &&
+                    <span onClick={() => setCatMore(expanded ? null : i)} style={{ color: colors.btnBg, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap", fontSize: "inherit" }}>{expanded ? " Show less" : " Show more"}</span>
+                    }
+                  </div>);
+                })()}
               </div>);
 
             })}
           </div>
 
           <div style={{ display: "flex", flexDirection: device === "Phone" ? "column" : "row", gap: 8, justifyContent: "flex-end", marginTop: 12 }}>
-            <button className="pv-solid" style={{ ...solidBtn, width: device === "Phone" ? "100%" : undefined }}>{preferenceBanner.buttons.reject}</button>
-            <button className="pv-outline" style={{ ...outlineBtn, width: device === "Phone" ? "100%" : undefined }}>{preferenceBanner.buttons.save}</button>
+            {showReject &&
+            <button title={content.reject} style={{ ...solidBtn, width: device === "Phone" ? "100%" : undefined }}>{content.reject}</button>
+            }
+            <button title={prefC.save} style={{ ...prefBtn, width: device === "Phone" ? "100%" : undefined }}>{prefC.save}</button>
           </div>
         </div>
         ) : (
         isCCPA ?
         /* ---- CCPA · default banner ---- */
-        <div className="preview-card" style={{ position: "absolute", ...posStyle, ...cardBase, borderRadius: 9 }}>
-          {closeX}
-          <div className="preview-title">{ccpaBanner.title}</div>
-          <div className="preview-body" style={{ fontSize: "11px" }}>{bannerBody}</div>
-          <a className="pv-link" href="#" onClick={(e) => { e.preventDefault(); setView("pref"); }} style={{ color: BLUE, fontSize: 11, fontWeight: 600, textDecoration: "underline" }}>{ccpaBanner.doNotShare}</a>
+        <div key={animKey} style={{ position: "absolute", ...posStyle, ...cardBase, borderRadius: bannerRadius, animation: bannerAnimCss, maxHeight: "calc(100% - 24px)", overflowY: "auto" }}>
+          {showClose && closeX}
+          <div style={titleStyle}>{content.title}</div>
+          <div style={bodyStyle}>{bodyNode}</div>
+          <a href="#" onClick={(e) => { e.preventDefault(); setView("pref"); }} style={{ color: colors.btnBg, fontSize: 11, fontWeight: 600, textDecoration: "underline" }}>{ccpaC.doNotShare}</a>
         </div> :
         /* ---- GDPR · default banner ---- */
-        <div className="preview-card" style={{ position: "absolute", ...posStyle, ...cardBase, borderRadius: 9 }}>
-          {closeX}
-          <div className="preview-title">{simpleBanner.title}</div>
-          <div className="preview-body" style={{ fontSize: "11px" }}>{bannerBody}</div>
-          <div style={{ display: "flex", flexDirection: device === "Phone" ? "column" : "row", gap: 6, justifyContent: "flex-end", flexWrap: "wrap" }}>
-            <button className="pv-outline" style={{ ...outlineBtn, width: device === "Phone" ? "100%" : undefined }} onClick={() => setView("pref")}>{simpleBanner.buttons.preference}</button>
-            <button className="pv-solid" style={{ ...solidBtn, width: device === "Phone" ? "100%" : undefined }}>{simpleBanner.buttons.reject}</button>
-            <button className="pv-solid" style={{ ...solidBtn, width: device === "Phone" ? "100%" : undefined }}>{simpleBanner.buttons.accept}</button>
+        <div key={animKey} style={{ position: "absolute", ...posStyle, ...cardBase, borderRadius: bannerRadius, animation: bannerAnimCss, maxHeight: "calc(100% - 24px)", overflowY: "auto" }}>
+          {showClose && closeX}
+          <div style={titleStyle}>{content.title}</div>
+          <div style={bodyStyle}>{bodyNode}</div>
+          <div style={{ display: "flex", flexDirection: device === "Phone" ? "column" : "row", gap: 6, justifyContent: "flex-end", flexWrap: "nowrap" }}>
+            {showCustomize &&
+            <button title={content.customize} style={{ ...prefBtn, flex: device === "Phone" ? undefined : "1 1 0", width: device === "Phone" ? "100%" : undefined }} onClick={() => setView("pref")}>{content.customize}</button>
+            }
+            {showReject &&
+            <button title={content.reject} style={{ ...solidBtn, flex: device === "Phone" ? undefined : "1 1 0", width: device === "Phone" ? "100%" : undefined }}>{content.reject}</button>
+            }
+            <button title={content.accept} style={{ ...solidBtn, flex: device === "Phone" ? undefined : "1 1 0", width: device === "Phone" ? "100%" : undefined }}>{content.accept}</button>
           </div>
         </div>
         )}

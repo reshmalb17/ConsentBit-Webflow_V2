@@ -53,6 +53,8 @@ function WEdGeneral({ cta }) {
               </div>
               <Toggle on={iab} onClick={() => setIab((v) => !v)} />
             </div>
+            {/* Google Consent Mode toggles are only accessible when IAB TCF is on. */}
+            <div style={{ opacity: iab ? 1 : 0.45, pointerEvents: iab ? "auto" : "none" }} title={iab ? undefined : "Enable IAB TCF v2.3 first"}>
             {[
               "Support Google's Additional Consent Mode",
               "Enable Google's Advertiser Consent Mode",
@@ -81,6 +83,7 @@ function WEdGeneral({ cta }) {
                 />
               </div>
             ))}
+            </div>
             <div
               style={{
                 marginTop: 12,

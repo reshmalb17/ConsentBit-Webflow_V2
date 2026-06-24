@@ -3,11 +3,16 @@ import { WAuthShell } from "../../kit/WAuthShell.jsx";
 import { Page } from "../../primitives/Page.jsx";
 
 function WSelectPlan({ freeDisabled = false, onSelectPlan }) {
+  // Billing cycle: "monthly" shows the full monthly rate; "yearly" shows the
+  // per-month equivalent at a 20% discount (billed annually).
+  const [billing, setBilling] = React.useState("monthly");
   const cols = [
-  { name: "Free", price: "$0", cta: "Continue free", ctaStyle: "secondary" },
-  { name: "Basic", price: "$9", cta: "14 day free trial", ctaStyle: "secondary" },
-  { name: "Essential", price: "$20", cta: "14 day free trial", ctaStyle: "primary", best: true },
-  { name: "Growth", price: "$56", cta: "14 day free trial", ctaStyle: "secondary" }];
+  { name: "Free", monthly: "$0", yearly: "$0", cta: "Continue free", ctaStyle: "secondary" },
+  { name: "Basic", monthly: "$9", yearly: "$7", cta: "14 day free trial", ctaStyle: "secondary" },
+  { name: "Essential", monthly: "$20", yearly: "$16", cta: "14 day free trial", ctaStyle: "primary", best: true },
+  { name: "Growth", monthly: "$56", yearly: "$45", cta: "14 day free trial", ctaStyle: "secondary" }];
+
+  const priceSuffix = billing === "yearly" ? " /mo billed yearly" : " /month";
 
   const rows = [
   { label: "No of Domains", vals: ["01", "01", "01", "01"] },
@@ -30,8 +35,18 @@ function WSelectPlan({ freeDisabled = false, onSelectPlan }) {
     <WAuthShell step={2} topAlign title="Choose your plan">
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
         <div style={{ display: "flex", background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 999, padding: 3 }}>
-          <button className="btn btn-primary btn-sm" style={{ borderRadius: 999 }}>Monthly</button>
-          <button className="btn btn-ghost btn-sm" style={{ borderRadius: 999 }}>Yearly</button>
+          <button
+            className={"btn btn-sm " + (billing === "monthly" ? "btn-primary" : "btn-ghost")}
+            style={{ borderRadius: 999 }}
+            onClick={() => setBilling("monthly")}
+            aria-pressed={billing === "monthly"}
+          >Monthly</button>
+          <button
+            className={"btn btn-sm " + (billing === "yearly" ? "btn-primary" : "btn-ghost")}
+            style={{ borderRadius: 999, display: "flex", alignItems: "center", gap: 6 }}
+            onClick={() => setBilling("yearly")}
+            aria-pressed={billing === "yearly"}
+          >Yearly <span style={{ fontSize: 9.5, fontWeight: 700, color: "#5AE497", background: "var(--green-soft)", padding: "2px 7px", borderRadius: 999 }}>Save 20%</span></button>
         </div>
         <a href="#" style={{ color: "var(--text-muted)", fontSize: 12 }}>Skip for now<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginLeft: 5, flexShrink: 0 }}><path d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3" /></svg></a>
       </div>
@@ -84,7 +99,7 @@ function WSelectPlan({ freeDisabled = false, onSelectPlan }) {
                 }
               <div style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 4, fontWeight: 500 }}>{c.name}</div>
               <div style={{ fontSize: 22, fontWeight: 700, lineHeight: 1, marginBottom: 10 }}>
-                {c.price}<span style={{ fontSize: 10, color: "var(--text-muted)", fontWeight: 400 }}> /month</span>
+                {c[billing]}<span style={{ fontSize: 10, color: "var(--text-muted)", fontWeight: 400 }}>{priceSuffix}</span>
               </div>
               <button className={"btn btn-" + c.ctaStyle + " btn-sm"} style={{ width: "100%", justifyContent: "center", ...(c.ctaStyle === "secondary" ? { background: "var(--surface-3)", border: "1px solid var(--border-2)", color: "var(--text)" } : {}) }} onClick={() => {handleInstallClick(c.name)}}>
                 {c.cta}

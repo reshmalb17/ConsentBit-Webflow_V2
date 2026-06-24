@@ -300,7 +300,7 @@ function NoticeDescription({ s }) {
         {iabBanner.noticeBefore}
         <a href="#" onClick={(e) => e.preventDefault()} style={{ color: "#007AFF", textDecoration: "underline", cursor: "pointer", fontWeight: 600 }}>{iabBanner.noticeLink}</a>
         {shown}
-        <button type="button" onClick={() => setMore((m) => !m)} style={{ background: "none", border: "none", padding: 0, color: "#007AFF", fontWeight: 600, cursor: "pointer", fontSize: "13px" }}>
+        <button type="button" onClick={() => setMore((m) => !m)} style={{ background: "none", border: "none", padding: 0, color: "#007AFF", fontWeight: 600, cursor: "pointer", fontSize: "inherit" }}>
           {more ? " Show less" : "Show more"}
         </button>
       </p>
@@ -325,7 +325,7 @@ function BannerBar({ s, radii, layout, onCustomise, onReject, onAccept, device =
   return (
     <div style={{ background: s.bannerBg, border: "1px solid #f4f4f4", borderRadius: radii.br, padding: isMobile ? "16px" : isFullBanner ? "14px 18px" : "18px" }}>
       <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
-        <p style={{ fontSize: isMobile ? "15px" : "17px", fontWeight: 700, lineHeight: 1.3, margin: "0 0 8px 0", color: s.headingColor, textAlign: s.textAlign }}>{iabBanner.heading}</p>
+        <p style={{ fontSize: isMobile ? "15px" : "17px", fontWeight: s.fontWeight, lineHeight: 1.3, margin: "0 0 8px 0", color: s.headingColor, textAlign: s.textAlign }}>{iabBanner.heading}</p>
         <div style={{ display: "flex", flexDirection: horizontalLayout ? "row" : "column", alignItems: horizontalLayout ? "center" : "stretch", gap: "16px", flex: 1 }}>
           <NoticeDescription s={s} />
           <div style={{ display: "flex", flexDirection: isMobile ? "column" : "row", gap: "8px", flexWrap: "wrap", paddingTop: horizontalLayout ? 0 : "12px", borderTop: horizontalLayout ? "none" : "1px solid #f0f0f0", justifyContent: btnJustify, flexShrink: 0 }}>

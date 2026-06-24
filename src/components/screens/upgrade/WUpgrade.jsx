@@ -6,11 +6,16 @@ import { Page } from "../../primitives/Page.jsx";
 
 function WUpgrade() {
   const ACC = "#0777E6";
+  // Billing cycle: "monthly" shows the full monthly rate; "yearly" shows the
+  // per-month equivalent at a 20% discount (billed annually).
+  const [billing, setBilling] = React.useState("monthly");
   const cols = [
-  { name: "Free", price: "$0", current: true },
-  { name: "Basic", price: "$9", cta: "14-day free trial", ctaStyle: "outline" },
-  { name: "Essential", price: "$20", cta: "14-day free trial", ctaStyle: "accent", best: true },
-  { name: "Growth", price: "$56", cta: "14-day free trial", ctaStyle: "outline" }];
+  { name: "Free", monthly: "$0", yearly: "$0", current: true },
+  { name: "Basic", monthly: "$9", yearly: "$7", cta: "14-day free trial", ctaStyle: "outline" },
+  { name: "Essential", monthly: "$20", yearly: "$16", cta: "14-day free trial", ctaStyle: "accent", best: true },
+  { name: "Growth", monthly: "$56", yearly: "$45", cta: "14-day free trial", ctaStyle: "outline" }];
+
+  const priceSuffix = billing === "yearly" ? " /mo billed yearly" : " /month";
 
   const rows = [
   { label: "No of Domains", vals: ["01", "01", "01", "01"] },
@@ -53,8 +58,18 @@ function WUpgrade() {
         {/* Billing toggle */}
         <div style={{ display: "flex", alignItems: "center", marginBottom: 16 }}>
           <div style={{ display: "flex", background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 999, padding: 3, alignItems: "center" }}>
-            <button className="btn btn-primary btn-sm" style={{ borderRadius: 999 }}>Monthly</button>
-            <button className="btn btn-ghost btn-sm" style={{ borderRadius: 999, display: "flex", alignItems: "center", gap: 6 }}>
+            <button
+              className={"btn btn-sm " + (billing === "monthly" ? "btn-primary" : "btn-ghost")}
+              style={{ borderRadius: 999 }}
+              onClick={() => setBilling("monthly")}
+              aria-pressed={billing === "monthly"}
+            >Monthly</button>
+            <button
+              className={"btn btn-sm " + (billing === "yearly" ? "btn-primary" : "btn-ghost")}
+              style={{ borderRadius: 999, display: "flex", alignItems: "center", gap: 6 }}
+              onClick={() => setBilling("yearly")}
+              aria-pressed={billing === "yearly"}
+            >
               Yearly <span style={{ fontSize: 9.5, fontWeight: 700, color: "#5AE497", background: "var(--green-soft)", padding: "2px 7px", borderRadius: 999 }}>Save 20%</span>
             </button>
           </div>
@@ -91,7 +106,7 @@ function WUpgrade() {
               }
                 <div style={{ fontSize: 12, color: c.best ? ACC : "var(--text-muted)", marginBottom: 4, fontWeight: c.best ? 700 : 500 }}>{c.name}</div>
                 <div style={{ fontSize: 22, fontWeight: 700, lineHeight: 1, marginBottom: 12 }}>
-                  {c.price}<span style={{ fontSize: 10, color: "var(--text-muted)", fontWeight: 400 }}> /month</span>
+                  {c[billing]}<span style={{ fontSize: 10, color: "var(--text-muted)", fontWeight: 400 }}>{priceSuffix}</span>
                 </div>
                 <div style={{ marginTop: "auto", width: "100%", display: "flex", justifyContent: "center" }}>{renderCta(c)}</div>
               </div>

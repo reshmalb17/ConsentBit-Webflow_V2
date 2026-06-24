@@ -414,6 +414,15 @@ body, html { margin: 0; padding: 0; }
 .purple-title { color: var(--purple-hi); font-weight: 500; }
 
 /* Browser preview window inside cookie banner editor */
+/* Preview banner entrance animations (Layout > Animation). */
+@keyframes cbAnimFadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes cbAnimSlideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes cbAnimSlideUpCenter { from { opacity: 0; transform: translateX(-50%) translateY(20px); } to { opacity: 1; transform: translateX(-50%) translateY(0); } }
+@keyframes cbAnimSlideDown { from { opacity: 0; transform: translateY(-20px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes cbAnimSlideDownCenter { from { opacity: 0; transform: translateX(-50%) translateY(-20px); } to { opacity: 1; transform: translateX(-50%) translateY(0); } }
+@keyframes cbAnimZoomIn { from { opacity: 0; transform: scale(0.9); } to { opacity: 1; transform: scale(1); } }
+@keyframes cbAnimZoomInCenter { from { opacity: 0; transform: translateX(-50%) scale(0.9); } to { opacity: 1; transform: translateX(-50%) scale(1); } }
+
 .preview-window {
   background: #06050E;
   border: 1px solid var(--border);

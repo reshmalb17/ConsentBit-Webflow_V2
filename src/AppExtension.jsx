@@ -1,5 +1,6 @@
 import React from "react";
 import { NavContext } from "./nav.jsx";
+import { localization, editorDefaults, preferenceBanner, prefCategories, ccpaBanner } from "./lib/bannerContent.js";
 
 // --- Auth onboarding flow (disabled for now) -------------------------------
 import { WLanding } from "./components/screens/auth/WLanding.jsx";
@@ -34,6 +35,48 @@ export default function AppExtension() {
   const [gac, setGac] = React.useState(false);                 // Google Additional Consent -> Vendors > Google Partners
   const [bannerPos, setBannerPos] = React.useState("box");     // Layout: box | banner | popup
   const [bannerAlign, setBannerAlign] = React.useState("left"); // Layout: left | right (box only)
+  const [bannerRadius, setBannerRadius] = React.useState(12);   // Layout: border radius (max 25)
+  const [bannerAnim, setBannerAnim] = React.useState("fade-in"); // Layout: fade-in | slide-up | slide-down | zoom-in
+  const [bannerBtnRadius, setBannerBtnRadius] = React.useState(4); // Layout: button border radius (max 24)
+  const [bannerContent, setBannerContent] = React.useState({     // Content tab -> preview banner text
+    title: localization.English.title,
+    message: localization.English.message,
+    accept: localization.English.accept,
+    reject: editorDefaults.default.rejectLabel,
+    customize: editorDefaults.default.customizeLabel,
+    policy: editorDefaults.default.policyLinkLabel,
+    policyUrl: editorDefaults.default.policyUrl,
+  });
+  const [prefContent, setPrefContent] = React.useState({         // Content tab -> preference modal text
+    title: preferenceBanner.title,
+    overview: preferenceBanner.overview,
+    save: preferenceBanner.buttons.save,
+    alwaysActive: "Always Active",
+    cats: prefCategories.map((c) => ({ name: c.l, desc: c.desc, always: !!c.always })),
+  });
+  const [closeBtn, setCloseBtn] = React.useState(false);         // Content: show the close (X) icon
+  const [activeRegion, setActiveRegion] = React.useState("GDPR"); // preview region (GDPR | CCPA) — drives the Content editor too
+  const [ccpaContent, setCcpaContent] = React.useState({         // CCPA-specific editable content
+    doNotShare: ccpaBanner.doNotShare,
+    optOutTitle: ccpaBanner.optOutTitle,
+    optOutBody: ccpaBanner.optOutBody,
+    cancel: ccpaBanner.buttons.cancel,
+    save: ccpaBanner.buttons.save,
+  });
+  const [showReject, setShowReject] = React.useState(true);      // Content: show the Reject button
+  const [showCustomize, setShowCustomize] = React.useState(true); // Content: show the Customize/Preference button
+  const [showPolicy, setShowPolicy] = React.useState(true);      // Content: show the Cookie policy link
+  const [bannerWeight, setBannerWeight] = React.useState("700");  // Type: font weight (heading + text)
+  const [bannerTextAlign, setBannerTextAlign] = React.useState("left"); // Type: left | center | right
+  const [bannerColors, setBannerColors] = React.useState({       // Colors tab -> preview banners
+    bannerBg: "#FFFFFF",
+    textColor: "#374151",
+    headingColor: "#0F1B2E",
+    btnBg: "#007AFF",        // Accept/Reject/Cancel background
+    btnText: "#FFFFFF",      // Accept/Reject/Cancel text
+    prefBtnBg: "#FFFFFF",    // Preferences background
+    prefBtnText: "#0284C7",  // Preferences text
+  });
 
  // --- Auth onboarding flow (disabled for now) -----------------------------
   // const [screen, setScreen] = React.useState("landing");
@@ -82,7 +125,7 @@ export default function AppExtension() {
   }, []);
 
   const app = (
-    <NavContext.Provider value={{ mainTab, setMainTab, subTab, setSubTab, profileOpen, setProfileOpen, notifOpen, setNotifOpen, template, setTemplate, iab, setIab, gac, setGac, bannerPos, setBannerPos, bannerAlign, setBannerAlign }}>
+    <NavContext.Provider value={{ mainTab, setMainTab, subTab, setSubTab, profileOpen, setProfileOpen, notifOpen, setNotifOpen, template, setTemplate, iab, setIab, gac, setGac, bannerPos, setBannerPos, bannerAlign, setBannerAlign, bannerRadius, setBannerRadius, bannerAnim, setBannerAnim, bannerBtnRadius, setBannerBtnRadius, bannerColors, setBannerColors, bannerWeight, setBannerWeight, bannerTextAlign, setBannerTextAlign, bannerContent, setBannerContent, prefContent, setPrefContent, closeBtn, setCloseBtn, showReject, setShowReject, showCustomize, setShowCustomize, showPolicy, setShowPolicy, activeRegion, setActiveRegion, ccpaContent, setCcpaContent }}>
       <div style={{ position: "relative", height: "100%" }}>
         {current}
         {notifOpen &&

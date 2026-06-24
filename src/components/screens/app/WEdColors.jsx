@@ -3,16 +3,24 @@ import iro from "@jaames/iro";
 import { WEdPreview } from "../../kit/WEdPreview.jsx";
 import { WEdReset } from "../../kit/WEdReset.jsx";
 import { WEdShell } from "../../kit/WEdShell.jsx";
+import { useNav } from "../../../nav.jsx";
 
 const groups = [
 { title: "General Colors", rows: [
-  { l: "Banners background", c: "#E89E8C" },
-  { l: "Text color", c: "#2E4A63" },
-  { l: "Heading color", c: "#0F1B2E" }] },
+  { id: "bannerBg", l: "Banners background" },
+  { id: "textColor", l: "Text color" },
+  { id: "headingColor", l: "Heading color" }] },
 
-{ title: "Buttons colors", rows: [
-  { l: "Banners background", c: "#E89E8C" },
-  { l: "Text color", c: "#2E4A63" }] }];
+{ title: "Buttons colors", subgroups: [
+  { sub: "Accept/Reject/Cancel", rows: [
+    { id: "btnBg", l: "Background" },
+    { id: "btnText", l: "Text" }] },
+  { sub: "Preferences", rows: [
+    { id: "prefBtnBg", l: "Background" },
+    { id: "prefBtnText", l: "Text" }] }] }];
+
+// Fallback colors when there's no NavContext (e.g. gallery).
+const DEFAULT_COLORS = { bannerBg: "#FFFFFF", textColor: "#374151", headingColor: "#0F1B2E", btnBg: "#007AFF", btnText: "#FFFFFF", prefBtnBg: "#FFFFFF", prefBtnText: "#0284C7" };
 
 const isHex = (v) => /^#[0-9A-Fa-f]{6}$/.test(v);
 
@@ -93,13 +101,20 @@ function ColorField({ value, onChange }) {
 }
 
 function WEdColors() {
-  const [colors, setColors] = React.useState(() => {
-    const init = {};
-    groups.forEach((g, gi) => g.rows.forEach((r, i) => { init[gi + "-" + i] = r.c; }));
-    return init;
-  });
+  const nav = useNav();
+  const [localColors, setLocalColors] = React.useState(DEFAULT_COLORS);
+  const colors = nav ? nav.bannerColors : localColors;
+  const setColor = (id, v) =>
+    nav ? nav.setBannerColors((c) => ({ ...c, [id]: v })) : setLocalColors((c) => ({ ...c, [id]: v }));
 
-  const setColor = (key, v) => setColors((c) => ({ ...c, [key]: v }));
+  const resetColors = () =>
+    nav ? nav.setBannerColors({ ...DEFAULT_COLORS }) : setLocalColors({ ...DEFAULT_COLORS });
+
+  const Row = (r) =>
+    <div key={r.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+      <span style={{ fontSize: 12 }}>{r.l}</span>
+      <ColorField value={colors[r.id]} onChange={(v) => setColor(r.id, v)} />
+    </div>;
 
   return (
     <WEdShell active="colors">
@@ -109,17 +124,15 @@ function WEdColors() {
           <div key={gi} className="card" style={{ padding: 14, marginBottom: 12 }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
                 <div style={{ fontWeight: 600, fontSize: 12.5 }}>{g.title}</div>
-                {gi === 0 && <WEdReset />}
+                {gi === 0 && <WEdReset onClick={resetColors} />}
               </div>
-              {g.rows.map((r, i) => {
-              const key = gi + "-" + i;
-              return (
-                <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: i < g.rows.length - 1 ? 10 : 0 }}>
-                  <span style={{ fontSize: 12 }}>{r.l}</span>
-                  <ColorField value={colors[key]} onChange={(v) => setColor(key, v)} />
-                </div>);
-
-            })}
+              {g.rows && g.rows.map(Row)}
+              {g.subgroups && g.subgroups.map((sg, si) =>
+              <div key={si} style={{ marginTop: si ? 14 : 0 }}>
+                <div style={{ fontSize: 10.5, fontWeight: 600, color: "var(--text-muted)", marginBottom: 8 }}>{sg.sub}</div>
+                {sg.rows.map(Row)}
+              </div>
+              )}
             </div>
           )}
         </div>
