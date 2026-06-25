@@ -59,9 +59,12 @@
   flex-direction: column;
 }
 
-/* Auth pages: center their inner content vertically */
+/* Auth pages: center their inner content vertically.
+   min-height:0 lets the inner content card scroll within this area while the
+   top bar (and the page title/steps) stay fixed. */
 .cb-widget-wrap .w-auth-center {
   flex: 1;
+  min-height: 0;
   display: flex;
   align-items: center;
   justify-content: center;

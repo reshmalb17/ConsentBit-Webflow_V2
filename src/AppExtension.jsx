@@ -79,36 +79,36 @@ export default function AppExtension() {
   });
 
  // --- Auth onboarding flow (disabled for now) -----------------------------
-  // const [screen, setScreen] = React.useState("landing");
-  // const current =
-  //   screen === "install-verify" ? (
-  //     <WInstallVerify />
-  //   ) : screen === "select-plan" ? (
-  //     <WSelectPlan onSelectPlan={() => setScreen("install-verify")} />
-  //   ) : (
-  //     <WLanding onAuthorize={() => setScreen("select-plan")} />
-  //   );
+  const [screen, setScreen] = React.useState("landing");
+  const current =
+    screen === "install-verify" ? (
+      <WInstallVerify />
+    ) : screen === "select-plan" ? (
+      <WSelectPlan onSelectPlan={() => setScreen("install-verify")} />
+    ) : (
+      <WLanding onAuthorize={() => setScreen("select-plan")} />
+    );
   //-------------------------------------------------------------------------
 
   // // Cookie Banner editor — pick the screen for the active section tab.
-  const editor =
-    subTab === "content" ? <WEdContent /> :
-    subTab === "layout" ? <WEdLayout /> :
-    subTab === "colors" ? <WEdColors /> :
-    subTab === "type" ? <WEdType /> :
-    <WEdGeneral />;
+  // const editor =
+  //   subTab === "content" ? <WEdContent /> :
+  //   subTab === "layout" ? <WEdLayout /> :
+  //   subTab === "colors" ? <WEdColors /> :
+  //   subTab === "type" ? <WEdType /> :
+  //   <WEdGeneral />;
 
   // // Top-level tab → screen.
-  const main =
-    mainTab === "scan" ? <WScan /> :
-    mainTab === "logs" ? <WConsentLogs /> :
-    mainTab === "upgrade" ? <WUpgrade /> :
-    editor;
+  // const main =
+  //   mainTab === "scan" ? <WScan /> :
+  //   mainTab === "logs" ? <WConsentLogs /> :
+  //   mainTab === "upgrade" ? <WUpgrade /> :
+  //   editor;
 
   // The avatar opens Profile Settings (full screen). Notifications is a
   // dropdown that floats ABOVE the current screen — handled in `app` below so
   // the background tab content stays visible.
-  const current = profileOpen ? <WProfile /> : main;
+  // const current = profileOpen ? <WProfile /> : main;
 
   React.useEffect(() => {
     // Size the Designer panel to the design's 800×560 (Designer-only API —

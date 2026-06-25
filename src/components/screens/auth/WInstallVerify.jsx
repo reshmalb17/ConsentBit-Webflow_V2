@@ -9,6 +9,50 @@ function WInstallVerify() {
   const [verifying, setVerifying] = React.useState(false);
   const [showPopup, setShowPopup] = React.useState(false);
   const platforms = ["Wp", "Wx", "K", "S", "M", "B", "D", "Sq", "Sh", "Wf", "Fr", "C"];
+
+  const installCode = '<!-- Start ConsentBit banner --> <script id="consentbit" type="text/javascript" src="https://cdn.consentbit.com/client_data/040a441d4818e9d47ed2318bd7caaed6/script.js"></script> <!-- End ConsentBit banner -->';
+
+  // Deep-link to THIS site's Site Settings → Custom code page. The Designer API
+  // gives us the site's shortName (slug); we build the same URL the live app
+  // uses: https://webflow.com/dashboard/sites/{shortName}/custom-code
+  const [shortName, setShortName] = React.useState(null);
+  React.useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const info = await window.webflow?.getSiteInfo?.();
+        if (!cancelled && info?.shortName) setShortName(info.shortName);
+      } catch {
+        /* not running inside the Designer — leave the generic fallback */
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+  const customCodeUrl = shortName
+    ? `https://webflow.com/dashboard/sites/${shortName}/custom-code`
+    : "https://webflow.com/dashboard";
+
+  const copyCode = async () => {
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(installCode);
+      } else {
+        // Fallback for environments without the async Clipboard API
+        const ta = document.createElement("textarea");
+        ta.value = installCode;
+        ta.style.position = "fixed";
+        ta.style.opacity = "0";
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand("copy");
+        document.body.removeChild(ta);
+      }
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1200);
+    } catch {
+      /* clipboard blocked — leave the button label unchanged */
+    }
+  };
   return (
     <WAuthShell step={3} topAlign title="Install & verify" subtitle="Add the banner to your site, then confirm it's live.">
       <div style={{ maxWidth: 560, margin: "0 auto" }}>
@@ -21,7 +65,7 @@ function WInstallVerify() {
             <span style={{ color: "#6E6890" }}>&lt;!-- End ConsentBit banner --&gt;</span>
           </div>
           <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
-            <button className="btn btn-secondary btn-sm" onClick={() => {setCopied(true);setTimeout(() => setCopied(false), 1200);}}>
+            <button className="btn btn-secondary btn-sm" onClick={copyCode}>
               <Icon.copy />{copied ? "Copied ✓" : "Copy"}
             </button>
           </div>
@@ -30,7 +74,7 @@ function WInstallVerify() {
           </div>
           <div style={{ color: "var(--text-muted)", fontSize: 11, marginBottom: 12 }}>Refer to our <a href="https://help.webflow.com/hc/en-us/articles/33961356296723-Custom-code-in-head-and-body-tags" target="_blank" rel="noopener" style={{ color: "var(--purple-hi)", textDecoration: "none" }}>platform-wise guides</a> for instructions.</div>
           <img src={window.__resources && window.__resources.webflowHeadcode || "assets/webflow-headcode.png"} alt="Webflow head code panel" style={{ display: "block", width: "100%", borderRadius: 10, border: "1px solid var(--border)", boxShadow: "0 10px 24px rgba(0,0,0,0.32)" }} />
-          <a href="https://webflow.com/dashboard" target="_blank" rel="noopener" className="btn btn-secondary btn-sm" style={{ marginTop: 12, textDecoration: "none" }}>
+          <a href={customCodeUrl} target="_blank" rel="noopener noreferrer" className="btn btn-secondary btn-sm" style={{ marginTop: 12, textDecoration: "none" }}>
             Open Webflow custom code
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" style={{ marginLeft: 5, flexShrink: 0 }}><path d="M7 17L17 7M17 7H8M17 7V16" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" /></svg>
           </a>
