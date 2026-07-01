@@ -1,11 +1,19 @@
 import React from "react";
 import { WAuthShell } from "../../kit/WAuthShell.jsx";
 import { Page } from "../../primitives/Page.jsx";
+import { WToast } from "../../kit/WToast.jsx";
+import { getWebflowSiteContext, registerWebflowFree } from "../../../lib/api.js";
+import { startCheckout } from "../../../lib/webflowAuth.js";
+import { useNav } from "../../../nav.jsx";
 
-function WSelectPlan({ freeDisabled = false, onSelectPlan }) {
+function WSelectPlan({ freeDisabled = false, onSelectPlan, onFreeRegistered, onFreeLimitReached, onSkip }) {
+  const nav = useNav();
   // Billing cycle: "monthly" shows the full monthly rate; "yearly" shows the
   // per-month equivalent at a 20% discount (billed annually).
   const [billing, setBilling] = React.useState("monthly");
+  // Free-plan registration state (the live API call).
+  const [busyPlan, setBusyPlan] = React.useState(null); // plan name currently registering
+  const [error, setError] = React.useState("");
   const cols = [
   { name: "Free", monthly: "$0", yearly: "$0", cta: "Continue free", ctaStyle: "secondary" },
   { name: "Basic", monthly: "$9", yearly: "$7", cta: "14 day free trial", ctaStyle: "secondary" },
@@ -20,19 +28,65 @@ function WSelectPlan({ freeDisabled = false, onSelectPlan }) {
   { label: "No of Page views", vals: [
     "PAID",
     "100,000 page views/m",
-    <><div>500,000 page views/m</div><div style={{ fontSize: 11, color: "var(--text)", marginTop: 2 }}>+ $0.05 / additional 1000 page views</div></>,
-    <><div>2 Million page views/m</div><div style={{ fontSize: 11, color: "var(--text)", marginTop: 2 }}>+ $0.05 / additional 1000 page views</div></>]
+    <><div>500,000 page views/m</div><div style={{ fontSize: 9.5, color: "var(--text-muted)", marginTop: 2 }}>+ $0.05 / additional 1000 page views</div></>,
+    <><div>2 Million page views/m</div><div style={{ fontSize: 9.5, color: "var(--text-muted)", marginTop: 2 }}>+ $0.05 / additional 1000 page views</div></>]
   },
   { label: "IAB / TCF", vals: ["NIL", "NIL", "Yes", "Yes"] },
   { label: "Compliance", vals: ["GDPR/CCPA", "GDPR/CCPA", "GDPR+CCPA", "GDPR+CCPA"] }];
-  const handleInstallClick = (plan) => {
-    // Navigation is owned by the parent (AppExtension), which swaps the screen
-    // to WInstallVerify. We just notify it which plan was chosen.
-    if (onSelectPlan) onSelectPlan(plan);
+  // Free plan → create a free webapp account + site via the worker. The email is
+  // resolved server-side from the OAuth record, so we only send the site context.
+  const registerFree = async () => {
+    setError("");
+    setBusyPlan("Free");
+    try {
+      const { wfSiteId, domain } = await getWebflowSiteContext();
+      if (!wfSiteId || !domain) {
+        setError("Couldn't read your Webflow site. Open this inside the Designer and try again.");
+        return;
+      }
+      const result = await registerWebflowFree({ wfSiteId, domain });
+      if (result?.success) {
+        if (onFreeRegistered) onFreeRegistered(result);
+        else if (onSelectPlan) onSelectPlan("Free"); // fall back to normal navigation
+      } else if (result?.code === "SITE_LIMIT_REACHED") {
+        if (onFreeLimitReached) onFreeLimitReached(result);
+        else setError(`Your account already has a free site on ${result.existingDomain || "another domain"}.`);
+      } else {
+        setError(result?.error || "Couldn't register the free plan. Please try again.");
+      }
+    } catch (e) {
+      setError(e?.message || "Network error registering the free plan.");
+    } finally {
+      setBusyPlan(null);
+    }
+  };
+
+  const handleInstallClick = async (plan) => {
+    if (plan === "Free") {
+      registerFree();
+      return;
+    }
+    // Paid plans → open the webapp /checkoutplan page with the selected plan +
+    // billing interval and the site context (platform=webflow, version=v2).
+    // Do NOT advance to install-verify here — payment happens in the opened tab;
+    // on the next launch the status call routes the (now paid) site to the app.
+    if (busyPlan) return;
+    setError("");
+    setBusyPlan(plan);
+    try {
+      await startCheckout({ plan, interval: billing });
+      // Stripe checkout opened in a new tab — show the payment-processing popup
+      // here, which polls until the subscription lands then routes to install.
+      if (nav?.startPaymentFlow) await nav.startPaymentFlow();
+    } catch (e) {
+      setError(e?.message || "Couldn't start checkout. Please try again.");
+    } finally {
+      setBusyPlan(null);
+    }
   };
 
   return (
-    <WAuthShell step={2} topAlign title="Choose your plan">
+    <WAuthShell step={2} topAlign noScroll title="Choose your plan">
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
         <div style={{ display: "flex", background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 999, padding: 3 }}>
           <button
@@ -48,10 +102,16 @@ function WSelectPlan({ freeDisabled = false, onSelectPlan }) {
             aria-pressed={billing === "yearly"}
           >Yearly <span style={{ fontSize: 9.5, fontWeight: 700, color: "#5AE497", background: "var(--green-soft)", padding: "2px 7px", borderRadius: 999 }}>Save 20%</span></button>
         </div>
-        <a href="#" style={{ color: "var(--text-muted)", fontSize: 12 }}>Skip for now<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginLeft: 5, flexShrink: 0 }}><path d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3" /></svg></a>
+        <a
+          href="#"
+          onClick={(e) => { e.preventDefault(); if (onSkip) onSkip(); }}
+          style={{ color: "var(--text-muted)", fontSize: 12, display: "inline-flex", alignItems: "center", gap: 5, textDecoration: "none" }}
+        >Skip for now<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><path d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3" /></svg></a>
       </div>
 
-      <div className="card" style={{ padding: 0, overflow: "visible", marginTop: 14, position: "relative" }}>
+      <WToast message={error} type="error" onClose={() => setError("")} />
+
+      <div className="card" style={{ padding: 0, overflow: "visible", marginTop: 10, position: "relative" }}>
         {freeDisabled &&
         <div className="cb-free-col-tip" style={{
           position: "absolute", top: 0, bottom: 0,
@@ -75,7 +135,7 @@ function WSelectPlan({ freeDisabled = false, onSelectPlan }) {
             const dim = freeDisabled && c.name === "Free";
             return (
               <div key={i} style={{
-                padding: "18px 10px 14px",
+                padding: "14px 10px 10px",
                 textAlign: "center",
                 position: "relative",
                 opacity: dim ? 0.45 : 1,
@@ -98,11 +158,11 @@ function WSelectPlan({ freeDisabled = false, onSelectPlan }) {
                 }}>Recommended</div>
                 }
               <div style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 4, fontWeight: 500 }}>{c.name}</div>
-              <div style={{ fontSize: 22, fontWeight: 700, lineHeight: 1, marginBottom: 10 }}>
+              <div style={{ fontSize: 19, fontWeight: 700, lineHeight: 1, marginBottom: 8 }}>
                 {c[billing]}<span style={{ fontSize: 10, color: "var(--text-muted)", fontWeight: 400 }}>{priceSuffix}</span>
               </div>
-              <button className={"btn btn-" + c.ctaStyle + " btn-sm"} style={{ width: "100%", justifyContent: "center", ...(c.ctaStyle === "secondary" ? { background: "var(--surface-3)", border: "1px solid var(--border-2)", color: "var(--text)" } : {}) }} onClick={() => {handleInstallClick(c.name)}}>
-                {c.cta}
+              <button className={"btn btn-" + c.ctaStyle + " btn-sm"} disabled={!!busyPlan} style={{ width: "100%", justifyContent: "center", opacity: busyPlan && busyPlan !== c.name ? 0.6 : 1, ...(c.ctaStyle === "secondary" ? { background: "var(--surface-3)", border: "1px solid var(--border-2)", color: "var(--text)" } : {}) }} onClick={() => {handleInstallClick(c.name)}}>
+                {busyPlan === c.name ? "Creating…" : c.cta}
               </button>
             </div>);
 
@@ -115,10 +175,10 @@ function WSelectPlan({ freeDisabled = false, onSelectPlan }) {
           gridTemplateColumns: "120px repeat(4, 1fr)",
           borderBottom: i < rows.length - 1 ? "1px solid var(--border)" : "none"
         }}>
-            <div style={{ padding: "10px 12px", fontSize: 11.5, color: "var(--text-muted)", display: "flex", alignItems: "center" }}>{r.label}</div>
+            <div style={{ padding: "7px 12px", fontSize: 11.5, color: "var(--text-muted)", display: "flex", alignItems: "center" }}>{r.label}</div>
             {r.vals.map((v, j) =>
           <div key={j} style={{
-            padding: "10px",
+            padding: "7px 10px",
             fontSize: 11.5,
             textAlign: "center",
             opacity: freeDisabled && cols[j].name === "Free" ? 0.45 : 1,

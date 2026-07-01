@@ -2,63 +2,143 @@ import React from "react";
 import { WMainTabs } from "../../kit/WMainTabs.jsx";
 import { WPage } from "../../kit/WPage.jsx";
 import { WTopBar } from "../../kit/WTopBar.jsx";
+import { WToast } from "../../kit/WToast.jsx";
 import { Icon } from "../../lib/icons.jsx";
+import {
+  getWebflowSiteContext,
+  getWebflowSiteStatus,
+  getConsentHistory,
+  downloadConsentCsv,
+  downloadConsentPdf,
+} from "../../../lib/api.js";
 
-const PER_PAGE = 6; // max rows per page
+const PER_PAGE = 6; // rows per page
 
-// Up to 20 consent log entries (mock data).
-const logs = [
-  { time: "6/16/2026, 9:14:39 PM", status: "Partial", type: "GDPR", a: "Rejected", m: "Rejected", p: "Accepted" },
-  { time: "6/16/2026, 9:13:32 PM", status: "Partial", type: "GDPR", a: "Rejected", m: "Accepted", p: "Accepted" },
-  { time: "6/16/2026, 9:13:04 PM", status: "Partial", type: "GDPR", a: "Rejected", m: "Accepted", p: "Rejected" },
-  { time: "6/16/2026, 9:12:34 PM", status: "Rejected", type: "GDPR", a: "Rejected", m: "Rejected", p: "Rejected" },
-  { time: "6/16/2026, 7:19:39 PM", status: "Partial", type: "GDPR", a: "Accepted", m: "Accepted", p: "Accepted" },
-  { time: "6/16/2026, 7:19:13 PM", status: "Partial", type: "GDPR", a: "Rejected", m: "Rejected", p: "Accepted" },
-  { time: "6/16/2026, 7:19:13 PM", status: "Partial", type: "GDPR", a: "Accepted", m: "Rejected", p: "Accepted" },
-  { time: "6/16/2026, 7:17:43 PM", status: "Partial", type: "GDPR", a: "Accepted", m: "Rejected", p: "Rejected" },
-  { time: "6/15/2026, 5:42:10 PM", status: "Partial", type: "GDPR", a: "Accepted", m: "Accepted", p: "Rejected" },
-  { time: "6/15/2026, 5:41:02 PM", status: "Accepted", type: "GDPR", a: "Accepted", m: "Accepted", p: "Accepted" },
-  { time: "6/15/2026, 3:30:55 PM", status: "Rejected", type: "GDPR", a: "Rejected", m: "Rejected", p: "Rejected" },
-  { time: "6/15/2026, 1:12:20 PM", status: "Partial", type: "GDPR", a: "Rejected", m: "Accepted", p: "Accepted" },
-  { time: "6/14/2026, 11:05:48 AM", status: "Partial", type: "GDPR", a: "Accepted", m: "Rejected", p: "Accepted" },
-  { time: "6/14/2026, 10:58:33 AM", status: "Partial", type: "GDPR", a: "Rejected", m: "Accepted", p: "Rejected" },
-  { time: "6/14/2026, 9:47:19 AM", status: "Accepted", type: "GDPR", a: "Accepted", m: "Accepted", p: "Accepted" },
-  { time: "6/13/2026, 8:22:07 PM", status: "Partial", type: "GDPR", a: "Accepted", m: "Accepted", p: "Rejected" },
-  { time: "6/13/2026, 6:15:44 PM", status: "Rejected", type: "GDPR", a: "Rejected", m: "Rejected", p: "Rejected" },
-  { time: "6/13/2026, 4:09:31 PM", status: "Partial", type: "GDPR", a: "Rejected", m: "Accepted", p: "Accepted" },
-  { time: "6/12/2026, 2:55:12 PM", status: "Partial", type: "GDPR", a: "Accepted", m: "Rejected", p: "Accepted" },
-  { time: "6/12/2026, 12:40:00 PM", status: "Accepted", type: "GDPR", a: "Accepted", m: "Accepted", p: "Accepted" },
-  { time: "6/11/2026, 6:30:18 PM", status: "Partial", type: "GDPR", a: "Rejected", m: "Accepted", p: "Rejected" },
-  { time: "6/11/2026, 4:18:52 PM", status: "Partial", type: "GDPR", a: "Accepted", m: "Rejected", p: "Accepted" },
-  { time: "6/10/2026, 2:05:41 PM", status: "Rejected", type: "GDPR", a: "Rejected", m: "Rejected", p: "Rejected" },
-  { time: "6/10/2026, 11:22:09 AM", status: "Accepted", type: "GDPR", a: "Accepted", m: "Accepted", p: "Accepted" }
-].slice(0, 24).map((r, i) => ({ id: consentId(i), ...r })); // max 24 entries
+const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+const YEARS = ["2026", "2025", "2024"];
 
-// Stable random-looking consent id per row (deterministic so it doesn't change
-// on every render).
-function consentId(i) {
-  const h = (((i + 1) * 2654435761) >>> 0).toString(16).toUpperCase().padStart(8, "0");
-  return `CNS-${h.slice(0, 4)}-${h.slice(4, 8)}`;
+// status string → display label (same mapping as consentbitwebapp).
+function displayStatus(status) {
+  if (!status) return "—";
+  const s = String(status).toLowerCase();
+  if (s === "given" || s === "accepted") return "Accepted";
+  if (s === "rejected") return "Rejected";
+  return status.charAt(0).toUpperCase() + status.slice(1);
+}
+
+// Banner type — categories-independent: prefer regulation, fall back to bannerType.
+function bannerTypeOf(row) {
+  return String(row.bannerType ?? row.regulation ?? "").toUpperCase() || "—";
+}
+
+function fmtTime(iso) {
+  if (!iso) return "—";
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return String(iso);
+  return d.toLocaleString();
 }
 
 function WConsentLogs() {
+  const [siteId, setSiteId] = React.useState(null);
   const [page, setPage] = React.useState(1);
-  const pageCount = Math.max(1, Math.ceil(logs.length / PER_PAGE));
+  const [year, setYear] = React.useState("");   // "" = all
+  const [month, setMonth] = React.useState("");  // "" = all (value is "01".."12")
+  const [consents, setConsents] = React.useState([]);
+  const [total, setTotal] = React.useState(0);
+  const [loading, setLoading] = React.useState(false);
+  const [error, setError] = React.useState("");
+  const [csvBusy, setCsvBusy] = React.useState(false);
+  const [pdfBusyId, setPdfBusyId] = React.useState(null);
+
+  const pageCount = Math.max(1, Math.ceil(total / PER_PAGE));
   const start = (page - 1) * PER_PAGE;
-  const rows = logs.slice(start, start + PER_PAGE);
+
+  // Resolve the webapp site id once.
+  React.useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const { wfSiteId } = await getWebflowSiteContext();
+        if (!wfSiteId) return;
+        const status = await getWebflowSiteStatus(wfSiteId);
+        if (!cancelled && status.webappSiteId) setSiteId(status.webappSiteId);
+      } catch (e) {
+        if (!cancelled) setError(e?.message || "Couldn't load this site.");
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  // Fetch a page of logs whenever site / page / filters change (server-side paging).
+  React.useEffect(() => {
+    if (!siteId) return;
+    let cancelled = false;
+    setLoading(true);
+    (async () => {
+      try {
+        const data = await getConsentHistory(siteId, { limit: PER_PAGE, offset: start, year, month });
+        if (cancelled) return;
+        if (data?.success) {
+          setConsents(Array.isArray(data.consents) ? data.consents : []);
+          setTotal(Number(data.total ?? 0));
+        } else {
+          setError(data?.error || "Couldn't load consent logs.");
+        }
+      } catch (e) {
+        if (!cancelled) setError(e?.message || "Network error loading consent logs.");
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [siteId, page, year, month, start]);
+
+  // Reset to page 1 when the filters change.
+  const onYear = (v) => { setYear(v); setPage(1); };
+  const onMonth = (v) => { setMonth(v); setPage(1); };
+
+  const exportCsv = async () => {
+    if (!siteId || csvBusy) return;
+    setCsvBusy(true);
+    try {
+      await downloadConsentCsv(siteId, { year, month });
+    } catch (e) {
+      setError(e?.message || "Couldn't export CSV.");
+    } finally {
+      setCsvBusy(false);
+    }
+  };
+
+  const exportPdf = async (consentId) => {
+    if (!siteId || pdfBusyId) return;
+    setPdfBusyId(consentId);
+    try {
+      await downloadConsentPdf(siteId, consentId);
+    } catch (e) {
+      setError(e?.message || "Couldn't download PDF.");
+    } finally {
+      setPdfBusyId(null);
+    }
+  };
 
   return (
     <WPage>
+      <WToast message={error} type="error" onClose={() => setError("")} />
       <WTopBar />
       <WMainTabs active="logs" left />
       <div className="cb-page" style={{ width: "698px" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
           <div style={{ fontSize: 16, fontWeight: 600 }}>Consent Logs</div>
           <div style={{ display: "flex", gap: 8 }}>
-            <select className="select cb-dd" style={{ width: "auto" }}><option>All categories</option></select>
-            <select className="select cb-dd" style={{ width: "auto" }}><option>All years</option><option>2026</option><option>2025</option><option>2024</option></select>
-            <select className="select cb-dd" style={{ width: "auto" }}><option>All months</option><option>January</option><option>February</option><option>March</option><option>April</option><option>May</option><option>June</option><option>July</option><option>August</option><option>September</option><option>October</option><option>November</option><option>December</option></select>
-            <button className="btn btn-secondary btn-sm">Export CSV</button>
+            <select className="select cb-dd" style={{ width: "auto" }} value={year} onChange={(e) => onYear(e.target.value)}>
+              <option value="">All years</option>
+              {YEARS.map((y) => <option key={y} value={y}>{y}</option>)}
+            </select>
+            <select className="select cb-dd" style={{ width: "auto" }} value={month} onChange={(e) => onMonth(e.target.value)}>
+              <option value="">All months</option>
+              {MONTHS.map((m, i) => <option key={m} value={String(i + 1).padStart(2, "0")}>{m}</option>)}
+            </select>
+            <button className="btn btn-secondary btn-sm" disabled={csvBusy || !consents.length} onClick={exportCsv}>{csvBusy ? "Exporting…" : "Export CSV"}</button>
           </div>
         </div>
         <div className="card" style={{ overflow: "hidden", width: "662px" }}>
@@ -73,14 +153,20 @@ function WConsentLogs() {
               </tr>
             </thead>
             <tbody>
-              {rows.map((r, i) =>
-              <tr key={i}>
-                  <td className="mono" style={{ color: "var(--purple-hi)" }}>{r.id}</td>
-                  <td style={{ fontWeight: 500 }}>{r.time}</td>
-                  <td>{r.status}</td>
-                  <td><span className="badge badge-blue">{r.type}</span></td>
+              {loading && consents.length === 0 ?
+              <tr><td colSpan={5} style={{ textAlign: "center", color: "var(--text-muted)", padding: "22px 12px" }}>Loading…</td></tr> :
+              consents.length === 0 ?
+              <tr><td colSpan={5} style={{ textAlign: "center", color: "var(--text-muted)", padding: "22px 12px" }}>No consent logs yet.</td></tr> :
+              consents.map((r) =>
+              <tr key={r.id}>
+                  <td className="mono" style={{ color: "var(--purple-hi)" }}>{String(r.id).slice(0, 12)}</td>
+                  <td style={{ fontWeight: 500 }}>{fmtTime(r.createdAt)}</td>
+                  <td>{displayStatus(r.status)}</td>
+                  <td><span className="badge badge-blue">{bannerTypeOf(r)}</span></td>
                   <td>
-                    <button className="btn btn-secondary btn-sm" title="Download Pdf" aria-label="Download Pdf" style={{ padding: "6px 8px" }}><Icon.download /></button>
+                    <button className="btn btn-secondary btn-sm" title="Download PDF" aria-label="Download PDF" disabled={pdfBusyId === r.id} style={{ padding: "6px 8px" }} onClick={() => exportPdf(r.id)}>
+                      {pdfBusyId === r.id ? "…" : <Icon.download />}
+                    </button>
                   </td>
                 </tr>
               )}
@@ -91,21 +177,19 @@ function WConsentLogs() {
         {/* Pagination */}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 12 }}>
           <div style={{ fontSize: 11.5, color: "var(--text-muted)" }}>
-            Showing {logs.length === 0 ? 0 : start + 1}–{Math.min(start + PER_PAGE, logs.length)} of {logs.length}
+            Showing {total === 0 ? 0 : start + 1}–{Math.min(start + PER_PAGE, total)} of {total}
           </div>
           <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
             <button className="btn btn-secondary btn-sm" disabled={page === 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>Prev</button>
-            {Array.from({ length: pageCount }, (_, i) => i + 1).map((n) =>
+            {Array.from({ length: pageCount }, (_, i) => i + 1).slice(Math.max(0, page - 3), Math.max(0, page - 3) + 5).map((n) =>
             <button key={n} className={"btn btn-sm " + (n === page ? "btn-primary" : "btn-secondary")} onClick={() => setPage(n)}>{n}</button>
             )}
-            <button className="btn btn-secondary btn-sm" disabled={page === pageCount} onClick={() => setPage((p) => Math.min(pageCount, p + 1))}>Next</button>
+            <button className="btn btn-secondary btn-sm" disabled={page >= pageCount} onClick={() => setPage((p) => Math.min(pageCount, p + 1))}>Next</button>
           </div>
         </div>
       </div>
     </WPage>);
 
 }
-
-// ---------- COOKIE BANNER EDITOR ----------
 
 export { WConsentLogs };

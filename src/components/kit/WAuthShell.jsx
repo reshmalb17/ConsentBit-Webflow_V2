@@ -3,7 +3,7 @@ import { WPage } from "./WPage.jsx";
 import { WSteps } from "./WSteps.jsx";
 import { WTopBar } from "./WTopBar.jsx";
 
-function WAuthShell({ step, title, subtitle, children, labels, hideSteps, topAlign }) {
+function WAuthShell({ step, title, subtitle, children, labels, hideSteps, topAlign, noScroll }) {
   return (
     <WPage scroll={false} style={{ display: "flex", flexDirection: "column" }}>
       <WTopBar minimal />
@@ -13,8 +13,8 @@ function WAuthShell({ step, title, subtitle, children, labels, hideSteps, topAli
           <div style={{ textAlign: "center", fontSize: 16, fontWeight: 600, marginBottom: subtitle ? 4 : 18 }}>{title}</div>
           {subtitle && <div style={{ textAlign: "center", fontSize: 12, color: "var(--text-muted)", marginBottom: 18 }}>{subtitle}</div>}
           {!hideSteps && <WSteps step={step} labels={labels || ["Authorize", "Choose plan", "Install & verify"]} />}
-          {/* Scrollable content area */}
-          <div style={{ flex: 1, minHeight: 0, overflowY: "auto" }}>
+          {/* Content area — scrolls by default; noScroll lets a screen fit fully */}
+          <div style={{ flex: 1, minHeight: 0, overflowY: noScroll ? "visible" : "auto" }}>
             {children}
           </div>
         </div>

@@ -8,6 +8,11 @@ function WEdGeneral({ cta }) {
   const nav = useNav();
   const iab = nav ? nav.iab : false;
   const setIab = (fn) => nav && nav.setIab((v) => (typeof fn === "function" ? fn(v) : fn));
+  // IAB TCF + Google Consent Mode are included on Essential/Growth — hide the
+  // "Upgrade to Pro" upsell for those plans.
+  const planKey = String(nav?.plan || "free").toLowerCase();
+  const canUseTcf = planKey === "essential" || planKey === "growth";
+  const showProUpsell = !canUseTcf;
   const [subs, setSubs] = React.useState([false, false]); // the two Google consent toggles
   return (
     <WEdShell active="general" cta={cta}>
@@ -51,10 +56,12 @@ function WEdGeneral({ cta }) {
               <div style={{ fontWeight: 600, fontSize: 12.5 }}>
                 Support IAB TCF v2.3
               </div>
-              <Toggle on={iab} onClick={() => setIab((v) => !v)} />
+              {/* Enable IAB TCF only on Essential/Growth (gated via props — no wrapper,
+                  so the toggle keeps its original design). */}
+              <Toggle on={canUseTcf && iab} onClick={canUseTcf ? () => setIab((v) => !v) : undefined} />
             </div>
-            {/* Google Consent Mode toggles are only accessible when IAB TCF is on. */}
-            <div style={{ opacity: iab ? 1 : 0.45, pointerEvents: iab ? "auto" : "none" }} title={iab ? undefined : "Enable IAB TCF v2.3 first"}>
+            {/* Google Consent Mode toggles are only accessible when IAB TCF is on (and allowed by plan). */}
+            <div style={{ opacity: (canUseTcf && iab) ? 1 : 0.45, pointerEvents: (canUseTcf && iab) ? "auto" : "none" }} title={(canUseTcf && iab) ? undefined : "Enable IAB TCF v2.3 first"}>
             {[
               "Support Google's Additional Consent Mode",
               "Enable Google's Advertiser Consent Mode",
@@ -84,6 +91,7 @@ function WEdGeneral({ cta }) {
               </div>
             ))}
             </div>
+            {showProUpsell &&
             <div
               style={{
                 marginTop: 12,
@@ -109,10 +117,12 @@ function WEdGeneral({ cta }) {
               <button
                 className="btn btn-primary btn-sm"
                 style={{ width: "100%", justifyContent: "center" }}
+                onClick={nav ? () => nav.setMainTab("upgrade") : undefined}
               >
                 Get Pro Plan
               </button>
             </div>
+            }
           </div>
         </div>
 

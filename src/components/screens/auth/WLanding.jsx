@@ -1,13 +1,11 @@
 import React from "react";
 import { WPage } from "../../kit/WPage.jsx";
 import { WSteps } from "../../kit/WSteps.jsx";
-import { WTopBar } from "../../kit/WTopBar.jsx";
 import { startWebflowInstall } from "../../../lib/webflowAuth.js";
 
 function WLanding({ onAuthorize }) {
   return (
     <WPage scroll={false} style={{ display: "flex", flexDirection: "column" }}>
-      <WTopBar minimal />
       <div className="w-auth-center" style={{ padding: "30px" }}>
         <div style={{ width: "100%", maxWidth: 460, textAlign: "center" }}>
           <div style={{ width: 60, height: 60, borderRadius: 16, background: "var(--purple-soft)", display: "grid", placeItems: "center", margin: "0 auto 22px" }}>

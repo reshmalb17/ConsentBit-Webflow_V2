@@ -1,10 +1,12 @@
 import React from "react";
 import { cookieCategories } from "../../lib/bannerContent.js";
+import { addCustomCookieRule } from "../../lib/api.js";
+import { WToast } from "./WToast.jsx";
 
 // Add Cookie modal — matches the project's dark theme + purple accents
-// (mirrors WScheduleScan). On "Save draft" it hands the new rule back to the
-// parent, which stores it as a DRAFT row under "My Cookie Rules".
-function WAddCookie({ domain = "testsite123.com", onClose, onSaveDraft }) {
+// (mirrors WScheduleScan). On save it creates a DRAFT rule on the backend
+// (published=0) via /api/custom-cookie-rules, then the parent reloads the list.
+function WAddCookie({ siteId, domain = "testsite123.com", onClose, onSaved }) {
   const [form, setForm] = React.useState({
     name: "",
     provider: "",
@@ -14,13 +16,38 @@ function WAddCookie({ domain = "testsite123.com", onClose, onSaveDraft }) {
     description: "",
   });
   const [error, setError] = React.useState(null);
+  const [busy, setBusy] = React.useState(false);
 
   const set = (k, v) => { setError(null); setForm((s) => ({ ...s, [k]: v })); };
 
-  const save = () => {
+  const save = async () => {
+    if (busy) return;
     if (!form.name.trim()) { setError("Cookie ID is required."); return; }
-    onSaveDraft && onSaveDraft({ ...form, name: form.name.trim(), domain, status: "draft" });
-    onClose && onClose();
+    if (!siteId) { setError("This site isn't registered yet. Select a plan and publish first."); return; }
+    setError(null);
+    setBusy(true);
+    try {
+      const result = await addCustomCookieRule({
+        siteId,
+        name: form.name.trim(),
+        domain,
+        category: form.category,
+        provider: form.provider || undefined,
+        duration: form.duration || undefined,
+        scriptUrlPattern: form.scriptUrlPattern || undefined,
+        description: form.description || undefined,
+      });
+      if (result?.success) {
+        if (onSaved) onSaved(result);
+        onClose && onClose();
+      } else {
+        setError(result?.error || "Couldn't save the cookie rule. Please try again.");
+      }
+    } catch (e) {
+      setError(e?.message || "Network error saving the cookie rule.");
+    } finally {
+      setBusy(false);
+    }
   };
 
   const labelStyle = { display: "inline-flex", alignItems: "center", gap: 5, marginBottom: 5 };
@@ -31,9 +58,7 @@ function WAddCookie({ domain = "testsite123.com", onClose, onSaveDraft }) {
       <div onClick={(e) => e.stopPropagation()} style={{ width: 560, maxWidth: "100%", maxHeight: "92%", overflowY: "auto", background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 14, padding: 22, boxShadow: "0 24px 60px rgba(0,0,0,0.55)" }}>
         <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 16 }}>Add Cookie</div>
 
-        {error &&
-          <div style={{ marginBottom: 14, borderRadius: 9, border: "1px solid var(--red-soft)", background: "var(--red-soft)", color: "#FF8888", fontSize: 12, padding: "9px 12px" }}>{error}</div>
-        }
+        <WToast message={error} type="error" onClose={() => setError(null)} />
 
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
           <div>
@@ -72,7 +97,7 @@ function WAddCookie({ domain = "testsite123.com", onClose, onSaveDraft }) {
 
         <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 10, marginTop: 18 }}>
           <button onClick={onClose} className="btn btn-secondary btn-sm">Cancel</button>
-          <button onClick={save} className="btn btn-primary btn-sm">Save draft</button>
+          <button onClick={save} disabled={busy} className="btn btn-primary btn-sm">{busy ? "Saving…" : "Save draft"}</button>
         </div>
       </div>
     </div>

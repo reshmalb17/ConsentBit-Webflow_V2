@@ -1,43 +1,62 @@
 import React from "react";
 import { WAuthShell } from "../../kit/WAuthShell.jsx";
-import { WSubStep } from "../../kit/WSubStep.jsx";
 import { Icon } from "../../lib/icons.jsx";
 import { WVerifyModal } from "../../kit/WVerifyModal.jsx";
+import { WImageZoom } from "../../kit/WImageZoom.jsx";
+import { verifyInstallation, getWebflowSiteContext, getWebflowSiteStatus } from "../../../lib/api.js";
+import { publishSite, listSiteDomains } from "../../../lib/webflowAuth.js";
+import { useNav } from "../../../nav.jsx";
 
 function WInstallVerify() {
+  const nav = useNav();
   const [copied, setCopied] = React.useState(false);
-  const [verifying, setVerifying] = React.useState(false);
+  const [publishing, setPublishing] = React.useState(false);
   const [showPopup, setShowPopup] = React.useState(false);
-  const platforms = ["Wp", "Wx", "K", "S", "M", "B", "D", "Sq", "Sh", "Wf", "Fr", "C"];
+  const [verifyMode, setVerifyMode] = React.useState("success"); // success | error | unpublished
+  // Domain-selection UI — only shown when the site has custom domain(s) in addition
+  // to the staging subdomain (so the user can choose where to publish).
+  const [domainChoice, setDomainChoice] = React.useState(null); // { subdomain, customDomains } | null
+  const [selSub, setSelSub] = React.useState(true);   // publish to the *.webflow.io staging domain?
+  const [selIds, setSelIds] = React.useState([]);     // selected custom-domain ids
 
-  const installCode = '<!-- Start ConsentBit banner --> <script id="consentbit" type="text/javascript" src="https://cdn.consentbit.com/client_data/040a441d4818e9d47ed2318bd7caaed6/script.js"></script> <!-- End ConsentBit banner -->';
-
-  // Deep-link to THIS site's Site Settings → Custom code page. The Designer API
-  // gives us the site's shortName (slug); we build the same URL the live app
-  // uses: https://webflow.com/dashboard/sites/{shortName}/custom-code
+  // The REAL embed script URL for this site comes from the backend status call
+  // (scriptUrl) — never hardcode it. Resolve shortName + scriptUrl in one effect.
   const [shortName, setShortName] = React.useState(null);
+  const [scriptUrl, setScriptUrl] = React.useState("");
+  const [siteUrl, setSiteUrl] = React.useState(""); // the site's live URL for "Preview in site"
   React.useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
-        const info = await window.webflow?.getSiteInfo?.();
-        if (!cancelled && info?.shortName) setShortName(info.shortName);
+        const { wfSiteId, domain, siteInfo } = await getWebflowSiteContext();
+        if (!cancelled && siteInfo?.shortName) setShortName(siteInfo.shortName);
+        if (!cancelled && domain) setSiteUrl(`https://${String(domain).replace(/^https?:\/\//, "").replace(/\/$/, "")}`);
+        if (wfSiteId) {
+          const status = await getWebflowSiteStatus(wfSiteId);
+          if (!cancelled && status?.scriptUrl) setScriptUrl(status.scriptUrl);
+        }
       } catch {
         /* not running inside the Designer — leave the generic fallback */
       }
     })();
     return () => { cancelled = true; };
   }, []);
+
+  const installCode = scriptUrl
+    ? `<!-- Start ConsentBit banner --> <script id="consentbit" type="text/javascript" src="${scriptUrl}"></script> <!-- End ConsentBit banner -->`
+    : "";
+
+  // Deep-link to THIS site's Site Settings → Custom code page.
   const customCodeUrl = shortName
     ? `https://webflow.com/dashboard/sites/${shortName}/custom-code`
     : "https://webflow.com/dashboard";
 
   const copyCode = async () => {
+    if (!installCode) return; // script URL not loaded yet
     try {
       if (navigator.clipboard && navigator.clipboard.writeText) {
         await navigator.clipboard.writeText(installCode);
       } else {
-        // Fallback for environments without the async Clipboard API
         const ta = document.createElement("textarea");
         ta.value = installCode;
         ta.style.position = "fixed";
@@ -53,77 +72,171 @@ function WInstallVerify() {
       /* clipboard blocked — leave the button label unchanged */
     }
   };
+
+  // Publish + verify against the chosen targets. Give Webflow's CDN a moment to
+  // serve the new publish before verifying.
+  const doPublishAndVerify = async ({ publishToWebflowSubdomain, customDomains }) => {
+    setPublishing(true);
+    try {
+      await publishSite({ publishToWebflowSubdomain, customDomains });
+      await new Promise((r) => setTimeout(r, 2500));
+      const result = await verifyInstallation();
+      if (!result.published) setVerifyMode("unpublished");
+      else setVerifyMode(result.found ? "success" : "error");
+    } catch {
+      setVerifyMode("error");
+    } finally {
+      setPublishing(false);
+      setDomainChoice(null);
+      setShowPopup(true);
+    }
+  };
+
+  // Publish → resolve the site's domains first. Only-staging publishes straight
+  // away; if custom domain(s) also exist, open the target-selection panel.
+  const handlePublish = async () => {
+    if (publishing) return;
+    setPublishing(true);
+    let targets = null;
+    try { targets = await listSiteDomains(); } catch { /* fall back to staging-only */ }
+    const customDomains = targets?.customDomains || [];
+    if (customDomains.length > 0) {
+      // Both staging + custom → let the user choose (default: everything selected).
+      setSelSub(true);
+      setSelIds(customDomains.map((d) => d.id).filter(Boolean));
+      setDomainChoice({ subdomain: targets?.subdomain || null, customDomains });
+      setPublishing(false);
+      return;
+    }
+    // Only the staging subdomain → publish directly, no selection.
+    await doPublishAndVerify({ publishToWebflowSubdomain: true, customDomains: [] });
+  };
+
+  const toggleId = (id) =>
+    setSelIds((ids) => (ids.includes(id) ? ids.filter((x) => x !== id) : [...ids, id]));
+  const nothingSelected = !selSub && selIds.length === 0;
+
   return (
-    <WAuthShell step={3} topAlign title="Install & verify" subtitle="Add the banner to your site, then confirm it's live.">
-      <div style={{ maxWidth: 560, margin: "0 auto" }}>
-        {/* Sub-step 1 — copy code & paste into <head> */}
-        <WSubStep n={1}>
-          <div style={{ fontWeight: 600, fontSize: 12.5, marginBottom: 10 }}>Copy this banner installation code</div>
-          <div className="mono" style={{ background: "var(--bg-2)", border: "1px solid var(--border)", borderRadius: 8, padding: 11, fontSize: 10, lineHeight: 1.6, marginBottom: 12, wordBreak: "break-all" }}>
-            <span style={{ color: "#6E6890" }}>&lt;!-- Start ConsentBit banner --&gt;</span>{" "}
-            <span style={{ color: "#FF9F45" }}>&lt;script</span> <span style={{ color: "#5AE497" }}>id="consentbit" type="text/javascript" src="https://cdn.consentbit.com/client_data/040a441d4818e9d47ed2318bd7caaed6/script.js"</span><span style={{ color: "#FF9F45" }}>&gt;&lt;/script&gt;</span>{" "}
-            <span style={{ color: "#6E6890" }}>&lt;!-- End ConsentBit banner --&gt;</span>
-          </div>
-          <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
-            <button className="btn btn-secondary btn-sm" onClick={copyCode}>
+    <WAuthShell step={4} topAlign noScroll title="Install & verify" subtitle="Add the banner to your site, then confirm it's live.">
+      <div style={{ maxWidth: 620, margin: "0 auto" }}>
+        {/* Back to customization — only when this page was opened from the editor. */}
+        {nav && nav.installVerifyFromApp && nav.goToApp &&
+          <button
+            onClick={() => nav.goToApp()}
+            style={{ display: "inline-flex", alignItems: "center", gap: 5, background: "none", border: "none", color: "var(--text-muted)", fontSize: 12, cursor: "pointer", padding: 0, marginBottom: 10 }}
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 12H5M12 19l-7-7 7-7" /></svg>
+            Back to customization
+          </button>
+        }
+        <div className="card" style={{ padding: 14 }}>
+          {/* Heading + Copy button */}
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+            <div style={{ fontWeight: 600, fontSize: 13 }}>Copy this banner installation code</div>
+            <button className="btn btn-secondary btn-sm" onClick={copyCode} style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
               <Icon.copy />{copied ? "Copied ✓" : "Copy"}
             </button>
           </div>
-          <div style={{ fontWeight: 600, fontSize: 12.5, marginBottom: 4, lineHeight: 1.5, paddingTop: 14, borderTop: "1px solid var(--border)" }}>
-            Paste it right after the opening <code className="mono" style={{ background: "var(--purple-soft)", padding: "1px 5px", borderRadius: 4, color: "var(--purple-hi)" }}>&lt;head&gt;</code> tag in your site's source code.
-          </div>
-          <div style={{ color: "var(--text-muted)", fontSize: 11, marginBottom: 12 }}>Refer to our <a href="https://help.webflow.com/hc/en-us/articles/33961356296723-Custom-code-in-head-and-body-tags" target="_blank" rel="noopener" style={{ color: "var(--purple-hi)", textDecoration: "none" }}>platform-wise guides</a> for instructions.</div>
-          <img src={window.__resources && window.__resources.webflowHeadcode || "assets/webflow-headcode.png"} alt="Webflow head code panel" style={{ display: "block", width: "100%", borderRadius: 10, border: "1px solid var(--border)", boxShadow: "0 10px 24px rgba(0,0,0,0.32)" }} />
-          <a href={customCodeUrl} target="_blank" rel="noopener noreferrer" className="btn btn-secondary btn-sm" style={{ marginTop: 12, textDecoration: "none" }}>
-            Open Webflow custom code
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" style={{ marginLeft: 5, flexShrink: 0 }}><path d="M7 17L17 7M17 7H8M17 7V16" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" /></svg>
-          </a>
-        </WSubStep>
 
-        {/* Sub-step 2 — verify */}
-        <WSubStep n={2} last>
-          <div style={{ fontWeight: 600, fontSize: 12.5, marginBottom: 12 }}>Verify your installation</div>
-
-          {/* Highlighted publish reminder */}
-          <div style={{ display: "flex", gap: 10, background: "var(--purple-soft)", border: "1px solid var(--purple)", borderRadius: 9, padding: 12, marginBottom: 14 }}>
-            <svg width="18" height="18" viewBox="0 0 48 48" style={{ flexShrink: 0, marginTop: 1, color: "var(--purple-hi)" }}>
-              <path fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeMiterlimit="10" strokeWidth="3" d="M31.4,41c-2.3,1-4.8,1.5-7.4,1.5C13.8,42.5,5.5,34.2,5.5,24c0-4.5,1.6-8.6,4.2-11.8" />
-              <path fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeMiterlimit="10" strokeWidth="3" d="M16.3,7.2c2.3-1.1,5-1.7,7.7-1.7c10.2,0,18.5,8.3,18.5,18.5c0,4-1.3,7.7-3.4,10.7" />
-              <circle cx="24" cy="16" r="2" fill="currentColor" />
-              <line x1="24" x2="24" y1="22.5" y2="33.5" fill="none" stroke="currentColor" strokeLinecap="round" strokeMiterlimit="10" strokeWidth="3" />
-            </svg>
+          {/* Code block — line breaks match the design: opening tag, indented src
+              (closing with >), then </script> on its own line. */}
+          <div className="mono" style={{ background: "var(--bg-2)", border: "1px solid var(--border)", borderRadius: 8, padding: 10, fontSize: 9.5, lineHeight: 1.5, wordBreak: "break-all" }}>
+            <div style={{ color: "#6E6890" }}>&lt;!-- Start ConsentBit banner --&gt;</div>
             <div>
-              <div style={{ fontSize: 11.5, fontWeight: 600, lineHeight: 1.5, marginBottom: 8 }}>
-                After adding the code above, publish your site in the Webflow Designer before verifying.
-              </div>
-              {/* Webflow publish screenshot */}
-              <img src={window.__resources && window.__resources.webflowPublish || "assets/webflow-publish.png"} alt="Webflow publish destination dialog" style={{ display: "block", width: "100%", maxWidth: 300, borderRadius: 8, border: "1px solid var(--border)", marginBottom: 8 }} />
-              <a href="https://discourse.webflow.com/t/webflow-site-not-publishing-despite-saying-published-successful/229949" target="_blank" rel="noopener" style={{ color: "var(--purple-hi)", fontSize: 11, textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 4 }}>
-                Site not publishing? Troubleshooting guide
-                <svg width="11" height="11" viewBox="0 0 24 24" fill="none"><path d="M7 17L17 7M17 7H8M17 7V16" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" /></svg>
-              </a>
+              <span style={{ color: "#FF9F45" }}>&lt;script </span>
+              <span style={{ color: "#5AE497" }}>id="consentbit" type="text/javascript"</span>
             </div>
+            <div>
+              <span style={{ color: "#5AE497" }}>{`  src="${scriptUrl || "loading…"}"`}</span>
+              <span style={{ color: "#FF9F45" }}>&gt;</span>
+            </div>
+            <div style={{ color: "#FF9F45" }}>&lt;/script&gt;</div>
+            <div style={{ color: "#6E6890" }}>&lt;!-- End ConsentBit banner --&gt;</div>
           </div>
 
-          <button className="btn cb-verify-btn" style={{ height: "35px", width: "83px" }} onClick={() => {
-            
-              setShowPopup(true);
-           
-          }}>
-            Verify
+          {/* Add-to-Webflow row: action + instructions on the left, screenshot on the right */}
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginTop: 12, alignItems: "center" }}>
+            <div>
+              <a href={customCodeUrl} target="_blank" rel="noopener noreferrer" className="btn btn-secondary btn-sm" style={{ textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 5 }}>
+                Open Webflow custom code
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" style={{ flexShrink: 0 }}><path d="M7 17L17 7M17 7H8M17 7V16" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" /></svg>
+              </a>
+              <div style={{ color: "var(--text-muted)", fontSize: 11, lineHeight: 1.5, marginTop: 10 }}>
+                Paste it right after the opening <code className="mono" style={{ background: "var(--purple-soft)", padding: "1px 5px", borderRadius: 4, color: "var(--purple-hi)" }}>&lt;head&gt;</code> tag in your site's source code. Refer to our <a href="https://help.webflow.com/hc/en-us/articles/33961356296723-Custom-code-in-head-and-body-tags" target="_blank" rel="noopener" style={{ color: "var(--purple-hi)", textDecoration: "none" }}>platform-wise guides</a> for instructions.
+              </div>
+               <button
+            className="btn btn-primary"
+            style={{ width: "100%", justifyContent: "center", marginTop: 14, padding: "10px", height: "auto", fontSize: 13, fontWeight: 600 }}
+            disabled={publishing}
+            onClick={handlePublish}
+          >
+            {publishing ? "Publishing…" : "Publish"}
           </button>
-          <div style={{ color: "var(--text-muted)", fontSize: 11, lineHeight: 1.6, marginTop: 12 }}>
-            We'll load your site and check that the ConsentBit banner script is present and firing. Make sure you've published your site before verifying.
+            </div>
+            <WImageZoom
+              src={window.__resources && window.__resources.webflowHeadcode || "assets/webflow-headcode.png"}
+              alt="Webflow head code panel"
+              style={{ display: "block", width: "100%", minHeight: 150, maxHeight: 200, objectFit: "cover", objectPosition: "top", borderRadius: 8, border: "1px solid var(--border)", boxShadow: "0 8px 18px rgba(0,0,0,0.3)" }}
+            />
           </div>
-        </WSubStep>
+
+          {/* Publish → publishes the site, then verifies the banner is live. */}
+         
+        </div>
       </div>
+
+      {/* Domain selection — only when the site has custom domain(s) as well as staging. */}
+      {domainChoice &&
+      <div onClick={() => setDomainChoice(null)} style={{ position: "fixed", inset: 0, zIndex: 100, background: "rgba(8,6,20,0.65)", backdropFilter: "blur(2px)", display: "grid", placeItems: "center", padding: 20 }}>
+        <div onClick={(e) => e.stopPropagation()} style={{ width: 380, maxWidth: "100%", background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 14, padding: 22, boxShadow: "0 24px 60px rgba(0,0,0,0.55)" }}>
+          <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 6 }}>Where do you want to publish?</div>
+          <div style={{ fontSize: 12, color: "var(--text-muted)", lineHeight: 1.5, marginBottom: 16 }}>Select the domains to publish your site to.</div>
+
+          <label style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", borderRadius: 9, border: "1px solid " + (selSub ? "var(--purple)" : "var(--border)"), marginBottom: 8, cursor: "pointer" }}>
+            <input type="checkbox" checked={selSub} onChange={() => setSelSub((v) => !v)} />
+            <div>
+              <div style={{ fontSize: 12.5, fontWeight: 600 }}>Webflow staging</div>
+              <div style={{ fontSize: 11, color: "var(--text-muted)", wordBreak: "break-all" }}>{domainChoice.subdomain || "*.webflow.io"}</div>
+            </div>
+          </label>
+
+          {domainChoice.customDomains.map((d) => (
+            <label key={d.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", borderRadius: 9, border: "1px solid " + (selIds.includes(d.id) ? "var(--purple)" : "var(--border)"), marginBottom: 8, cursor: "pointer" }}>
+              <input type="checkbox" checked={selIds.includes(d.id)} onChange={() => toggleId(d.id)} />
+              <div>
+                <div style={{ fontSize: 12.5, fontWeight: 600 }}>Custom domain</div>
+                <div style={{ fontSize: 11, color: "var(--text-muted)", wordBreak: "break-all" }}>{d.url || d.name || d.id}</div>
+              </div>
+            </label>
+          ))}
+
+          <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 14 }}>
+            <button className="btn btn-secondary btn-sm" onClick={() => setDomainChoice(null)}>Cancel</button>
+            <button className="btn btn-primary btn-sm" disabled={publishing || nothingSelected} onClick={() => doPublishAndVerify({ publishToWebflowSubdomain: selSub, customDomains: selIds })}>
+              {publishing ? "Publishing…" : "Publish"}
+            </button>
+          </div>
+        </div>
+      </div>
+      }
+
       {showPopup &&
-      <WVerifyModal mode="success" onClose={() => setShowPopup(false)} onPrimary={() => setShowPopup(false)} />
+      <WVerifyModal
+        mode={verifyMode}
+        previewUrl={siteUrl}
+        onClose={() => setShowPopup(false)}
+        onPrimary={() => {
+          setShowPopup(false);
+          if (verifyMode === "error" || verifyMode === "unpublished") {
+            handlePublish(); // "Retry"
+          } else if (nav && nav.goToApp) {
+            nav.goToApp(); // "Customize banner" → go to the customization editor
+          }
+        }}
+      />
       }
     </WAuthShell>);
 
 }
-
-
 
 export { WInstallVerify };

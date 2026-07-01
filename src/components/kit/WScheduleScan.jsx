@@ -1,6 +1,20 @@
 import React from "react";
+import { createScheduledScan } from "../../lib/api.js";
+import { WToast } from "./WToast.jsx";
 
 const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+
+// "One time only" → 'once', etc. (the worker's frequency vocabulary).
+const FREQ_TO_API = { "One time only": "once", "Daily": "daily", "Weekly": "weekly", "Monthly": "monthly" };
+
+// "9:00 AM" → { h: 9, m: 0 } in 24h.
+function parseTime(t) {
+  const m = String(t).match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
+  if (!m) return { h: 9, m: 0 };
+  let h = Number(m[1]) % 12;
+  if (/PM/i.test(m[3])) h += 12;
+  return { h, m: Number(m[2]) };
+}
 const DOW = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
 
 const TIMES = [];
@@ -24,13 +38,41 @@ function monthGrid(year, month) {
 }
 
 // Schedule scan modal — matches the project's dark theme + purple accents.
-function WScheduleScan({ onClose, onConfirm }) {
+function WScheduleScan({ siteId, onClose, onConfirm }) {
   const today = new Date();
   const [view, setView] = React.useState({ y: today.getFullYear(), m: today.getMonth() });
   const [selDay, setSelDay] = React.useState(today.getDate());
   const [selMonth, setSelMonth] = React.useState({ y: today.getFullYear(), m: today.getMonth() });
   const [time, setTime] = React.useState("9:00 AM");
   const [freq, setFreq] = React.useState("One time only");
+  const [busy, setBusy] = React.useState(false);
+  const [error, setError] = React.useState("");
+
+  // Build the ISO scheduledAt from the picked date + time, POST it, then close.
+  const submit = async () => {
+    if (busy) return;
+    if (!siteId) { setError("This site isn't registered yet. Select a plan and publish first."); return; }
+    const { h, m } = parseTime(time);
+    const when = new Date(selMonth.y, selMonth.m, selDay, h, m, 0);
+    if (when.getTime() < Date.now()) { setError("Pick a date and time in the future."); return; }
+    setError("");
+    setBusy(true);
+    try {
+      const result = await createScheduledScan(siteId, when.toISOString(), FREQ_TO_API[freq] || "once");
+      if (result?.success) {
+        if (onConfirm) onConfirm(result);
+        onClose();
+      } else if (result?.code === "SCAN_LIMIT_REACHED") {
+        setError(`You've reached your scan limit${result.scansLimit ? ` (${result.scansLimit})` : ""}. Upgrade to schedule more scans.`);
+      } else {
+        setError(result?.error || "Couldn't schedule the scan. Please try again.");
+      }
+    } catch (e) {
+      setError(e?.message || "Network error scheduling the scan.");
+    } finally {
+      setBusy(false);
+    }
+  };
 
   const cells = monthGrid(view.y, view.m);
   const prevMonth = () => setView((v) => v.m === 0 ? { y: v.y - 1, m: 11 } : { y: v.y, m: v.m - 1 });
@@ -96,10 +138,12 @@ function WScheduleScan({ onClose, onConfirm }) {
           </select>
         </div>
 
+        <WToast message={error} type="error" onClose={() => setError("")} />
+
         {/* Footer */}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 18 }}>
           <button onClick={onClose} style={{ background: "none", border: "none", color: "var(--text-muted)", fontSize: 13, cursor: "pointer" }}>Cancel</button>
-          <button className="btn btn-primary btn-sm" onClick={() => { onConfirm && onConfirm({ date: dateLabel, time, freq }); onClose(); }}>Schedule scan</button>
+          <button className="btn btn-primary btn-sm" disabled={busy} onClick={submit}>{busy ? "Scheduling…" : "Schedule scan"}</button>
         </div>
       </div>
     </div>

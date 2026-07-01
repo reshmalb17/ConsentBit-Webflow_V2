@@ -19,6 +19,9 @@ import { WConsentLogs } from "./components/screens/app/WConsentLogs.jsx";
 import { WUpgrade } from "./components/screens/upgrade/WUpgrade.jsx";
 import { WProfile } from "./components/screens/profile/WProfile.jsx";
 import { WNotificationsPanel } from "./components/kit/WNotificationsPanel.jsx";
+import { WLoading } from "./components/screens/modals/WLoading.jsx";
+import { WPaymentProcessing } from "./components/screens/modals/WPaymentProcessing.jsx";
+import { getWebflowSiteContext, getWebflowSiteStatus, getPaymentSubscription } from "./lib/api.js";
 
 // What the Webflow Designer Extension panel renders: the main app, opening on
 // the Cookie Banner editor (General tab). The top tab bar (WMainTabs) and the
@@ -78,37 +81,122 @@ export default function AppExtension() {
     prefBtnText: "#0284C7",  // Preferences text
   });
 
- // --- Auth onboarding flow (disabled for now) -----------------------------
-  const [screen, setScreen] = React.useState("landing");
+ // --- Auth onboarding flow -------------------------------------------------
+  // Start in "loading" while we make the single launch status call. Routing:
+  //   !authorized               → "landing"  (authorize)
+  //   authorized && !registered → "select-plan"
+  //   authorized &&  registered → "app"      (customize/editor)
+  const [screen, setScreen] = React.useState("loading");
+  const [freeUsed, setFreeUsed] = React.useState(false); // free site already used on this account
+  const [freeResult, setFreeResult] = React.useState(null); // { webappSiteId, scriptUrl, ... }
+  const [bannerCreated, setBannerCreated] = React.useState(false); // a banner was already saved → CTA shows "Update Banner"
+  const [plan, setPlan] = React.useState("Free"); // current plan label, shown in the top bar
+  const [accountEmail, setAccountEmail] = React.useState(""); // account owner email (from status)
+  // Payment-processing popup state. Opened by startPaymentFlow() when a paid
+  // checkout link is clicked; it self-polls while open (see WPaymentProcessing).
+  const [paymentFlow, setPaymentFlow] = React.useState({ open: false, siteId: null });
+
+  // One launch-time call to the worker (oauth/status) returns authorized +
+  // registered + plan together — no extra round-trips.
+  React.useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const { wfSiteId } = await getWebflowSiteContext();
+        if (!wfSiteId) {            // not inside the Designer (e.g. dev preview)
+          if (!cancelled) setScreen("landing");
+          return;
+        }
+        const status = await getWebflowSiteStatus(wfSiteId);
+        if (cancelled) return;
+        setBannerCreated(!!status.bannerCreated);
+        setPlan(status.plan ?? "Free");
+        setAccountEmail(status.email ?? "");
+        if (!status.authorized) setScreen("landing");
+        else if (!status.registered) setScreen("select-plan");
+        else setScreen("app");
+      } catch {
+        if (!cancelled) setScreen("landing");
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  // Open the payment-processing popup (resolves the current Webflow site id so
+  // the popup can poll for it). Called by the paid-checkout buttons right after
+  // they open the Stripe checkout tab.
+  const startPaymentFlow = React.useCallback(async () => {
+    // Open the popup IMMEDIATELY so it always appears on click — never block it on
+    // a worker fetch. siteId + baseline are filled in as they resolve.
+    setPaymentFlow({ open: true, siteId: null, baseline: null });
+    let sid = null;
+    try { const ctx = await getWebflowSiteContext(); sid = ctx?.wfSiteId || null; } catch { /* not in Designer */ }
+    setPaymentFlow((pf) => (pf.open ? { ...pf, siteId: sid } : pf));
+    // Capture the pre-payment subscription state in the BACKGROUND, so the popup
+    // only treats a CHANGE (new/upgraded plan) as success — without delaying it.
+    if (sid) {
+      getPaymentSubscription(sid)
+        .then((b) => setPaymentFlow((pf) => (pf.open ? { ...pf, baseline: b } : pf)))
+        .catch(() => { /* no baseline — first paid plan still counts as success */ });
+    }
+  }, []);
+
+  const closePaymentFlow = React.useCallback(() => setPaymentFlow({ open: false, siteId: null }), []);
+
+  // Payment confirmed by the popup's polling: update the plan, close the popup,
+  // and send the user to the install + verify code section.
+  const handlePaymentSuccess = React.useCallback(({ plan: paidPlan } = {}) => {
+    if (paidPlan) setPlan(paidPlan);
+    setPaymentFlow({ open: false, siteId: null });
+    setScreen("install-verify");
+  }, []);
+
+  // Navigate to the Install & verify page from anywhere in the app, and back.
+  // Track when it was opened from the editor so the page can show a "Back" button
+  // (onboarding reaches it without this flag → no back button).
+  const [installVerifyFromApp, setInstallVerifyFromApp] = React.useState(false);
+  const goToInstallVerify = React.useCallback(() => { setInstallVerifyFromApp(true); setScreen("install-verify"); }, []);
+  const goToApp = React.useCallback(() => { setInstallVerifyFromApp(false); setScreen("app"); }, []);
+
+  // Cookie Banner editor (the "customization" screen) — pick the editor for the
+  // active section tab.
+  const editor =
+    subTab === "content" ? <WEdContent /> :
+    subTab === "layout" ? <WEdLayout /> :
+    subTab === "colors" ? <WEdColors /> :
+    subTab === "type" ? <WEdType /> :
+    <WEdGeneral />;
+
+  // Top-level tab → screen. The cookie-banner tab shows the editor; the other
+  // tabs swap the whole screen. The avatar opens Profile over the top.
+  const main =
+    mainTab === "scan" ? <WScan /> :
+    mainTab === "logs" ? <WConsentLogs /> :
+    mainTab === "upgrade" ? <WUpgrade /> :
+    editor;
+
   const current =
-    screen === "install-verify" ? (
+    // Profile opens over ANY screen (the avatar is in the top bar everywhere).
+    profileOpen ? (
+      <WProfile />
+    ) : screen === "loading" ? (
+      <WLoading />
+    ) : screen === "app" ? (
+      main
+    ) : screen === "install-verify" ? (
       <WInstallVerify />
     ) : screen === "select-plan" ? (
-      <WSelectPlan onSelectPlan={() => setScreen("install-verify")} />
+      <WSelectPlan
+        freeDisabled={freeUsed}
+        onSelectPlan={() => setScreen("install-verify")}
+        onFreeRegistered={(result) => { setFreeResult(result); setScreen("install-verify"); }}
+        onFreeLimitReached={() => setFreeUsed(true)}
+        onSkip={() => setScreen("app")}
+      />
     ) : (
       <WLanding onAuthorize={() => setScreen("select-plan")} />
     );
   //-------------------------------------------------------------------------
-
-  // // Cookie Banner editor — pick the screen for the active section tab.
-  // const editor =
-  //   subTab === "content" ? <WEdContent /> :
-  //   subTab === "layout" ? <WEdLayout /> :
-  //   subTab === "colors" ? <WEdColors /> :
-  //   subTab === "type" ? <WEdType /> :
-  //   <WEdGeneral />;
-
-  // // Top-level tab → screen.
-  // const main =
-  //   mainTab === "scan" ? <WScan /> :
-  //   mainTab === "logs" ? <WConsentLogs /> :
-  //   mainTab === "upgrade" ? <WUpgrade /> :
-  //   editor;
-
-  // The avatar opens Profile Settings (full screen). Notifications is a
-  // dropdown that floats ABOVE the current screen — handled in `app` below so
-  // the background tab content stays visible.
-  // const current = profileOpen ? <WProfile /> : main;
 
   React.useEffect(() => {
     // Size the Designer panel to the design's 800×560 (Designer-only API —
@@ -125,9 +213,17 @@ export default function AppExtension() {
   }, []);
 
   const app = (
-    <NavContext.Provider value={{ mainTab, setMainTab, subTab, setSubTab, profileOpen, setProfileOpen, notifOpen, setNotifOpen, template, setTemplate, iab, setIab, gac, setGac, bannerPos, setBannerPos, bannerAlign, setBannerAlign, bannerRadius, setBannerRadius, bannerAnim, setBannerAnim, bannerBtnRadius, setBannerBtnRadius, bannerColors, setBannerColors, bannerWeight, setBannerWeight, bannerTextAlign, setBannerTextAlign, bannerContent, setBannerContent, prefContent, setPrefContent, closeBtn, setCloseBtn, showReject, setShowReject, showCustomize, setShowCustomize, showPolicy, setShowPolicy, activeRegion, setActiveRegion, ccpaContent, setCcpaContent }}>
+    <NavContext.Provider value={{ mainTab, setMainTab, subTab, setSubTab, profileOpen, setProfileOpen, notifOpen, setNotifOpen, template, setTemplate, iab, setIab, gac, setGac, bannerPos, setBannerPos, bannerAlign, setBannerAlign, bannerRadius, setBannerRadius, bannerAnim, setBannerAnim, bannerBtnRadius, setBannerBtnRadius, bannerColors, setBannerColors, bannerWeight, setBannerWeight, bannerTextAlign, setBannerTextAlign, bannerContent, setBannerContent, prefContent, setPrefContent, closeBtn, setCloseBtn, showReject, setShowReject, showCustomize, setShowCustomize, showPolicy, setShowPolicy, activeRegion, setActiveRegion, ccpaContent, setCcpaContent, bannerCreated, setBannerCreated, plan, setPlan, startPaymentFlow, accountEmail, goToInstallVerify, goToApp, installVerifyFromApp }}>
       <div style={{ position: "relative", height: "100%" }}>
         {current}
+        {paymentFlow.open &&
+          <WPaymentProcessing
+            siteId={paymentFlow.siteId}
+            baseline={paymentFlow.baseline}
+            onPaid={handlePaymentSuccess}
+            onCancel={closePaymentFlow}
+          />
+        }
         {notifOpen &&
         <>
           {/* click-away backdrop (transparent) — closes the dropdown */}
