@@ -2,7 +2,7 @@ import React from "react";
 import { WAuthShell } from "../../kit/WAuthShell.jsx";
 import { Page } from "../../primitives/Page.jsx";
 import { WToast } from "../../kit/WToast.jsx";
-import { getWebflowSiteContext, registerWebflowFree } from "../../../lib/api.js";
+import { getWebflowSiteContext, getWebflowSiteStatus, registerWebflowFree } from "../../../lib/api.js";
 import { startCheckout } from "../../../lib/webflowAuth.js";
 import { useNav } from "../../../nav.jsx";
 
@@ -35,6 +35,13 @@ function WSelectPlan({ freeDisabled = false, onSelectPlan, onFreeRegistered, onF
   { label: "Compliance", vals: ["GDPR/CCPA", "GDPR/CCPA", "GDPR+CCPA", "GDPR+CCPA"] }];
   // Free plan → create a free webapp account + site via the worker. The email is
   // resolved server-side from the OAuth record, so we only send the site context.
+  // Account email is kept in state after OAuth (nav.accountEmail, from the launch
+  // status call). Fall back to a fresh status fetch if it isn't in state yet.
+  const resolveEmail = async (wfSiteId) => {
+    if (nav?.accountEmail) return nav.accountEmail;
+    try { const st = await getWebflowSiteStatus(wfSiteId); return st?.email || ""; } catch { return ""; }
+  };
+
   const registerFree = async () => {
     setError("");
     setBusyPlan("Free");
@@ -44,7 +51,8 @@ function WSelectPlan({ freeDisabled = false, onSelectPlan, onFreeRegistered, onF
         setError("Couldn't read your Webflow site. Open this inside the Designer and try again.");
         return;
       }
-      const result = await registerWebflowFree({ wfSiteId, domain });
+      const email = await resolveEmail(wfSiteId);
+      const result = await registerWebflowFree({ wfSiteId, domain, email });
       if (result?.success) {
         if (onFreeRegistered) onFreeRegistered(result);
         else if (onSelectPlan) onSelectPlan("Free"); // fall back to normal navigation
@@ -74,7 +82,9 @@ function WSelectPlan({ freeDisabled = false, onSelectPlan, onFreeRegistered, onF
     setError("");
     setBusyPlan(plan);
     try {
-      await startCheckout({ plan, interval: billing });
+      const { wfSiteId } = await getWebflowSiteContext();
+      const email = await resolveEmail(wfSiteId);
+      await startCheckout({ plan, interval: billing, email });
       // Stripe checkout opened in a new tab — show the payment-processing popup
       // here, which polls until the subscription lands then routes to install.
       if (nav?.startPaymentFlow) await nav.startPaymentFlow();
@@ -123,7 +133,7 @@ function WSelectPlan({ freeDisabled = false, onSelectPlan, onFreeRegistered, onF
             width: 180, background: "#0a0a14", color: "#fff", fontSize: 11, lineHeight: 1.45,
             textAlign: "center", padding: "8px 10px", borderRadius: 8, boxShadow: "0 10px 24px rgba(0,0,0,0.55)",
             opacity: 0, pointerEvents: "none", transition: "opacity 0.15s", zIndex: 7
-          }}>You've already used a free account on this site.
+          }}>You've already taken a free subscription for this account.
             <span style={{ position: "absolute", top: "100%", left: "50%", transform: "translateX(-50%)", width: 0, height: 0, borderLeft: "6px solid transparent", borderRight: "6px solid transparent", borderTop: "6px solid #0a0a14" }} />
           </span>
         </div>

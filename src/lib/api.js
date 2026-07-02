@@ -106,6 +106,9 @@ export async function getWebflowSiteStatus(wfSiteId) {
     bannerCreated: !!data.bannerCreated,
     email: data.email ?? null,
     billingEmail: data.billingEmail ?? null,
+    // Account-level: the workspace email already has a free site elsewhere, so
+    // the free plan should be disabled upfront on the Choose-plan screen.
+    freeUsed: !!data.freeUsed,
   };
 }
 
@@ -154,6 +157,20 @@ export async function getWebflowBilling(wfSiteId) {
   } catch (e) {
     return { success: false, plan: "free", invoices: [], error: e?.message || "network" };
   }
+  return parseJson(res);
+}
+
+/**
+ * Switch the current site's subscription between monthly and yearly billing (in place,
+ * no new checkout). POST /api/webflow/switch-interval  body { siteId, targetInterval }
+ *   → { success, interval, nextBillingDate }
+ */
+export async function switchWebflowInterval(wfSiteId, targetInterval) {
+  const res = await fetch(`${CHECKOUT_API_BASE}/api/webflow/switch-interval`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "X-Requested-With": "XMLHttpRequest" },
+    body: JSON.stringify({ siteId: wfSiteId, targetInterval }),
+  });
   return parseJson(res);
 }
 
@@ -263,17 +280,96 @@ export async function verifyInstallation() {
 }
 
 /**
+ * Detect LEGACY ConsentBit scripts the OLD live app auto-injected into this
+ * site's <head> via the Webflow Registered-Scripts API ("Code added by Apps").
+ * The new app installs by manual copy-paste, so any old API-injected script must
+ * be removed first (otherwise the banner loads twice / verify passes on the old
+ * tag). `hasCurrent` is true when the site ALREADY has the current-version script
+ * installed (an upgraded user) — the caller uses it to skip the install/verify step.
+ * Returns { hasLegacy, legacyCount, legacyScripts, hasCurrent }. Never throws — on
+ * any failure it resolves to "no legacy found" so the install flow is not blocked.
+ *   GET /api/webflow/script-cleanup?siteId=<wfSiteId>
+ */
+export async function getLegacyScriptStatus(wfSiteId) {
+  if (!wfSiteId) return { hasLegacy: false, legacyCount: 0, legacyScripts: [], hasCurrent: false };
+  try {
+    const url = new URL(`${WORKER_BASE_URL}/api/webflow/script-cleanup`);
+    url.searchParams.set("siteId", wfSiteId);
+    const res = await fetch(url.toString(), { method: "GET" });
+    const data = await parseJson(res);
+    return {
+      hasLegacy: !!data.hasLegacy,
+      legacyCount: data.legacyCount || 0,
+      legacyScripts: Array.isArray(data.legacyScripts) ? data.legacyScripts : [],
+      hasCurrent: !!data.hasCurrent,
+    };
+  } catch {
+    return { hasLegacy: false, legacyCount: 0, legacyScripts: [], hasCurrent: false };
+  }
+}
+
+/**
+ * Remove the legacy API-injected ConsentBit scripts from this site's head. Only
+ * touches "Code added by Apps" — the user's manual paste is a different store the
+ * API cannot see, so this is safe. Returns { success, removedCount, error? }.
+ *   POST /api/webflow/script-cleanup  body: { siteId }
+ */
+export async function removeLegacyScripts(wfSiteId) {
+  if (!wfSiteId) return { success: false, removedCount: 0, error: "Missing site id" };
+  try {
+    const res = await fetch(`${WORKER_BASE_URL}/api/webflow/script-cleanup`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Requested-With": "XMLHttpRequest" },
+      body: JSON.stringify({ siteId: wfSiteId }),
+    });
+    const data = await parseJson(res);
+    return {
+      success: !!data.success,
+      removedCount: data.removedCount || 0,
+      error: data.success ? null : data.error || "Removal failed",
+    };
+  } catch (e) {
+    return { success: false, removedCount: 0, error: e?.message || "Network error" };
+  }
+}
+
+/**
  * Save banner customization for an already-registered site (the repeat-publish
  * path). Mirrors the live app's saveWebappBannerCustomization:
  *   POST /api/banner-customization
  *   body: { wfSiteId, customization, compliance }
  * No auth header (consent-manager worker). Returns the parsed JSON.
  */
+/**
+ * Load the saved banner customization for a Webflow site (set from the webapp or
+ * a previous save). GET /api/banner-customization?wfSiteId=  → { success, customization }.
+ * Returns the raw `customization` object (or null). Never throws.
+ */
+export async function getBannerCustomization(wfSiteId, webappSiteId) {
+  // Prefer the webapp (D1 internal) site id — it targets the EXACT BannerCustomization
+  // row the webapp dashboard writes to, so dashboard content edits reflect here.
+  // The wfSiteId path relies on server-side resolution which can land on a stale/
+  // duplicate row, so only use it when webappSiteId is unavailable.
+  const query = webappSiteId
+    ? `siteId=${encodeURIComponent(webappSiteId)}`
+    : wfSiteId ? `wfSiteId=${encodeURIComponent(wfSiteId)}` : null;
+  if (!query) return null;
+  try {
+    const res = await fetch(`${WORKER_BASE_URL}/api/banner-customization?${query}`);
+    const data = await parseJson(res);
+    return data?.customization ?? null;
+  } catch {
+    return null;
+  }
+}
+
 export async function saveWebappBannerCustomization(wfSiteId, customization, extra = {}) {
   const res = await fetch(`${WORKER_BASE_URL}/api/banner-customization`, {
     method: "POST",
     headers: { "Content-Type": "application/json", "X-Requested-With": "XMLHttpRequest" },
-    body: JSON.stringify({ wfSiteId, customization, ...extra }),
+    // manualInstall: the updated app installs by manual copy-paste — the worker
+    // must not auto-inject the script into the head. `extra` can still override.
+    body: JSON.stringify({ wfSiteId, customization, manualInstall: true, ...extra }),
   });
   let data = {};
   try {
@@ -297,15 +393,21 @@ export async function saveWebappBannerCustomization(wfSiteId, customization, ext
  *   or { success:false, code:'SITE_LIMIT_REACHED', existingDomain }
  *   or { success:false, error }
  */
-export async function registerWebflowFree({ wfSiteId, domain, initialCustomization } = {}) {
+export async function registerWebflowFree({ wfSiteId, domain, email, initialCustomization } = {}) {
   const res = await fetch(`${WORKER_BASE_URL}/api/v2/webflow-free-register`, {
     method: "POST",
     headers: { "Content-Type": "application/json", "X-Requested-With": "XMLHttpRequest" },
     body: JSON.stringify({
       wfSiteId,
       domain,
+      // Account email kept in state after OAuth (from the status call). Sent so
+      // the worker doesn't have to resolve it server-side.
+      ...(email ? { email } : {}),
       platform: "webflow",
       version: "v2",
+      // Updated app: install is manual copy-paste — tell the worker NOT to
+      // auto-inject the banner script into the Webflow head.
+      manualInstall: true,
       ...(initialCustomization ? { initialCustomization } : {}),
     }),
   });

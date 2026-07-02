@@ -138,8 +138,11 @@
 .cb-widget-wrap .cb-domain-add { width: 26px; height: 26px; font-size: 14px; }
 .cb-widget-wrap .cb-icon-btn { width: 28px; height: 28px; }
 .cb-widget-wrap .cb-icon-btn svg { width: 13px; height: 13px; }
+/* Bell is a Material Symbols glyph (a span, not an svg) — size it and make it a
+   block with line-height 1 so it centers exactly in the button (no baseline offset). */
+.cb-widget-wrap .cb-icon-btn .material-symbols-rounded { font-size: 16px; line-height: 1; display: block; }
 .cb-widget-wrap .cb-avatar { width: 28px; height: 28px; font-size: 11px; }
-.cb-widget-wrap .cb-plan-pill { font-size: 11px; padding: 4px 10px; }
+.cb-widget-wrap .cb-plan-pill { font-size: 9.5px; padding: 4px 9px; }
 .cb-widget-wrap .cb-topbar-right { gap: 8px; }
 
 .cb-widget-wrap .cb-free-used:hover .cb-free-tip { opacity: 1 !important; }

@@ -42,6 +42,7 @@ const Icon = {
   trash: (p) => <MSym name="delete" size={15} {...p} />,
   download: (p) => <MSym name="download" size={15} {...p} />,
   share: (p) => <MSym name="share" size={15} {...p} />,
+  refresh: (p) => <MSym name="refresh" size={15} {...p} />,
 };
 
 // ----- Top bar -----

@@ -29,9 +29,9 @@ function WInstallVerifyTwoCol() {
           <div style={{ fontWeight: 600, fontSize: 11.5, marginBottom: 4, lineHeight: 1.5, paddingTop: 10, borderTop: "1px solid var(--border)" }}>
             Paste it right after the opening <code className="mono" style={{ background: "var(--purple-soft)", padding: "1px 5px", borderRadius: 4, color: "var(--purple-hi)" }}>&lt;head&gt;</code> tag in your site's source code.
           </div>
-          <div style={{ color: "var(--text-muted)", fontSize: 11, marginBottom: 10 }}>Refer to our <a href="https://help.webflow.com/hc/en-us/articles/33961356296723-Custom-code-in-head-and-body-tags" target="_blank" rel="noopener" style={{ color: "var(--purple-hi)", textDecoration: "none" }}>platform-wise guides</a> for instructions.</div>
+          <div style={{ color: "var(--text-muted)", fontSize: 11, marginBottom: 10 }}>Refer to our <a href="https://help.webflow.com/hc/en-us/articles/33961356296723-Custom-code-in-head-and-body-tags" target="_blank" rel="noopener noreferrer" style={{ color: "var(--purple-hi)", textDecoration: "none" }}>platform-wise guides</a> for instructions.</div>
           <img src={window.__resources && window.__resources.webflowHeadcode || "assets/webflow-headcode.png"} alt="Webflow head code panel" style={{ display: "block", width: "100%", borderRadius: 8, border: "1px solid var(--border)", boxShadow: "0 10px 24px rgba(0,0,0,0.32)", marginBottom: 12 }} />
-          <a href="https://webflow.com/dashboard" target="_blank" rel="noopener" className="btn btn-secondary btn-sm" style={{ textDecoration: "none" }}>
+          <a href="https://webflow.com/dashboard" target="_blank" rel="noopener noreferrer" className="btn btn-secondary btn-sm" style={{ textDecoration: "none" }}>
             Open Webflow custom code
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" style={{ marginLeft: 5, flexShrink: 0 }}><path d="M7 17L17 7M17 7H8M17 7V16" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" /></svg>
           </a>
@@ -52,7 +52,7 @@ function WInstallVerifyTwoCol() {
                 After adding the code above, publish your site in the Webflow Designer before verifying.
               </div>
               <img src={window.__resources && window.__resources.webflowPublish || "assets/webflow-publish.png"} alt="Webflow publish destination dialog" style={{ display: "block", width: "100%", maxWidth: 300, borderRadius: 8, border: "1px solid var(--border)", marginBottom: 8 }} />
-              <a href="https://discourse.webflow.com/t/webflow-site-not-publishing-despite-saying-published-successful/229949" target="_blank" rel="noopener" style={{ color: "var(--purple-hi)", fontSize: 11, textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 4 }}>
+              <a href="https://discourse.webflow.com/t/webflow-site-not-publishing-despite-saying-published-successful/229949" target="_blank" rel="noopener noreferrer" style={{ color: "var(--purple-hi)", fontSize: 11, textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 4 }}>
                 Site not publishing? Troubleshooting guide
                 <svg width="11" height="11" viewBox="0 0 24 24" fill="none"><path d="M7 17L17 7M17 7H8M17 7V16" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" /></svg>
               </a>

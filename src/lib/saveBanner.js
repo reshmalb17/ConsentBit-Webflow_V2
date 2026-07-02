@@ -7,7 +7,7 @@
 // The site must already be registered (the launch flow routes registered users to
 // the Customize screen, so by the time they save, a Site row exists).
 
-import { getWebflowSiteContext, saveWebappBannerCustomization } from "./api.js";
+import { getWebflowSiteContext, getWebflowSiteStatus, saveWebappBannerCustomization } from "./api.js";
 import { buildCustomizationPayload } from "./buildCustomizationPayload.js";
 
 // template (+ IAB) → compliance array. Matches the webapp:
@@ -38,5 +38,17 @@ export async function saveBanner(ctx = {}) {
   const customization = buildCustomizationPayload(ctx);
   const compliance = complianceFromTemplate(ctx.template, ctx.iab);
 
-  return saveWebappBannerCustomization(wfSiteId, customization, { compliance });
+  // Prefer the webapp (D1 internal) site id so the save writes the SAME
+  // BannerCustomization row the webapp dashboard reads/writes — keeping content in
+  // sync both ways. Fall back to wfSiteId resolution when it's unavailable.
+  let webappSiteId = ctx.webappSiteId || null;
+  if (!webappSiteId) {
+    try {
+      const st = await getWebflowSiteStatus(wfSiteId);
+      webappSiteId = st?.webappSiteId || null;
+    } catch { /* fall back to wfSiteId */ }
+  }
+
+  const extra = { compliance, ...(webappSiteId ? { siteId: webappSiteId } : {}) };
+  return saveWebappBannerCustomization(wfSiteId, customization, extra);
 }

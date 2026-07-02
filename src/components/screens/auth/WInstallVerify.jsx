@@ -3,7 +3,7 @@ import { WAuthShell } from "../../kit/WAuthShell.jsx";
 import { Icon } from "../../lib/icons.jsx";
 import { WVerifyModal } from "../../kit/WVerifyModal.jsx";
 import { WImageZoom } from "../../kit/WImageZoom.jsx";
-import { verifyInstallation, getWebflowSiteContext, getWebflowSiteStatus } from "../../../lib/api.js";
+import { verifyInstallation, getWebflowSiteContext, getWebflowSiteStatus, getLegacyScriptStatus, removeLegacyScripts } from "../../../lib/api.js";
 import { publishSite, listSiteDomains } from "../../../lib/webflowAuth.js";
 import { useNav } from "../../../nav.jsx";
 
@@ -24,23 +24,56 @@ function WInstallVerify() {
   const [shortName, setShortName] = React.useState(null);
   const [scriptUrl, setScriptUrl] = React.useState("");
   const [siteUrl, setSiteUrl] = React.useState(""); // the site's live URL for "Preview in site"
+  // Legacy cleanup — old live-app users have a ConsentBit script auto-injected by
+  // the previous app ("Code added by Apps"). It must be removed before the manual
+  // paste + verify, or the banner loads twice. `wfSiteId` is captured so the
+  // Remove button can re-run the API call without re-reading the Designer context.
+  const [wfSiteId, setWfSiteId] = React.useState(null);
+  const [legacy, setLegacy] = React.useState({ checking: true, hasLegacy: false, count: 0, removing: false, removedCount: 0, error: null });
   React.useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
         const { wfSiteId, domain, siteInfo } = await getWebflowSiteContext();
+        if (!cancelled && wfSiteId) setWfSiteId(wfSiteId);
         if (!cancelled && siteInfo?.shortName) setShortName(siteInfo.shortName);
         if (!cancelled && domain) setSiteUrl(`https://${String(domain).replace(/^https?:\/\//, "").replace(/\/$/, "")}`);
         if (wfSiteId) {
           const status = await getWebflowSiteStatus(wfSiteId);
           if (!cancelled && status?.scriptUrl) setScriptUrl(status.scriptUrl);
+          const ls = await getLegacyScriptStatus(wfSiteId);
+          // Already upgraded — the current-version script is in the head. Nothing
+          // to install, so skip this screen entirely and go to the app.
+          if (!cancelled && ls.hasCurrent) { nav?.goToApp?.(); return; }
+          if (!cancelled) setLegacy((s) => ({ ...s, checking: false, hasLegacy: ls.hasLegacy, count: ls.legacyCount }));
+        } else if (!cancelled) {
+          setLegacy((s) => ({ ...s, checking: false }));
         }
       } catch {
         /* not running inside the Designer — leave the generic fallback */
+        if (!cancelled) setLegacy((s) => ({ ...s, checking: false }));
       }
     })();
     return () => { cancelled = true; };
   }, []);
+
+  // Remove the old API-injected ConsentBit code, then re-check. Returns true when
+  // the site is clean afterwards. Called automatically at the start of publish.
+  const ensureLegacyRemoved = async () => {
+    if (!wfSiteId || !legacy.hasLegacy) return true;
+    setLegacy((s) => ({ ...s, removing: true, error: null }));
+    const res = await removeLegacyScripts(wfSiteId);
+    const ls = await getLegacyScriptStatus(wfSiteId);
+    setLegacy((s) => ({
+      ...s,
+      removing: false,
+      hasLegacy: ls.hasLegacy,
+      count: ls.legacyCount,
+      removedCount: res.removedCount,
+      error: ls.hasLegacy ? (res.error || "We couldn't finish updating your installation. Please try Publish again.") : null,
+    }));
+    return !ls.hasLegacy;
+  };
 
   const installCode = scriptUrl
     ? `<!-- Start ConsentBit banner --> <script id="consentbit" type="text/javascript" src="${scriptUrl}"></script> <!-- End ConsentBit banner -->`
@@ -97,6 +130,11 @@ function WInstallVerify() {
   const handlePublish = async () => {
     if (publishing) return;
     setPublishing(true);
+    // Auto-remove any old API-injected ConsentBit code FIRST, so the banner isn't
+    // loaded twice and verify checks only the new manual install. Abort if the
+    // removal fails (the warning card surfaces the error).
+    const clean = await ensureLegacyRemoved();
+    if (!clean) { setPublishing(false); return; }
     let targets = null;
     try { targets = await listSiteDomains(); } catch { /* fall back to staging-only */ }
     const customDomains = targets?.customDomains || [];
@@ -128,6 +166,14 @@ function WInstallVerify() {
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 12H5M12 19l-7-7 7-7" /></svg>
             Back to customization
           </button>
+        }
+        {/* Any old previous-version ConsentBit script is removed silently as the
+            first step of Publish (see ensureLegacyRemoved in handlePublish) — no
+            heads-up is shown. If a hard failure occurs, surface just the error. */}
+        {legacy.error &&
+          <div className="card" style={{ padding: 12, marginBottom: 12, border: "1px solid #E0623E", background: "rgba(224,98,62,0.08)" }}>
+            <div style={{ color: "#E0623E", fontSize: 11.5, fontWeight: 600 }}>{legacy.error}</div>
+          </div>
         }
         <div className="card" style={{ padding: 14 }}>
           {/* Heading + Copy button */}
@@ -162,7 +208,7 @@ function WInstallVerify() {
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" style={{ flexShrink: 0 }}><path d="M7 17L17 7M17 7H8M17 7V16" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" /></svg>
               </a>
               <div style={{ color: "var(--text-muted)", fontSize: 11, lineHeight: 1.5, marginTop: 10 }}>
-                Paste it right after the opening <code className="mono" style={{ background: "var(--purple-soft)", padding: "1px 5px", borderRadius: 4, color: "var(--purple-hi)" }}>&lt;head&gt;</code> tag in your site's source code. Refer to our <a href="https://help.webflow.com/hc/en-us/articles/33961356296723-Custom-code-in-head-and-body-tags" target="_blank" rel="noopener" style={{ color: "var(--purple-hi)", textDecoration: "none" }}>platform-wise guides</a> for instructions.
+                Paste it right after the opening <code className="mono" style={{ background: "var(--purple-soft)", padding: "1px 5px", borderRadius: 4, color: "var(--purple-hi)" }}>&lt;head&gt;</code> tag in your site's source code. Refer to our <a href="https://help.webflow.com/hc/en-us/articles/33961356296723-Custom-code-in-head-and-body-tags" target="_blank" rel="noopener noreferrer" style={{ color: "var(--purple-hi)", textDecoration: "none" }}>platform-wise guides</a> for instructions.
               </div>
                <button
             className="btn btn-primary"
@@ -170,7 +216,7 @@ function WInstallVerify() {
             disabled={publishing}
             onClick={handlePublish}
           >
-            {publishing ? "Publishing…" : "Publish"}
+            {legacy.removing ? "Removing old code…" : publishing ? "Publishing…" : "Publish"}
           </button>
             </div>
             <WImageZoom

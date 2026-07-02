@@ -73,7 +73,7 @@ function WVerifyModal({ mode = "success", position = "fixed", onClose, onPrimary
         </a>
         }
         {error ?
-        <a href="https://discourse.webflow.com/t/webflow-site-not-publishing-despite-saying-published-successful/229949" target="_blank" rel="noopener" style={{ color: "var(--text-muted)", fontSize: 12, textDecoration: "none" }}>Troubleshooting guide</a> :
+        <a href="https://discourse.webflow.com/t/webflow-site-not-publishing-despite-saying-published-successful/229949" target="_blank" rel="noopener noreferrer" style={{ color: "var(--text-muted)", fontSize: 12, textDecoration: "none" }}>Troubleshooting guide</a> :
         null
         }
       </div>

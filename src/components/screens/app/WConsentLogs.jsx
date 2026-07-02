@@ -49,6 +49,7 @@ function WConsentLogs() {
   const [error, setError] = React.useState("");
   const [csvBusy, setCsvBusy] = React.useState(false);
   const [pdfBusyId, setPdfBusyId] = React.useState(null);
+  const [refreshKey, setRefreshKey] = React.useState(0); // bump to re-fetch current page
 
   const pageCount = Math.max(1, Math.ceil(total / PER_PAGE));
   const start = (page - 1) * PER_PAGE;
@@ -91,11 +92,14 @@ function WConsentLogs() {
       }
     })();
     return () => { cancelled = true; };
-  }, [siteId, page, year, month, start]);
+  }, [siteId, page, year, month, start, refreshKey]);
 
   // Reset to page 1 when the filters change.
   const onYear = (v) => { setYear(v); setPage(1); };
   const onMonth = (v) => { setMonth(v); setPage(1); };
+
+  // Manual refresh — re-fetch the current page/filters without a full reload.
+  const refresh = () => { if (siteId && !loading) setRefreshKey((k) => k + 1); };
 
   const exportCsv = async () => {
     if (!siteId || csvBusy) return;
@@ -138,6 +142,9 @@ function WConsentLogs() {
               <option value="">All months</option>
               {MONTHS.map((m, i) => <option key={m} value={String(i + 1).padStart(2, "0")}>{m}</option>)}
             </select>
+            <button className="btn btn-secondary btn-sm" title="Refresh" aria-label="Refresh consent logs" disabled={!siteId || loading} onClick={refresh}>
+              {loading ? "…" : <Icon.refresh />}
+            </button>
             <button className="btn btn-secondary btn-sm" disabled={csvBusy || !consents.length} onClick={exportCsv}>{csvBusy ? "Exporting…" : "Export CSV"}</button>
           </div>
         </div>

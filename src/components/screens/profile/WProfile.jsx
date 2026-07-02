@@ -22,11 +22,26 @@ function WProfile() {
   const [editing, setEditing] = React.useState(false);
   const nav = useNav();
 
+  // Only show plan/billing details once a plan is actually taken — no "Free"
+  // fallback card for unregistered/skipped users.
+  const hasPlan = !!(nav && nav.registered);
   const planKey = String(nav?.plan || "free").toLowerCase();
   const feat = PLAN_FEATURES[planKey] || PLAN_FEATURES.free;
   const nextPlan = NEXT_PLAN[planKey];
   const isPaid = planKey !== "free";
   const accountEmail = nav?.accountEmail || "";
+  // No dedicated name field exists in the account data — derive a readable name
+  // from the email local-part (e.g. "john.doe@x.com" → "John Doe"). Editable.
+  const accountName = React.useMemo(() => {
+    const local = (accountEmail.split("@")[0] || "").trim();
+    if (!local) return "";
+    return local
+      .replace(/[._-]+/g, " ")
+      .split(" ")
+      .filter(Boolean)
+      .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+      .join(" ");
+  }, [accountEmail]);
 
   // ── Live billing (real invoices + cancel) ──────────────────────────────────
   const [wfSiteId, setWfSiteId] = React.useState(null);
@@ -58,6 +73,11 @@ function WProfile() {
 
   const invoices = Array.isArray(billing?.invoices) ? billing.invoices : [];
   const cancelAtPeriodEnd = !!billing?.cancelAtPeriodEnd;
+
+  // Live usage (scans + page views completed this billing month) from the billing API.
+  const fmtNum = (n) => (typeof n === "number" ? n.toLocaleString() : "—");
+  const scansUsed = loadingBilling ? "…" : fmtNum(billing?.scansUsed);
+  const pageviewsUsed = loadingBilling ? "…" : fmtNum(billing?.pageviewsUsed);
 
   const handleCancelSubscription = async () => {
     if (cancelling || !wfSiteId) return;
@@ -97,7 +117,8 @@ function WProfile() {
           </div>
         </div>
 
-        {/* Current plan */}
+        {/* Current plan — hidden until a plan is taken (no "Free" fallback card) */}
+        {hasPlan &&
         <div className="card" style={{ padding: 14, marginBottom: 12 }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
             <div style={{ fontWeight: 600, fontSize: 13 }}>Your Current plan</div>
@@ -106,13 +127,14 @@ function WProfile() {
           <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 10, marginBottom: 12 }}>
             {[
             ["Domains", feat.domains],
-            ["Scans", feat.scans],
-            ["Page views", feat.pageviews],
+            ["Scans used", scansUsed, `of ${feat.scans}`],
+            ["Page views used", pageviewsUsed, feat.pageviews !== "—" ? `of ${feat.pageviews}` : null],
             ["Compliance", feat.compliance]].
             map((r, i) =>
             <div key={i}>
                 <div style={{ fontSize: 10.5, color: "var(--text-muted)" }}>{r[0]}</div>
                 <div style={{ fontSize: 14, fontWeight: 600, color: "var(--purple-hi)" }}>{r[1]}</div>
+                {r[2] && <div style={{ fontSize: 9.5, color: "var(--text-muted)", marginTop: 1 }}>{r[2]}</div>}
               </div>
             )}
           </div>
@@ -131,8 +153,10 @@ function WProfile() {
             <div style={{ marginTop: 8, fontSize: 11.5, color: "var(--text-muted)" }}>{cancelMsg}</div>
           }
         </div>
+        }
 
-        {/* Invoices */}
+        {/* Invoices — billing history, also hidden until a plan is taken */}
+        {hasPlan &&
         <div className="card" style={{ padding: 14 }}>
           <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 10 }}>Invoices</div>
           <div className="cb-scroll-table cb-scroll-table-tall">
@@ -151,7 +175,7 @@ function WProfile() {
                 return (
                 <tr key={inv.id}>
                   <td>{date}</td>
-                  <td className="mono" style={{ color: "var(--purple-hi)" }}>{inv.number || inv.id}</td>
+                  <td className="mono" style={{ color: "var(--purple-hi)" }}>{inv.number || "—"}</td>
                   <td>{amt} {inv.currency || "USD"}</td>
                   <td><span className={"badge " + (paid ? "badge-green" : "badge-yellow")}><span className="badge-dot" />{inv.status || "—"}</span></td>
                   <td style={{ textAlign: "right" }}>
@@ -166,6 +190,7 @@ function WProfile() {
           </table>
           </div>
         </div>
+        }
       </div>
 
       {/* Cancel-subscription confirmation popup */}
@@ -195,7 +220,7 @@ function WProfile() {
             <div style={{ fontSize: 14, fontWeight: 600 }}>Edit Profile</div>
             <button onClick={() => setEditing(false)} style={{ background: "none", border: "none", color: "var(--text-muted)", fontSize: 15, cursor: "pointer" }}>✕</button>
           </div>
-          <Field label="Name" help={false}><input className="input" defaultValue="John Doe" /></Field>
+          <Field label="Name" help={false}><input className="input" defaultValue={accountName} placeholder="Your name" /></Field>
           <Field label="Email" help={false}><input className="input" defaultValue={accountEmail} /></Field>
           <Field label="Time zone" help={false}><select className="select"><option>UTC+05:30 IST</option><option>UTC+00:00 GMT</option><option>UTC-08:00 PST</option></select></Field>
           <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 8 }}>

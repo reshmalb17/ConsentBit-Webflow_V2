@@ -2,6 +2,7 @@ import React from "react";
 import { useNav } from "../../nav.jsx";
 import { WIabBanner } from "./WIabBanner.jsx";
 import { simpleBanner, preferenceBanner, ccpaBanner, localization, prefCategories as DEFAULT_CATS } from "../../lib/bannerContent.js";
+import consentLogo from "../../assets/consent_logo.png";
 
 function WEdPreview({ variant = "default" }) {
   const nav = useNav();
@@ -38,7 +39,26 @@ function WEdPreview({ variant = "default" }) {
 
   // Simulated viewport width per device.
   const winWidth = device === "Phone" ? 250 : device === "Tab" ? 380 : "100%";
-  const bannerWidth = device === "Phone" ? 210 : 300;
+  // Desktop initial banner is wider so it reads correctly on the full-width
+  // preview; Phone/Tab stay compact.
+  const bannerWidth = device === "Phone" ? 210 : device === "Tab" ? 300 : 360;
+  // Shrink the whole banner (fonts, buttons, padding) on the smaller simulated
+  // viewports so it reads proportionally. The preference banner is denser, so it
+  // gets a stronger reduction — including a nudge down on Desktop.
+  const bannerZoom = device === "Phone" ? 0.8 : device === "Tab" ? 0.9 : 1;
+  const prefZoom = device === "Phone" ? 0.78 : device === "Tab" ? 0.86 : 0.92;
+  // The IAB/TCF banner is far larger than the simple banners, so it needs a
+  // stronger reduction to sit correctly inside the preview area on EVERY device
+  // (including Desktop, where the simple banners stay at full size).
+  const iabZoom = device === "Phone" ? 0.62 : device === "Tab" ? 0.74 : 0.84;
+  const iabPrefZoom = device === "Phone" ? 0.6 : device === "Tab" ? 0.72 : 0.82;
+
+  // Floating reopen button/logo — shown in the preview corner (left/right) when
+  // the Content tab's "Floating button" is enabled. Mirrors the live app.
+  const floating = nav ? nav.floating : false;
+  const floatPos = nav ? nav.floatPos : "left";
+  const logoSize = device === "Phone" ? 22 : 28;
+  const logoIconSrc = consentLogo;
 
   // Layout: where the default banner sits. box -> corner (left/right by align),
   // banner -> full-width bottom, popup -> bottom center.
@@ -96,7 +116,7 @@ function WEdPreview({ variant = "default" }) {
   // Cookie policy link, appended inline to the message (matches the webapp).
   const policyHref = content.policyUrl && !/^https?:\/\//i.test(content.policyUrl) ? "https://" + content.policyUrl : content.policyUrl;
   const policyLink = showPolicy && content.policyUrl ?
-    <> <a href={policyHref} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()} style={{ color: colors.btnBg, textDecoration: "underline", fontSize: "inherit", fontWeight: 600, overflowWrap: "anywhere", wordBreak: "break-word" }}>{content.policy || "Privacy Policy"}</a></> :
+    <> <a href={policyHref} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} style={{ color: colors.btnBg, textDecoration: "underline", fontSize: "inherit", fontWeight: 600, overflowWrap: "anywhere", wordBreak: "break-word" }}>{content.policy || "Privacy Policy"}</a></> :
     null;
   // Show "Show more" only when the message is longer than the default copy;
   // truncate back to the default length when collapsed.
@@ -130,14 +150,22 @@ function WEdPreview({ variant = "default" }) {
       <div className="preview-window" style={{ width: winWidth, margin: device === "Desktop" ? undefined : "0 auto", height: iab ? 400 : isPref ? 400 : 320, position: "relative", overflow: "hidden", transition: "width 0.2s ease" }}>
         <div className="preview-titlebar"><span className="dot" /><span className="dot" /><span className="dot" /></div>
 
+        {/* Floating reopen button/logo — positioned by the Floating button setting.
+            Rendered before the banner so the banner overlaps it (matches the live app). */}
+        {floating &&
+        <div style={{ position: "absolute", bottom: 12, left: floatPos === "left" ? 12 : "auto", right: floatPos === "right" ? 12 : "auto", width: logoSize, height: logoSize, borderRadius: 999, background: "#fff", boxShadow: "0 4px 12px rgba(0,0,0,0.35)", display: "grid", placeItems: "center" }}>
+          <img src={logoIconSrc} alt="ConsentBit" style={{ width: Math.round(logoSize * 0.62), height: Math.round(logoSize * 0.62), display: "block" }} />
+        </div>
+        }
+
         {iab ?
         /* ---- IAB / TCF banner (ported from the webapp) ---- */
-        <WIabBanner key={animKey} device={device === "Phone" ? "mobile" : "desktop"} alignment={bannerAlign === "right" ? "bottom-right" : "bottom-left"} config={{ isGAC: nav ? nav.gac : false, bannerType: bannerPos, borderRadius: bannerRadius, buttonBorderRadius: bannerBtnRadius, bannerEntranceAnimation: bannerAnim, bannerBg: colors.bannerBg, textColor: colors.textColor, headingColor: colors.headingColor, buttonColor: colors.btnBg, buttonTextColor: colors.btnText, SecButtonColor: colors.prefBtnBg, SecButtonTextColor: colors.prefBtnText, fontWeight: bannerWeight, textAlign: bannerTextAlign }} /> :
+        <WIabBanner key={animKey} device={device === "Phone" ? "mobile" : "desktop"} scale={iabZoom} prefScale={iabPrefZoom} alignment={bannerAlign === "right" ? "bottom-right" : "bottom-left"} config={{ isGAC: nav ? nav.gac : false, bannerType: bannerPos, borderRadius: bannerRadius, buttonBorderRadius: bannerBtnRadius, bannerEntranceAnimation: bannerAnim, bannerBg: colors.bannerBg, textColor: colors.textColor, headingColor: colors.headingColor, buttonColor: colors.btnBg, buttonTextColor: colors.btnText, SecButtonColor: colors.prefBtnBg, SecButtonTextColor: colors.prefBtnText, fontWeight: bannerWeight, textAlign: bannerTextAlign }} /> :
 
         isPref ? (
         isCCPA ?
         /* ---- CCPA · Opt-out Preference ---- */
-        <div style={{ position: "absolute", top: "50%", left: 16, right: 16, transform: "translateY(-50%)", maxHeight: "calc(100% - 24px)", overflowY: "auto", ...cardBase }}>
+        <div style={{ position: "absolute", top: "50%", left: 16, right: 16, transform: "translateY(-50%)", maxHeight: "calc(100% - 24px)", overflowY: "auto", ...cardBase, zoom: prefZoom }}>
           {closeX}
           <div style={{ ...titleStyle, marginBottom: 8 }}>{ccpaC.optOutTitle}</div>
           <div style={{ fontSize: "9.5px", lineHeight: 1.5, marginBottom: 10, color: colors.textColor, textAlign: bannerTextAlign, overflowWrap: "break-word", wordBreak: "break-word" }}>
@@ -155,7 +183,7 @@ function WEdPreview({ variant = "default" }) {
           </div>
         </div> :
         /* ---- GDPR · Cookie Preferences ---- */
-        <div style={{ position: "absolute", top: "50%", left: 16, right: 16, transform: "translateY(-50%)", maxHeight: "calc(100% - 24px)", overflowY: "auto", ...cardBase }}>
+        <div style={{ position: "absolute", top: "50%", left: 16, right: 16, transform: "translateY(-50%)", maxHeight: "calc(100% - 24px)", overflowY: "auto", ...cardBase, zoom: prefZoom }}>
           {closeX}
           <div style={{ ...titleStyle, marginBottom: 6 }}>{prefC.title}</div>
           <div style={{ fontSize: "10px", fontWeight: 600, marginBottom: 10, color: colors.textColor, textAlign: bannerTextAlign, overflowWrap: "break-word", wordBreak: "break-word" }}>
@@ -212,14 +240,14 @@ function WEdPreview({ variant = "default" }) {
         ) : (
         isCCPA ?
         /* ---- CCPA · default banner ---- */
-        <div key={animKey} style={{ position: "absolute", ...posStyle, ...cardBase, borderRadius: bannerRadius, animation: bannerAnimCss, maxHeight: "calc(100% - 24px)", overflowY: "auto" }}>
+        <div key={animKey} style={{ position: "absolute", ...posStyle, ...cardBase, borderRadius: bannerRadius, animation: bannerAnimCss, maxHeight: "calc(100% - 24px)", overflowY: "auto", zoom: bannerZoom }}>
           {showClose && closeX}
           <div style={titleStyle}>{content.title}</div>
           <div style={bodyStyle}>{bodyNode}</div>
           <a href="#" onClick={(e) => { e.preventDefault(); setView("pref"); }} style={{ color: colors.btnBg, fontSize: 11, fontWeight: 600, textDecoration: "underline" }}>{ccpaC.doNotShare}</a>
         </div> :
         /* ---- GDPR · default banner ---- */
-        <div key={animKey} style={{ position: "absolute", ...posStyle, ...cardBase, borderRadius: bannerRadius, animation: bannerAnimCss, maxHeight: "calc(100% - 24px)", overflowY: "auto" }}>
+        <div key={animKey} style={{ position: "absolute", ...posStyle, ...cardBase, borderRadius: bannerRadius, animation: bannerAnimCss, maxHeight: "calc(100% - 24px)", overflowY: "auto", zoom: bannerZoom }}>
           {showClose && closeX}
           <div style={titleStyle}>{content.title}</div>
           <div style={bodyStyle}>{bodyNode}</div>

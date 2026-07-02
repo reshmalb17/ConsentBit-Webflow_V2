@@ -11,13 +11,16 @@ function WEdShell({ active = "general", children, showAdvanced = true, cta = "Cr
   // Active section + click handling come from nav when inside the app; the
   // `active` prop is the fallback for standalone/gallery rendering.
   const current = nav ? nav.subTab : active;
+  // Both header CTAs (Create Component + Install & verify) require a taken plan
+  // (free or paid). Until then they're disabled with a "subscribe first" tooltip.
+  const hasPlan = !nav || nav.registered;
 
   // CTA → save the banner customization to the backend for the current site.
   // (No site publish, no component creation — just persists the settings.)
   const [saving, setSaving] = React.useState(false);
   const [toast, setToast] = React.useState({ message: "", type: "error" });
   const handleSave = async () => {
-    if (saving || !nav) return;
+    if (saving || !nav || !nav.registered) return; // no plan taken → no save
     setToast({ message: "", type: "error" });
     setSaving(true);
     try {
@@ -46,8 +49,20 @@ function WEdShell({ active = "general", children, showAdvanced = true, cta = "Cr
       <WTopBar />
       <WMainTabs active="cookie" right={
       <>
-          <button className="btn btn-secondary btn-sm" style={{ height: "38px" }} onClick={nav ? () => nav.goToInstallVerify() : undefined}>Install &amp; verify</button>
-          <button className="btn btn-primary btn-sm" style={{ height: "38px", minWidth: "122px" }} disabled={saving} onClick={handleSave}>{saving ? "Saving…" : (nav && nav.bannerCreated ? "Update Banner" : cta)}</button>
+          <button
+            className="btn btn-secondary btn-sm"
+            style={{ height: "38px", ...(hasPlan ? {} : { opacity: 0.5, cursor: "not-allowed" }) }}
+            disabled={!hasPlan}
+            title={hasPlan ? undefined : "Subscribe to a plan first to install & verify"}
+            onClick={hasPlan && nav ? () => nav.goToInstallVerify() : undefined}
+          >Install &amp; verify</button>
+          <button
+            className="btn btn-primary btn-sm"
+            style={{ height: "38px", minWidth: "122px", ...(hasPlan ? {} : { opacity: 0.5, cursor: "not-allowed" }) }}
+            disabled={saving || !hasPlan}
+            title={hasPlan ? undefined : "Subscribe to a plan first to create your banner"}
+            onClick={handleSave}
+          >{saving ? "Saving…" : (nav && nav.bannerCreated ? "Update Banner" : cta)}</button>
         </>
       } />
       <div className="cb-section-tabs" style={{ padding: "0 16px", margin: "14px 0 14px" }}>

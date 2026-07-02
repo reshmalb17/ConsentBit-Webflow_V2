@@ -183,7 +183,7 @@ function GooglePartnerItem({ provider, s, radii }) {
   );
 }
 
-function PreferenceModal({ open, onClose, onAccept, onReject, s, radii, device = "desktop" }) {
+function PreferenceModal({ open, onClose, onAccept, onReject, s, radii, device = "desktop", prefScale = 1 }) {
   const isMobile = device === "mobile";
   const [activeTab, setActiveTab] = useState("cookie");
   const [vendorSubTab, setVendorSubTab] = useState("iab");
@@ -191,7 +191,7 @@ function PreferenceModal({ open, onClose, onAccept, onReject, s, radii, device =
   if (!open) return null;
   return (
     <div style={{ position: "absolute", inset: 0, zIndex: 1000000, background: "rgba(0,0,0,0.5)", padding: "12px", display: "flex", alignItems: "center", justifyContent: "center", boxSizing: "border-box" }} onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
-      <div style={{ background: s.bannerBg, border: "1px solid #f4f4f4", borderRadius: radii.br, width: "100%", maxWidth: "720px", maxHeight: "92%", display: "flex", flexDirection: "column", boxShadow: "0 4px 20px rgba(0,0,0,0.15)" }}>
+      <div style={{ background: s.bannerBg, border: "1px solid #f4f4f4", borderRadius: radii.br, width: "100%", maxWidth: "720px", maxHeight: "92%", display: "flex", flexDirection: "column", boxShadow: "0 4px 20px rgba(0,0,0,0.15)", zoom: prefScale }}>
         <div style={{ padding: "14px 16px", borderBottom: "1px solid #f4f4f4", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <span style={{ fontSize: "15px", fontWeight: 600, color: s.headingColor }}>{iabBanner.modalTitle}</span>
           <button type="button" onClick={onClose} aria-label="Close" style={{ background: "none", border: "none", cursor: "pointer", padding: "4px", opacity: 0.5, display: "flex", color: s.textColor }}>
@@ -340,7 +340,7 @@ function BannerBar({ s, radii, layout, onCustomise, onReject, onAccept, device =
 }
 
 // ─── Main IAB/TCF Banner ─────────────────────────────────────────────────────
-export function WIabBanner({ config = {}, device = "desktop", alignment = "bottom-left" }) {
+export function WIabBanner({ config = {}, device = "desktop", alignment = "bottom-left", scale = 1, prefScale = 1 }) {
   const s = { ...defaultStyleConfig, ...config };
   const radii = getRadii(s);
   const [visible, setVisible] = useState(true);
@@ -365,23 +365,23 @@ export function WIabBanner({ config = {}, device = "desktop", alignment = "botto
       {visible && (
         <>
           {s.bannerType === "box" && (
-            <div style={{ position: "absolute", bottom: isMobile ? "10px" : "16px", left: "16px", zIndex: 9, width: isMobile ? undefined : "100%", maxWidth: isMobile ? "calc(100% - 20px)" : "440px", maxHeight: "calc(100% - 32px)", overflowY: "auto", boxShadow: "0 20px 60px rgba(0,0,0,0.15)", borderRadius: br, animation: entranceAnimStyle(s.bannerEntranceAnimation), ...positionStyles }}>
+            <div style={{ position: "absolute", bottom: isMobile ? "10px" : "16px", left: "16px", zIndex: 9, width: isMobile ? undefined : "100%", maxWidth: isMobile ? "calc(100% - 20px)" : "440px", maxHeight: "calc(100% - 32px)", overflowY: "auto", boxShadow: "0 20px 60px rgba(0,0,0,0.15)", borderRadius: br, animation: entranceAnimStyle(s.bannerEntranceAnimation), zoom: scale, ...positionStyles }}>
               <BannerBar s={s} radii={radii} layout="box" device={device} onCustomise={handleCustomise} onReject={handleReject} onAccept={handleAccept} />
             </div>
           )}
           {s.bannerType === "popup" && (
-            <div style={{ position: "absolute", bottom: isMobile ? "10px" : "16px", left: "50%", transform: "translateX(-50%)", zIndex: 9, width: "calc(100% - 32px)", maxWidth: "440px", maxHeight: "calc(100% - 32px)", overflowY: "auto", boxShadow: "0 20px 60px rgba(0,0,0,0.15)", borderRadius: br, animation: entranceAnimStyle(s.bannerEntranceAnimation, { isCenter: true }) }}>
+            <div style={{ position: "absolute", bottom: isMobile ? "10px" : "16px", left: "50%", transform: "translateX(-50%)", zIndex: 9, width: "calc(100% - 32px)", maxWidth: "440px", maxHeight: "calc(100% - 32px)", overflowY: "auto", boxShadow: "0 20px 60px rgba(0,0,0,0.15)", borderRadius: br, animation: entranceAnimStyle(s.bannerEntranceAnimation, { isCenter: true }), zoom: scale }}>
               <BannerBar s={s} radii={radii} layout="popup" device={device} onCustomise={handleCustomise} onReject={handleReject} onAccept={handleAccept} />
             </div>
           )}
           {s.bannerType === "banner" && (
-            <div style={{ position: "absolute", bottom: 12, left: 12, right: 12, zIndex: 9, maxHeight: "calc(100% - 24px)", overflowY: "auto", borderRadius: br, boxShadow: "0 20px 60px rgba(0,0,0,0.15)", animation: entranceAnimStyle(s.bannerEntranceAnimation) }}>
+            <div style={{ position: "absolute", bottom: 12, left: 12, right: 12, zIndex: 9, maxHeight: "calc(100% - 24px)", overflowY: "auto", borderRadius: br, boxShadow: "0 20px 60px rgba(0,0,0,0.15)", animation: entranceAnimStyle(s.bannerEntranceAnimation), zoom: scale }}>
               <BannerBar s={s} radii={radii} layout="banner" device={device} onCustomise={handleCustomise} onReject={handleReject} onAccept={handleAccept} />
             </div>
           )}
         </>
       )}
-      <PreferenceModal open={modalOpen} onClose={() => { setModalOpen(false); setVisible(true); }} onAccept={handleAccept} onReject={handleReject} s={s} radii={radii} device={device} />
+      <PreferenceModal open={modalOpen} onClose={() => { setModalOpen(false); setVisible(true); }} onAccept={handleAccept} onReject={handleReject} s={s} radii={radii} device={device} prefScale={prefScale} />
       <style>{`
         @keyframes cbIabFadeIn{from{opacity:0}to{opacity:1}}
         @keyframes cbIabSlideUp{from{transform:translateY(24px);opacity:0}to{transform:translateY(0);opacity:1}}

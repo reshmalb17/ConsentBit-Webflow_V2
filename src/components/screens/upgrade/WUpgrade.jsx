@@ -4,7 +4,7 @@ import { WPage } from "../../kit/WPage.jsx";
 import { WTopBar } from "../../kit/WTopBar.jsx";
 import { Page } from "../../primitives/Page.jsx";
 import { WToast } from "../../kit/WToast.jsx";
-import { startCheckout } from "../../../lib/api.js";
+import { startCheckout, getWebflowSiteContext, getWebflowBilling, switchWebflowInterval } from "../../../lib/api.js";
 import { useNav } from "../../../nav.jsx";
 
 // Plan column name → worker plan id.
@@ -23,6 +23,58 @@ function WUpgrade() {
   const [billing, setBilling] = React.useState("monthly");
   const [busyPlan, setBusyPlan] = React.useState(null);
   const [error, setError] = React.useState("");
+  // Current subscription interval (for switching monthly↔yearly in place).
+  const [wfSiteId, setWfSiteId] = React.useState(null);
+  const [currentInterval, setCurrentInterval] = React.useState(null);
+  const [switching, setSwitching] = React.useState(false);
+  const [confirmSwitch, setConfirmSwitch] = React.useState(false);
+  const [switchMsg, setSwitchMsg] = React.useState("");
+  // Once the user picks a toggle, stop auto-syncing it to the live interval.
+  const userPickedBilling = React.useRef(false);
+  const pickBilling = (v) => { userPickedBilling.current = true; setBilling(v); };
+
+  React.useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const { wfSiteId: sid } = await getWebflowSiteContext();
+        if (cancelled || !sid) return;
+        setWfSiteId(sid);
+        const b = await getWebflowBilling(sid);
+        if (cancelled) return;
+        if (b?.interval) {
+          const iv = String(b.interval).toLowerCase();
+          setCurrentInterval(iv);
+          // Default the Monthly/Yearly toggle to the current plan's interval
+          // (unless the user has already picked one).
+          if ((iv === "monthly" || iv === "yearly") && !userPickedBilling.current) setBilling(iv);
+        }
+      } catch { /* not in Designer */ }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  // Switch the current plan's billing interval to the selected toggle (in place).
+  const handleSwitchInterval = async () => {
+    if (switching || !wfSiteId) return;
+    setConfirmSwitch(false);
+    setSwitching(true);
+    setError("");
+    setSwitchMsg("");
+    try {
+      const res = await switchWebflowInterval(wfSiteId, billing);
+      if (res?.success) {
+        setCurrentInterval(billing);
+        setSwitchMsg(`Billing switched to ${billing === "yearly" ? "yearly" : "monthly"}.`);
+      } else {
+        setError(res?.error || "Couldn't switch billing interval.");
+      }
+    } catch (e) {
+      setError(e?.message || "Network error switching interval.");
+    } finally {
+      setSwitching(false);
+    }
+  };
   const cols = [
   { name: "Free", monthly: "$0", yearly: "$0" },
   { name: "Basic", monthly: "$9", yearly: "$7", cta: "14-day free trial", ctaStyle: "outline" },
@@ -68,10 +120,20 @@ function WUpgrade() {
 
   const renderCta = (c) => {
     if (c.current) {
+      // On a paid plan, if the selected toggle differs from the live interval,
+      // offer an in-place switch instead of the static "Current plan" badge.
+      const canSwitch = currentKey !== "free" && currentInterval && currentInterval !== billing;
+      if (canSwitch) {
+        return <button className="btn btn-sm" disabled={switching} onClick={() => setConfirmSwitch(true)} style={{ width: "100%", justifyContent: "center", background: ACC, color: "#fff", fontWeight: 700, fontSize: 11, padding: "8px 10px" }}>
+          {switching ? "Switching…" : `Switch to ${billing === "yearly" ? "Yearly" : "Monthly"}`}
+        </button>;
+      }
       return <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 11, fontWeight: 600, color: "var(--text-muted)", border: "1px solid var(--border)", borderRadius: 999, padding: "6px 12px" }}>
         <span style={{ width: 6, height: 6, borderRadius: 999, background: "#5AE497" }} />Current plan
       </span>;
     }
+    // No button for a plan with no CTA (the Free column) — e.g. when a paid plan is active.
+    if (!c.cta) return null;
     const label = busyPlan === c.name ? "Starting…" : c.cta;
     if (c.ctaStyle === "accent") {
       return <button className="btn btn-sm" disabled={!!busyPlan} onClick={() => handleUpgrade(c.name)} style={{ width: "100%", justifyContent: "center", background: ACC, color: "#fff", fontWeight: 700, fontSize: 12, padding: "9px 10px", boxShadow: "0 6px 16px rgba(7,118,230,0.45)", opacity: busyPlan && busyPlan !== c.name ? 0.6 : 1 }}>{label}</button>;
@@ -82,6 +144,21 @@ function WUpgrade() {
   return (
     <WPage>
       <WToast message={error} type="error" onClose={() => setError("")} />
+      <WToast message={switchMsg} type="success" onClose={() => setSwitchMsg("")} />
+      {confirmSwitch &&
+      <div onClick={() => setConfirmSwitch(false)} style={{ position: "fixed", inset: 0, zIndex: 100, background: "rgba(8,6,20,0.65)", backdropFilter: "blur(2px)", display: "grid", placeItems: "center", padding: 20 }}>
+        <div onClick={(e) => e.stopPropagation()} className="card" style={{ width: 360, maxWidth: "100%", padding: 22, background: "var(--surface)", textAlign: "center", boxShadow: "0 24px 60px rgba(0,0,0,0.55)" }}>
+          <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 8 }}>Switch to {billing === "yearly" ? "yearly" : "monthly"} billing?</div>
+          <div style={{ color: "var(--text-muted)", fontSize: 12.5, lineHeight: 1.55, marginBottom: 20 }}>
+            Your {currentLabel} plan will move to {billing === "yearly" ? "yearly" : "monthly"} billing. Stripe prorates the difference and charges your saved card — no re-entering card details.
+          </div>
+          <div style={{ display: "flex", gap: 8 }}>
+            <button className="btn btn-secondary btn-sm" style={{ flex: 1, justifyContent: "center" }} onClick={() => setConfirmSwitch(false)}>Cancel</button>
+            <button className="btn btn-primary btn-sm" style={{ flex: 1, justifyContent: "center" }} disabled={switching} onClick={handleSwitchInterval}>{switching ? "Switching…" : "Confirm"}</button>
+          </div>
+        </div>
+      </div>
+      }
       <WTopBar />
       <WMainTabs active="upgrade" left />
       <div className="cb-page" style={{ paddingTop: 16 }}>
@@ -109,13 +186,13 @@ function WUpgrade() {
             <button
               className={"btn btn-sm " + (billing === "monthly" ? "btn-primary" : "btn-ghost")}
               style={{ borderRadius: 999 }}
-              onClick={() => setBilling("monthly")}
+              onClick={() => pickBilling("monthly")}
               aria-pressed={billing === "monthly"}
             >Monthly</button>
             <button
               className={"btn btn-sm " + (billing === "yearly" ? "btn-primary" : "btn-ghost")}
               style={{ borderRadius: 999, display: "flex", alignItems: "center", gap: 6 }}
-              onClick={() => setBilling("yearly")}
+              onClick={() => pickBilling("yearly")}
               aria-pressed={billing === "yearly"}
             >
               Yearly <span style={{ fontSize: 9.5, fontWeight: 700, color: "#5AE497", background: "var(--green-soft)", padding: "2px 7px", borderRadius: 999 }}>Save 20%</span>

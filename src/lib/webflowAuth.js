@@ -9,7 +9,7 @@
 
 const WORKER_BASE_URL =
   import.meta.env.VITE_WORKER_BASE_URL ||
-  "https://consent-webapp-manager-test.web-8fb.workers.dev";
+  "https://consent-webapp-manager.web-8fb.workers.dev";
 
 // Front-end webapp that hosts the /checkoutplan page (paid-plan checkout).
 const CHECKOUT_BASE_URL =
@@ -39,7 +39,7 @@ export function startWebflowInstall(returnTo = window.location.href) {
   // iframe. Standalone, a normal redirect is fine.
   const inIframe = window.self !== window.top;
   if (inIframe) {
-    window.open(href, "_blank", "noopener");
+    window.open(href, "_blank", "noopener,noreferrer");
   } else {
     window.location.href = href;
   }
@@ -113,28 +113,29 @@ async function currentSiteDomain(info) {
  *
  * The extension runs in the Designer iframe, so this opens a top-level tab.
  */
-export async function startCheckout({ plan, interval = "monthly" } = {}) {
+export async function startCheckout({ plan, interval = "monthly", email } = {}) {
   const info = await window.webflow?.getSiteInfo?.().catch(() => null);
   const wfSiteId = info?.siteId || info?.id || null;
   const domain = await currentSiteDomain(info);
 
-  // The checkout context is sent as a request BODY to the checkout-token
-  // endpoint (not exposed in the URL). It returns a short-lived opaque token;
-  // we open /checkoutplan?t=<token> and the page exchanges it server-side.
-  // The email is resolved server-side from the OAuth record by the token worker,
-  // so the client doesn't send it.
+  // The checkout context is sent as a request BODY throughout — never in the URL
+  // (Webflow app review disallows tokens/params in the checkout URL). It goes to
+  // the token endpoint as a body, then to /checkoutplan as a POST-form body.
   const payload = {
     platform: "webflow",
     version: "v2",
     ...(wfSiteId ? { platformId: wfSiteId } : {}),
     ...(domain ? { domain } : {}),
+    // Account email kept in state after OAuth — sent so the checkout page can
+    // pre-fill it (worker no longer has to resolve it server-side).
+    ...(email ? { email, billingEmail: email } : {}),
     interval,
     ...(plan ? { plan: String(plan).toLowerCase() } : {}),
   };
 
-  // POST to the consent-manager worker's new v2 endpoint: it resolves the email
-  // server-side and stores the token in the CHECKOUT_TOKENS KV the checkoutplan
-  // page reads from. (This worker holds the Stripe keys for the later charge.)
+  // POST to the consent-manager worker's v2 endpoint: it resolves the email
+  // server-side and stores a short-lived opaque token in the CHECKOUT_TOKENS KV.
+  // (This worker holds the Stripe keys for the later charge.)
   let token = null;
   try {
     const res = await fetch(`${CHECKOUT_API_BASE}/api/v2/webflow-checkout-token`, {
@@ -145,26 +146,32 @@ export async function startCheckout({ plan, interval = "monthly" } = {}) {
     const data = await res.json().catch(() => null);
     token = data?.token || null;
   } catch {
-    /* fall back to query params below */
+    /* fall back to posting the raw context below */
   }
 
-  const url = new URL(`${CHECKOUT_BASE_URL}/checkoutplan`);
-  if (token) {
-    url.searchParams.set("t", token);
-  } else {
-    // Fallback if token creation failed — pass context as query params.
-    url.searchParams.set("platform", "webflow");
-    url.searchParams.set("version", "v2");
-    if (wfSiteId) url.searchParams.set("platformId", wfSiteId);
-    if (domain) url.searchParams.set("domain", domain);
-    if (interval) url.searchParams.set("interval", interval);
-    if (plan) url.searchParams.set("plan", String(plan).toLowerCase());
+  // Open /checkoutplan by POSTing the context in the request BODY via an
+  // auto-submitting form in a new top-level tab. The /api/checkout-open route
+  // stashes it in a short-lived cookie and redirects to a clean /checkoutplan URL
+  // — so nothing (token or PII) ever appears in the URL.
+  const action = `${CHECKOUT_BASE_URL}/api/checkout-open`;
+  const fields = token ? { t: token } : payload;
+  const form = document.createElement("form");
+  form.method = "POST";
+  form.action = action;
+  form.target = "_blank";
+  form.style.display = "none";
+  for (const [k, v] of Object.entries(fields)) {
+    if (v === undefined || v === null || v === "") continue;
+    const input = document.createElement("input");
+    input.type = "hidden";
+    input.name = k;
+    input.value = String(v);
+    form.appendChild(input);
   }
-
-  const href = url.toString();
-  // Designer iframe → open a top-level tab; standalone → same behavior.
-  window.open(href, "_blank", "noopener");
-  return href;
+  document.body.appendChild(form);
+  form.submit();
+  form.remove();
+  return action;
 }
 
 /**

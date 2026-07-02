@@ -3,6 +3,11 @@
   "publicDir": "public",
   "size": "comfortable",
   "apiVersion": "2",
+  "dataConnections": [
+    { "url": "https://consent-webapp-manager.web-8fb.workers.dev" },
+    { "url": "https://consentbit-webapp-frontend-test.pages.dev" },
+    { "url": "https://cdn.consentbit.com" }
+  ],
   "telemetry": {
     "global": {
       "allowTelemetry": true,

@@ -12,15 +12,21 @@ import { localization as T, languageCodes as codes, editorDefaults, preferenceBa
 function WEdContent() {
   const nav = useNav();
   const [tab, setTab] = React.useState("default");
-  const [floating, setFloating] = React.useState(false);
-  const [floatPos, setFloatPos] = React.useState("left");
+  // Floating button/logo — shared via nav so the preview can render the logo.
+  const floating = nav ? nav.floating : false;
+  const setFloating = (v) => nav && nav.setFloating(v);
+  const floatPos = nav ? nav.floatPos : "left";
+  const setFloatPos = (v) => nav && nav.setFloatPos(v);
   // Content character limits (match the consentwebapp project).
   const LIMITS = { title: 50, message: 320, button: 20, policyLabel: 30, name: 20, desc: 300, label: 20 };
   const [cookieListOpen, setCookieListOpen] = React.useState(false);
-  const [rejectLabel, setRejectLabel] = React.useState(editorDefaults.default.rejectLabel);
-  const [customizeLabel, setCustomizeLabel] = React.useState(editorDefaults.default.customizeLabel);
-  const [policyLabel, setPolicyLabel] = React.useState(editorDefaults.default.policyLinkLabel);
-  const [policyUrl, setPolicyUrl] = React.useState(editorDefaults.default.policyUrl);
+  // Seed from the already-loaded banner content (synced from the webapp on launch)
+  // so opening this tab doesn't overwrite it with defaults — fall back to the
+  // editor defaults only when a field isn't present.
+  const [rejectLabel, setRejectLabel] = React.useState(nav?.bannerContent?.reject ?? editorDefaults.default.rejectLabel);
+  const [customizeLabel, setCustomizeLabel] = React.useState(nav?.bannerContent?.customize ?? editorDefaults.default.customizeLabel);
+  const [policyLabel, setPolicyLabel] = React.useState(nav?.bannerContent?.policy ?? editorDefaults.default.policyLinkLabel);
+  const [policyUrl, setPolicyUrl] = React.useState(nav?.bannerContent?.policyUrl ?? editorDefaults.default.policyUrl);
   // Preference Banner content (shared with the preview's preference modal).
   const prefContent = nav ? nav.prefContent : { title: preferenceBanner.title, overview: preferenceBanner.overview, save: preferenceBanner.buttons.save };
   const setPref = (patch) => nav && nav.setPrefContent((c) => ({ ...c, ...patch }));
@@ -34,7 +40,11 @@ function WEdContent() {
   const langs = Object.keys(T);
 
   const [lang, setLang] = React.useState("English");
-  const [fields, setFields] = React.useState({ title: T.English.title, message: T.English.message, accept: T.English.accept });
+  const [fields, setFields] = React.useState(() => ({
+    title: nav?.bannerContent?.title ?? T.English.title,
+    message: nav?.bannerContent?.message ?? T.English.message,
+    accept: nav?.bannerContent?.accept ?? T.English.accept,
+  }));
   // languages that have been auto-translated this session
   const [translated, setTranslated] = React.useState({});
   // per-language set of manually edited field keys

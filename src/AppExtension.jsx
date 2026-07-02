@@ -21,7 +21,8 @@ import { WProfile } from "./components/screens/profile/WProfile.jsx";
 import { WNotificationsPanel } from "./components/kit/WNotificationsPanel.jsx";
 import { WLoading } from "./components/screens/modals/WLoading.jsx";
 import { WPaymentProcessing } from "./components/screens/modals/WPaymentProcessing.jsx";
-import { getWebflowSiteContext, getWebflowSiteStatus, getPaymentSubscription } from "./lib/api.js";
+import { getWebflowSiteContext, getWebflowSiteStatus, getPaymentSubscription, getBannerCustomization } from "./lib/api.js";
+import { mapCustomizationToState } from "./lib/loadCustomization.js";
 
 // What the Webflow Designer Extension panel renders: the main app, opening on
 // the Cookie Banner editor (General tab). The top tab bar (WMainTabs) and the
@@ -69,6 +70,8 @@ export default function AppExtension() {
   const [showReject, setShowReject] = React.useState(true);      // Content: show the Reject button
   const [showCustomize, setShowCustomize] = React.useState(true); // Content: show the Customize/Preference button
   const [showPolicy, setShowPolicy] = React.useState(true);      // Content: show the Cookie policy link
+  const [floating, setFloating] = React.useState(false);         // Content: floating reopen button/logo enabled
+  const [floatPos, setFloatPos] = React.useState("left");        // Content: floating button position (left | right)
   const [bannerWeight, setBannerWeight] = React.useState("700");  // Type: font weight (heading + text)
   const [bannerTextAlign, setBannerTextAlign] = React.useState("left"); // Type: left | center | right
   const [bannerColors, setBannerColors] = React.useState({       // Colors tab -> preview banners
@@ -90,7 +93,8 @@ export default function AppExtension() {
   const [freeUsed, setFreeUsed] = React.useState(false); // free site already used on this account
   const [freeResult, setFreeResult] = React.useState(null); // { webappSiteId, scriptUrl, ... }
   const [bannerCreated, setBannerCreated] = React.useState(false); // a banner was already saved → CTA shows "Update Banner"
-  const [plan, setPlan] = React.useState("Free"); // current plan label, shown in the top bar
+  const [plan, setPlan] = React.useState(null); // current plan — null until resolved (blank in the top bar); then 'free' or a paid tier
+  const [registered, setRegistered] = React.useState(false); // has the site taken a plan (free or paid)? Gates Install & verify.
   const [accountEmail, setAccountEmail] = React.useState(""); // account owner email (from status)
   // Payment-processing popup state. Opened by startPaymentFlow() when a paid
   // checkout link is clicked; it self-polls while open (see WPaymentProcessing).
@@ -110,11 +114,49 @@ export default function AppExtension() {
         const status = await getWebflowSiteStatus(wfSiteId);
         if (cancelled) return;
         setBannerCreated(!!status.bannerCreated);
-        setPlan(status.plan ?? "Free");
+        // Only show a plan once one is actually taken — no hardcoded "Free" for
+        // unregistered/skipped users (keeps the top-bar plan pill blank).
+        setPlan(status.registered ? (status.plan ?? "Free") : null);
+        setRegistered(!!status.registered);
         setAccountEmail(status.email ?? "");
+        // Disable the free plan upfront if this account already used its free site.
+        if (status.freeUsed) setFreeUsed(true);
         if (!status.authorized) setScreen("landing");
         else if (!status.registered) setScreen("select-plan");
         else setScreen("app");
+
+        // Load the saved banner customization (from the webapp or a previous save)
+        // so the editor + preview reflect it — merged onto defaults so missing
+        // fields keep their default.
+        try {
+          const saved = await getBannerCustomization(wfSiteId, status.webappSiteId);
+          console.log("[BannerLoad] wfSiteId=", wfSiteId, "| webappSiteId=", status.webappSiteId, "| saved?", !!saved, "| title=", saved?.translations?.en?.title, "| bg=", saved?.backgroundColor);
+          if (!cancelled && saved) {
+            const m = mapCustomizationToState(saved);
+            console.log("[BannerLoad] mapped:", { bannerContent: m.bannerContent, bannerColors: m.bannerColors, template: m.template, pos: m.bannerPos });
+            if (m.bannerColors) setBannerColors((p) => ({ ...p, ...m.bannerColors }));
+            if (m.bannerContent) setBannerContent((p) => ({ ...p, ...m.bannerContent }));
+            if (m.prefContent) setPrefContent((p) => ({
+              ...p, ...m.prefContent,
+              cats: m.prefContent.cats ? m.prefContent.cats.map((c, i) => ({ ...(p.cats?.[i] || {}), ...c })) : p.cats,
+            }));
+            if (m.ccpaContent) setCcpaContent((p) => ({ ...p, ...m.ccpaContent }));
+            if (m.bannerPos) setBannerPos(m.bannerPos);
+            if (m.bannerAlign) setBannerAlign(m.bannerAlign);
+            if (m.bannerRadius != null) setBannerRadius(m.bannerRadius);
+            if (m.bannerBtnRadius != null) setBannerBtnRadius(m.bannerBtnRadius);
+            if (m.bannerAnim) setBannerAnim(m.bannerAnim);
+            if (m.bannerWeight) setBannerWeight(m.bannerWeight);
+            if (m.bannerTextAlign) setBannerTextAlign(m.bannerTextAlign);
+            if (m.closeBtn !== undefined) setCloseBtn(m.closeBtn);
+            if (m.showReject !== undefined) setShowReject(m.showReject);
+            if (m.showCustomize !== undefined) setShowCustomize(m.showCustomize);
+            if (m.showPolicy !== undefined) setShowPolicy(m.showPolicy);
+            if (m.template) setTemplate(m.template);
+            if (m.iab !== undefined) setIab(m.iab);
+            if (m.gac !== undefined) setGac(m.gac);
+          }
+        } catch { /* keep editor defaults */ }
       } catch {
         if (!cancelled) setScreen("landing");
       }
@@ -147,6 +189,7 @@ export default function AppExtension() {
   // and send the user to the install + verify code section.
   const handlePaymentSuccess = React.useCallback(({ plan: paidPlan } = {}) => {
     if (paidPlan) setPlan(paidPlan);
+    setRegistered(true); // a paid plan is now taken → Install & verify is allowed
     setPaymentFlow({ open: false, siteId: null });
     setScreen("install-verify");
   }, []);
@@ -155,7 +198,8 @@ export default function AppExtension() {
   // Track when it was opened from the editor so the page can show a "Back" button
   // (onboarding reaches it without this flag → no back button).
   const [installVerifyFromApp, setInstallVerifyFromApp] = React.useState(false);
-  const goToInstallVerify = React.useCallback(() => { setInstallVerifyFromApp(true); setScreen("install-verify"); }, []);
+  // Install & verify requires a taken plan — guard so it can't be reached without one.
+  const goToInstallVerify = React.useCallback(() => { if (!registered) return; setInstallVerifyFromApp(true); setScreen("install-verify"); }, [registered]);
   const goToApp = React.useCallback(() => { setInstallVerifyFromApp(false); setScreen("app"); }, []);
 
   // Cookie Banner editor (the "customization" screen) — pick the editor for the
@@ -184,12 +228,14 @@ export default function AppExtension() {
     ) : screen === "app" ? (
       main
     ) : screen === "install-verify" ? (
-      <WInstallVerify />
+      // Never show Install & verify without a taken plan (belt-and-suspenders —
+      // the button that navigates here is disabled when !registered).
+      registered ? <WInstallVerify /> : main
     ) : screen === "select-plan" ? (
       <WSelectPlan
         freeDisabled={freeUsed}
-        onSelectPlan={() => setScreen("install-verify")}
-        onFreeRegistered={(result) => { setFreeResult(result); setScreen("install-verify"); }}
+        onSelectPlan={() => { setRegistered(true); setScreen("install-verify"); }}
+        onFreeRegistered={(result) => { setFreeResult(result); setRegistered(true); setScreen("install-verify"); }}
         onFreeLimitReached={() => setFreeUsed(true)}
         onSkip={() => setScreen("app")}
       />
@@ -213,7 +259,7 @@ export default function AppExtension() {
   }, []);
 
   const app = (
-    <NavContext.Provider value={{ mainTab, setMainTab, subTab, setSubTab, profileOpen, setProfileOpen, notifOpen, setNotifOpen, template, setTemplate, iab, setIab, gac, setGac, bannerPos, setBannerPos, bannerAlign, setBannerAlign, bannerRadius, setBannerRadius, bannerAnim, setBannerAnim, bannerBtnRadius, setBannerBtnRadius, bannerColors, setBannerColors, bannerWeight, setBannerWeight, bannerTextAlign, setBannerTextAlign, bannerContent, setBannerContent, prefContent, setPrefContent, closeBtn, setCloseBtn, showReject, setShowReject, showCustomize, setShowCustomize, showPolicy, setShowPolicy, activeRegion, setActiveRegion, ccpaContent, setCcpaContent, bannerCreated, setBannerCreated, plan, setPlan, startPaymentFlow, accountEmail, goToInstallVerify, goToApp, installVerifyFromApp }}>
+    <NavContext.Provider value={{ mainTab, setMainTab, subTab, setSubTab, profileOpen, setProfileOpen, notifOpen, setNotifOpen, template, setTemplate, iab, setIab, gac, setGac, bannerPos, setBannerPos, bannerAlign, setBannerAlign, bannerRadius, setBannerRadius, bannerAnim, setBannerAnim, bannerBtnRadius, setBannerBtnRadius, bannerColors, setBannerColors, bannerWeight, setBannerWeight, bannerTextAlign, setBannerTextAlign, bannerContent, setBannerContent, prefContent, setPrefContent, closeBtn, setCloseBtn, showReject, setShowReject, showCustomize, setShowCustomize, showPolicy, setShowPolicy, floating, setFloating, floatPos, setFloatPos, activeRegion, setActiveRegion, ccpaContent, setCcpaContent, bannerCreated, setBannerCreated, plan, setPlan, registered, setRegistered, startPaymentFlow, accountEmail, goToInstallVerify, goToApp, installVerifyFromApp }}>
       <div style={{ position: "relative", height: "100%" }}>
         {current}
         {paymentFlow.open &&
