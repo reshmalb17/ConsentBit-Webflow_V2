@@ -2,7 +2,6 @@ import React from "react";
 import { WMainTabs } from "../../kit/WMainTabs.jsx";
 import { WPage } from "../../kit/WPage.jsx";
 import { WTopBar } from "../../kit/WTopBar.jsx";
-import { Field } from "../../primitives/Field.jsx";
 import { Page } from "../../primitives/Page.jsx";
 import { useNav } from "../../../nav.jsx";
 import { getWebflowSiteContext, getWebflowBilling, cancelWebflowSubscription } from "../../../lib/api.js";
@@ -19,7 +18,6 @@ const PLAN_FEATURES = {
 const NEXT_PLAN = { free: "Basic", basic: "Essential", essential: "Growth", growth: null };
 
 function WProfile() {
-  const [editing, setEditing] = React.useState(false);
   const nav = useNav();
 
   // Only show plan/billing details once a plan is actually taken — no "Free"
@@ -73,6 +71,10 @@ function WProfile() {
 
   const invoices = Array.isArray(billing?.invoices) ? billing.invoices : [];
   const cancelAtPeriodEnd = !!billing?.cancelAtPeriodEnd;
+  // When cancelled, the plan stays active until the end of the current billing period.
+  const periodEndDate = billing?.currentPeriodEnd
+    ? new Date(billing.currentPeriodEnd).toLocaleDateString("en-US", { month: "short", day: "2-digit", year: "numeric" })
+    : null;
 
   // Live usage (scans + page views completed this billing month) from the billing API.
   const fmtNum = (n) => (typeof n === "number" ? n.toLocaleString() : "—");
@@ -100,7 +102,6 @@ function WProfile() {
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
           <div style={{ fontSize: 15, fontWeight: 600 }}>Profile Settings</div>
           <div style={{ display: "flex", gap: 6 }}>
-            <button className="btn btn-success btn-sm">Save</button>
             <button className="btn btn-dark btn-sm" onClick={nav ? () => nav.setProfileOpen(false) : undefined}>← Back</button>
           </div>
         </div>
@@ -110,9 +111,6 @@ function WProfile() {
           <div>
             <div style={{ fontWeight: 600, marginBottom: 4, fontSize: 12.5 }}>Account Owner</div>
             <div style={{ fontSize: 12 }}>{accountEmail || "—"}</div>
-          </div>
-          <div style={{ display: "flex", gap: 6 }}>
-            <button className="btn btn-secondary btn-sm" onClick={() => setEditing(true)}>Edit</button>
           </div>
         </div>
 
@@ -141,14 +139,17 @@ function WProfile() {
             {nextPlan &&
               <button className="btn btn-primary btn-sm" onClick={nav ? () => { nav.setProfileOpen(false); nav.setMainTab("upgrade"); } : undefined}>Upgrade to {nextPlan}</button>
             }
-            {isPaid && !cancelAtPeriodEnd &&
+            {isPaid && !loadingBilling && !cancelAtPeriodEnd &&
               <button className="btn btn-secondary btn-sm" disabled={cancelling} onClick={() => setConfirmCancel(true)}>{cancelling ? "Cancelling…" : "Cancel Subscription"}</button>
             }
-            {isPaid && cancelAtPeriodEnd &&
-              <span style={{ fontSize: 11.5, color: "var(--text-muted)" }}>Cancels at the end of the current period</span>
-            }
           </div>
-          {cancelMsg &&
+          {isPaid && cancelAtPeriodEnd &&
+            <div style={{ marginTop: 8, fontSize: 11.5 }}>
+              <span style={{ color: "var(--text-muted)" }}>Your subscription is cancelled{periodEndDate ? ` and will end on ${periodEndDate}` : ""}. </span>
+              <a href="#" onClick={(e) => { e.preventDefault(); if (nav) { nav.setProfileOpen(false); nav.setMainTab("upgrade"); } }} style={{ color: "var(--purple-hi)", fontWeight: 600, cursor: "pointer" }}>Subscribe Now</a>
+            </div>
+          }
+          {cancelMsg && !cancelAtPeriodEnd &&
             <div style={{ marginTop: 8, fontSize: 11.5, color: "var(--text-muted)" }}>{cancelMsg}</div>
           }
         </div>
@@ -211,24 +212,6 @@ function WProfile() {
       </div>
       }
 
-      {/* Edit profile popup */}
-      {editing &&
-      <div style={{ position: "absolute", inset: 0, background: "rgba(8,6,20,0.6)", display: "grid", placeItems: "center", zIndex: 20 }} onClick={() => setEditing(false)}>
-        <div className="card" style={{ width: 360, padding: 18, background: "var(--surface)" }} onClick={(e) => e.stopPropagation()}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
-            <div style={{ fontSize: 14, fontWeight: 600 }}>Edit Profile</div>
-            <button onClick={() => setEditing(false)} style={{ background: "none", border: "none", color: "var(--text-muted)", fontSize: 15, cursor: "pointer" }}>✕</button>
-          </div>
-          <Field label="Name" help={false}><input className="input" defaultValue={accountName} placeholder="Your name" /></Field>
-          <Field label="Email" help={false}><input className="input" defaultValue={accountEmail} /></Field>
-          <Field label="Time zone" help={false}><select className="select"><option>UTC+05:30 IST</option><option>UTC+00:00 GMT</option><option>UTC-08:00 PST</option></select></Field>
-          <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 8 }}>
-            <button className="btn btn-secondary btn-sm" onClick={() => setEditing(false)}>Cancel</button>
-            <button className="btn btn-primary btn-sm" onClick={() => setEditing(false)}>Save changes</button>
-          </div>
-        </div>
-      </div>
-      }
     </WPage>);
 
 }

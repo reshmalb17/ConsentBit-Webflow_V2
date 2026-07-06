@@ -56,7 +56,11 @@ function fmtDate(iso) {
 
 function WScan() {
   const [active, setActive] = React.useState(SCAN_CATS[0].id);
+  // `scanning` keeps the Scan button disabled/"Scanning…" for the whole scan.
+  // `scanPopup` shows the loading popup only briefly, then we drop the user into the
+  // Scan History table where the live "Scanning" row takes over.
   const [scanning, setScanning] = React.useState(false);
+  const [scanPopup, setScanPopup] = React.useState(false);
   const [schedule, setSchedule] = React.useState(false);
   const [addCookie, setAddCookie] = React.useState(false);
   // Manually-added cookie rules. Each starts as a DRAFT until "Publish Changes".
@@ -140,45 +144,57 @@ function WScan() {
     return () => { cancelled = true; if (pollRef.current) clearInterval(pollRef.current); };
   }, [loadData]);
 
-  // Scan Now — same flow as consentbitwebapp: trigger → (poll if async) → reload.
+  // Scan Now — trigger → briefly show popup → drop into the live History table →
+  // poll scan-history until terminal → refresh cookies → reset.
   const handleScanNow = async () => {
+    if (scanning) return; // guard: ignore extra clicks while a scan is running (no dup rows)
     if (!siteId) { setScanError("This site isn't registered yet. Select a plan and publish first."); return; }
+    if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null; } // no leaked pollers
     setScanError("");
     setScanning(true);
+    setScanPopup(true);
     try {
-      const result = await scanSiteNow(siteId);
+      const result = await scanSiteNow(siteId); // 1 API call (POST)
       if (!result?.success) {
         setScanError(result?.error || "Scan failed. Please try again.");
         setScanning(false);
+        setScanPopup(false);
         return;
       }
-      if (result.scanning) {
-        // Background scan — poll scan-history every 4s until this row is terminal.
-        const targetId = result.scanHistoryId ? String(result.scanHistoryId) : null;
-        let elapsed = 0;
-        pollRef.current = setInterval(async () => {
-          elapsed += 4000;
-          try {
-            const hist = await getScanHistory(siteId);
-            const row = (hist?.scans || []).find((s) => !targetId || String(s.id) === targetId);
-            if ((row && isTerminalStatus(row.scanStatus)) || elapsed >= 120000) {
-              clearInterval(pollRef.current);
-              pollRef.current = null;
-              await loadData(siteId);
-              setScanning(false);
-              scrollToHistory();
-            }
-          } catch { /* keep polling */ }
-        }, 4000);
-      } else {
+      if (!result.scanning) {
         // Synchronous scan — results are ready.
         await loadData(siteId);
         setScanning(false);
+        setScanPopup(false);
         scrollToHistory();
+        return;
       }
+      // Background scan.
+      const targetId = result.scanHistoryId ? String(result.scanHistoryId) : null;
+      // Show the new "Scanning" row right away (1 call), then move to the History table.
+      try { const h0 = await getScanHistory(siteId); if (Array.isArray(h0?.scans)) setScans(h0.scans); } catch { /* ignore */ }
+      setTimeout(() => { setScanPopup(false); scrollToHistory(); }, 1600);
+      // Poll scan-history every 5s (1 call/tick) until this row is terminal.
+      let elapsed = 0;
+      pollRef.current = setInterval(async () => {
+        elapsed += 5000;
+        try {
+          const hist = await getScanHistory(siteId);
+          if (Array.isArray(hist?.scans)) setScans(hist.scans); // keep the row live
+          const row = (hist?.scans || []).find((s) => !targetId || String(s.id) === targetId);
+          if ((row && isTerminalStatus(row.scanStatus)) || elapsed >= 120000) {
+            clearInterval(pollRef.current);
+            pollRef.current = null;
+            // Scan done — refresh cookies only (history is already live above).
+            try { const ck = await getSiteCookies(siteId); if (ck?.success && Array.isArray(ck.cookies)) setCookies(ck.cookies); } catch { /* ignore */ }
+            setScanning(false); // button + everything back to normal
+          }
+        } catch { /* keep polling */ }
+      }, 5000);
     } catch (e) {
       setScanError(e?.message || "Scan failed. Please try again.");
       setScanning(false);
+      setScanPopup(false);
     }
   };
 
@@ -407,9 +423,9 @@ function WScan() {
         }
       </div>
 
-      {/* Scanning popup */}
-      {scanning &&
-      <div onClick={() => setScanning(false)} style={{ position: "fixed", inset: 0, zIndex: 100, background: "rgba(8,6,20,0.6)", backdropFilter: "blur(2px)", display: "grid", placeItems: "center", padding: 20 }}>
+      {/* Scanning popup — shown briefly, then the live History row takes over */}
+      {scanPopup &&
+      <div onClick={() => { setScanPopup(false); scrollToHistory(); }} style={{ position: "fixed", inset: 0, zIndex: 100, background: "rgba(8,6,20,0.6)", backdropFilter: "blur(2px)", display: "grid", placeItems: "center", padding: 20 }}>
         <div onClick={(e) => e.stopPropagation()} style={{ width: 280, background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 14, padding: 26, textAlign: "center" }}>
           <svg width="44" height="44" viewBox="0 0 56 56" style={{ marginBottom: 12 }}>
             <circle cx="28" cy="14" r="4" fill="#7C5CFC"><animate attributeName="opacity" values="1;.3;1" dur="1s" begin="0s" repeatCount="indefinite" /></circle>
