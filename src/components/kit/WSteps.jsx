@@ -2,7 +2,7 @@ import React from "react";
 
 function WSteps({ step, labels }) {
   return (
-    <div style={{ display: "flex", justifyContent: "center", alignItems: "flex-start", gap: 0, marginBottom: 22 }}>
+    <div style={{ display: "flex", justifyContent: "center", alignItems: "flex-start", gap: 0, marginBottom: 14 }}>
       {labels.map((label, i) => {
         const num = i + 1;
         const done = num < step,active = num === step;

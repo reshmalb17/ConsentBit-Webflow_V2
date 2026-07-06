@@ -155,8 +155,8 @@ function WInstallVerify() {
   const nothingSelected = !selSub && selIds.length === 0;
 
   return (
-    <WAuthShell step={4} topAlign noScroll title="Install & verify" subtitle="Add the banner to your site, then confirm it's live.">
-      <div style={{ maxWidth: 620, margin: "0 auto" }}>
+    <WAuthShell step={4} topAlign title="Install & verify" subtitle="Add the banner to your site, then confirm it's live.">
+      <div style={{ maxWidth: 620, margin: "0 auto", paddingBottom: 24 }}>
         {/* Back to customization — only when this page was opened from the editor. */}
         {nav && nav.installVerifyFromApp && nav.goToApp &&
           <button
@@ -175,7 +175,7 @@ function WInstallVerify() {
             <div style={{ color: "#E0623E", fontSize: 11.5, fontWeight: 600 }}>{legacy.error}</div>
           </div>
         }
-        <div className="card" style={{ padding: 14 }}>
+        <div className="card" style={{ padding: "14px 14px 24px" }}>
           {/* Heading + Copy button */}
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
             <div style={{ fontWeight: 600, fontSize: 13 }}>Copy this banner installation code</div>

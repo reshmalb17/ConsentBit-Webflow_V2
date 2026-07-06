@@ -137,7 +137,7 @@
 .cb-widget-wrap .cb-view-all svg { width: 12px; height: 12px; }
 .cb-widget-wrap .cb-domain-add { width: 26px; height: 26px; font-size: 14px; }
 .cb-widget-wrap .cb-icon-btn { width: 28px; height: 28px; }
-.cb-widget-wrap .cb-icon-btn svg { width: 13px; height: 13px; }
+.cb-widget-wrap .cb-icon-btn svg { width: 13px; height: 13px; display: block; }
 /* Bell is a Material Symbols glyph (a span, not an svg) — size it and make it a
    block with line-height 1 so it centers exactly in the button (no baseline offset). */
 .cb-widget-wrap .cb-icon-btn .material-symbols-rounded { font-size: 16px; line-height: 1; display: block; }

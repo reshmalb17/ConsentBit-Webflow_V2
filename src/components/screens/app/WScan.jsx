@@ -24,6 +24,22 @@ const SITE_DOMAIN = "testsite123.com";
 // Canonical scanner categories (count is filled in live from the scan results).
 const SCAN_CATS = cookieCategories.map((c) => ({ id: c.name, key: c.id, desc: c.description }));
 
+// Known category keys (every canonical category except Uncategorized). Any scanned
+// cookie whose category doesn't match one of these falls into the Uncategorized bucket.
+const KNOWN_CAT_KEYS = new Set(
+  cookieCategories.map((c) => c.id.toLowerCase()).filter((k) => k !== "uncategorized")
+);
+
+// Does a cookie's category belong to the given canonical category key?
+// Uncategorized catches empty/unknown categories (i.e. anything with no known match).
+const catMatches = (cookieCat, key) => {
+  const cc = String(cookieCat || "").toLowerCase();
+  if (String(key).toLowerCase() === "uncategorized") {
+    return cc === "" || cc === "uncategorized" || !KNOWN_CAT_KEYS.has(cc);
+  }
+  return cc === String(key).toLowerCase();
+};
+
 // A scan row is terminal when it's no longer pending/scanning.
 const isTerminalStatus = (s) => {
   const v = String(s || "").toLowerCase();
@@ -67,11 +83,11 @@ function WScan() {
 
   // Count cookies per canonical category (case-insensitive match on category).
   const countFor = (cat) =>
-    cookies.filter((c) => String(c.category || "").toLowerCase() === cat.key.toLowerCase()).length;
+    cookies.filter((c) => catMatches(c.category, cat.key)).length;
   const cats = SCAN_CATS.map((c) => ({ ...c, label: `${c.id} (${countFor(c)} Cookie)` }));
 
   const sel = cats.find((c) => c.id === active) || cats[0];
-  const selCookies = cookies.filter((c) => String(c.category || "").toLowerCase() === (sel.key || "").toLowerCase());
+  const selCookies = cookies.filter((c) => catMatches(c.category, sel.key));
 
   // Number of unpublished (draft) cookie rules — shown as the tab badge.
   const draftCount = rules.filter((r) => !Number(r.published)).length;
@@ -245,7 +261,7 @@ function WScan() {
           </div>
         </div>
         <div className="card" style={{ overflow: "hidden", marginBottom: 18 }}>
-          <div style={{ display: "grid", gridTemplateColumns: "180px 1fr", minHeight: 240 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "180px 1fr" }}>
             <div style={{ borderRight: "1px solid var(--border)", padding: "6px 0" }}>
               {cats.map((c) =>
               <div
@@ -310,12 +326,11 @@ function WScan() {
                 <th>Categories</th>
                 <th>Cookies</th>
                 <th>Scripts</th>
-                <th></th>
               </tr>
             </thead>
             <tbody>
               {scans.length === 0 ?
-              <tr><td colSpan={7} style={{ textAlign: "center", color: "var(--text-muted)", padding: "22px 12px" }}>No scans yet. Click <b style={{ color: "var(--text)" }}>Scan Now</b> to scan your site.</td></tr> :
+              <tr><td colSpan={6} style={{ textAlign: "center", color: "var(--text-muted)", padding: "22px 12px" }}>No scans yet. Click <b role="button" tabIndex={0} onClick={() => !scanning && handleScanNow()} onKeyDown={(e) => { if ((e.key === "Enter" || e.key === " ") && !scanning) { e.preventDefault(); handleScanNow(); } }} style={{ color: "var(--purple-hi)", cursor: scanning ? "default" : "pointer", opacity: scanning ? 0.6 : 1 }}>Scan Now</b> to scan your site.</td></tr> :
               scans.map((r) => {
                 const failed = String(r.scanStatus || "").toLowerCase() === "failed" || String(r.scanStatus || "").toLowerCase() === "error";
                 const done = isTerminalStatus(r.scanStatus);
@@ -333,7 +348,6 @@ function WScan() {
                   <td style={{ color: "var(--text-muted)" }}>{Array.isArray(r.categories) ? r.categories.length : "—"}</td>
                   <td>{r.cookiesFound ?? 0}</td>
                   <td>{r.scriptsFound ?? 0}</td>
-                  <td style={{ textAlign: "right", color: "var(--text-muted)", fontSize: 10.5 }}>{r.scanDuration != null ? `${r.scanDuration}ms` : ""}</td>
                 </tr>);
               })}
             </tbody>
@@ -349,7 +363,7 @@ function WScan() {
           </div>
           {rules.length === 0 ?
             <div className="card" style={{ padding: "26px 16px", textAlign: "center", color: "var(--text-muted)", fontSize: 12 }}>
-              No cookie rules yet. Use <b style={{ color: "var(--text)" }}>Add Cookie</b> to create one.
+              No cookie rules yet. Use <b role="button" tabIndex={0} onClick={() => setAddCookie(true)} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setAddCookie(true); } }} style={{ color: "var(--purple-hi)", cursor: "pointer" }}>Add Cookie</b> to create one.
             </div> :
             <div className="card" style={{ overflow: "hidden" }}>
             <div className="cb-scroll-table">

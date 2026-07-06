@@ -4,7 +4,7 @@ import { WPage } from "../../kit/WPage.jsx";
 import { WTopBar } from "../../kit/WTopBar.jsx";
 import { Page } from "../../primitives/Page.jsx";
 import { WToast } from "../../kit/WToast.jsx";
-import { startCheckout, getWebflowSiteContext, getWebflowBilling, switchWebflowInterval } from "../../../lib/api.js";
+import { startCheckout, getWebflowSiteContext, getWebflowSiteStatus, getWebflowBilling, switchWebflowInterval, registerWebflowFree } from "../../../lib/api.js";
 import { useNav } from "../../../nav.jsx";
 
 // Plan column name → worker plan id.
@@ -16,8 +16,12 @@ function WUpgrade() {
   const ACC = "#0777E6";
   // Current plan from live status (set in AppExtension via the launch status call
   // / payment-success handler). Drives the "Current plan" marker + headline.
-  const currentKey = String(nav?.plan || "free").toLowerCase();
-  const currentLabel = PLAN_LABELS[currentKey] || "Free";
+  // `nav.plan` stays null until a plan is actually taken. Keep currentKey null in
+  // that case so the Free column isn't falsely marked "Current plan" for users who
+  // haven't selected any plan yet.
+  const hasPlan = !!nav?.plan;
+  const currentKey = hasPlan ? String(nav.plan).toLowerCase() : null;
+  const currentLabel = (currentKey && PLAN_LABELS[currentKey]) || "Free";
   // Billing cycle: "monthly" shows the full monthly rate; "yearly" shows the
   // per-month equivalent at a 20% discount (billed annually).
   const [billing, setBilling] = React.useState("monthly");
@@ -25,7 +29,12 @@ function WUpgrade() {
   const [error, setError] = React.useState("");
   // Current subscription interval (for switching monthly↔yearly in place).
   const [wfSiteId, setWfSiteId] = React.useState(null);
+  // Account already has a free site elsewhere → block the Free plan (matches the plan page).
+  const [freeUsed, setFreeUsed] = React.useState(false);
   const [currentInterval, setCurrentInterval] = React.useState(null);
+  // Live subscription status ("active" | "trialing" | "canceled" | …). A canceled sub
+  // can't switch interval in place — it must resubscribe via a fresh checkout.
+  const [subStatus, setSubStatus] = React.useState(null);
   const [switching, setSwitching] = React.useState(false);
   const [confirmSwitch, setConfirmSwitch] = React.useState(false);
   const [switchMsg, setSwitchMsg] = React.useState("");
@@ -40,8 +49,11 @@ function WUpgrade() {
         const { wfSiteId: sid } = await getWebflowSiteContext();
         if (cancelled || !sid) return;
         setWfSiteId(sid);
+        // Account-level free-plan availability (already used a free site elsewhere).
+        try { const st = await getWebflowSiteStatus(sid); if (!cancelled) setFreeUsed(!!st.freeUsed); } catch { /* ignore */ }
         const b = await getWebflowBilling(sid);
         if (cancelled) return;
+        if (b?.status) setSubStatus(String(b.status).toLowerCase());
         if (b?.interval) {
           const iv = String(b.interval).toLowerCase();
           setCurrentInterval(iv);
@@ -54,10 +66,40 @@ function WUpgrade() {
     return () => { cancelled = true; };
   }, []);
 
+  // A canceled subscription can't switch interval in place. Detect it from the live
+  // status so the confirm popup offers "resubscribe via checkout" instead of a prorated
+  // in-place switch (the worker also returns { canceled:true } as a backstop).
+  const isCanceled = subStatus === "canceled" || subStatus === "incomplete_expired";
+
+  // Resubscribe to the current plan at the selected interval via a fresh Stripe checkout
+  // (same flow as a new upgrade) — used when the subscription was canceled.
+  const resubscribeCurrentPlan = async () => {
+    if (!currentKey || currentKey === "free") {
+      setError("Your subscription was canceled. Choose a plan below to resubscribe.");
+      return;
+    }
+    await startCheckout({ plan: currentKey, interval: billing, dest: "checkout-plan" });
+    if (nav?.startPaymentFlow) await nav.startPaymentFlow();
+  };
+
   // Switch the current plan's billing interval to the selected toggle (in place).
   const handleSwitchInterval = async () => {
     if (switching || !wfSiteId) return;
     setConfirmSwitch(false);
+    // Canceled sub → skip the in-place switch entirely and go straight to checkout.
+    if (isCanceled) {
+      setSwitching(true);
+      setError("");
+      setSwitchMsg("");
+      try {
+        await resubscribeCurrentPlan();
+      } catch (e) {
+        setError(e?.message || "Couldn't start checkout. Please try again.");
+      } finally {
+        setSwitching(false);
+      }
+      return;
+    }
     setSwitching(true);
     setError("");
     setSwitchMsg("");
@@ -66,6 +108,10 @@ function WUpgrade() {
       if (res?.success) {
         setCurrentInterval(billing);
         setSwitchMsg(`Billing switched to ${billing === "yearly" ? "yearly" : "monthly"}.`);
+      } else if (res?.canceled) {
+        // D1 status was stale but Stripe reports the sub canceled — resubscribe via checkout.
+        setSubStatus("canceled");
+        await resubscribeCurrentPlan();
       } else {
         setError(res?.error || "Couldn't switch billing interval.");
       }
@@ -76,26 +122,63 @@ function WUpgrade() {
     }
   };
   const cols = [
-  { name: "Free", monthly: "$0", yearly: "$0" },
+  { name: "Free", monthly: "$0", yearly: "$0", cta: "Continue free", ctaStyle: "secondary" },
   { name: "Basic", monthly: "$9", yearly: "$7", cta: "14-day free trial", ctaStyle: "outline" },
   { name: "Essential", monthly: "$20", yearly: "$16", cta: "14-day free trial", ctaStyle: "accent", best: true },
   { name: "Growth", monthly: "$56", yearly: "$45", cta: "14-day free trial", ctaStyle: "outline" }].
-  map((c) => ({ ...c, current: c.name.toLowerCase() === currentKey }));
+  map((c) => ({ ...c, current: hasPlan && c.name.toLowerCase() === currentKey }));
 
-  // Paid plan → create a checkout token and open the hosted /checkoutplan page
-  // (startCheckout opens the top-level tab itself and returns the href).
+  // Free plan blocked when the account already used its free site elsewhere (and no
+  // plan is taken here yet) — dim/blur the Free column like the plan page.
+  const freeBlocked = freeUsed && !hasPlan;
+
+  // Paid plan → create a checkout token and open the hosted /checkout-plan page
+  // (the read-only variant that shows the plan chosen here). startCheckout opens
+  // the top-level tab itself and returns the href.
   const handleUpgrade = async (planName) => {
     const plan = PLAN_ID[planName];
     if (!plan || busyPlan) return;
     setError("");
     setBusyPlan(planName);
     try {
-      await startCheckout({ plan, interval: billing });
+      await startCheckout({ plan, interval: billing, dest: "checkout-plan" });
       // Stripe checkout opened in a new tab — show the payment-processing popup
       // here, which polls until the subscription lands then routes to install.
       if (nav?.startPaymentFlow) await nav.startPaymentFlow();
     } catch (e) {
       setError(e?.message || "Couldn't start checkout. Please try again.");
+    } finally {
+      setBusyPlan(null);
+    }
+  };
+
+  // Free plan → register the free webapp site in place (mirrors the plan page's
+  // "Continue free"). On success, mark the site as on the Free plan.
+  const resolveEmail = async (sid) => {
+    if (nav?.accountEmail) return nav.accountEmail;
+    try { const st = await getWebflowSiteStatus(sid); return st?.email || ""; } catch { return ""; }
+  };
+  const handleContinueFree = async () => {
+    if (busyPlan) return;
+    setError("");
+    setSwitchMsg("");
+    setBusyPlan("Free");
+    try {
+      const { wfSiteId: sid, domain } = await getWebflowSiteContext();
+      if (!sid || !domain) { setError("Couldn't read your Webflow site. Open this inside the Designer and try again."); return; }
+      const email = await resolveEmail(sid);
+      const result = await registerWebflowFree({ wfSiteId: sid, domain, email });
+      if (result?.success) {
+        nav?.setPlan?.("free");
+        nav?.setRegistered?.(true);
+        setSwitchMsg("You're on the Free plan.");
+      } else if (result?.code === "SITE_LIMIT_REACHED") {
+        setError(`Your account already has a free site on ${result.existingDomain || "another domain"}.`);
+      } else {
+        setError(result?.error || "Couldn't register the free plan. Please try again.");
+      }
+    } catch (e) {
+      setError(e?.message || "Network error registering the free plan.");
     } finally {
       setBusyPlan(null);
     }
@@ -125,16 +208,23 @@ function WUpgrade() {
       const canSwitch = currentKey !== "free" && currentInterval && currentInterval !== billing;
       if (canSwitch) {
         return <button className="btn btn-sm" disabled={switching} onClick={() => setConfirmSwitch(true)} style={{ width: "100%", justifyContent: "center", background: ACC, color: "#fff", fontWeight: 700, fontSize: 11, padding: "8px 10px" }}>
-          {switching ? "Switching…" : `Switch to ${billing === "yearly" ? "Yearly" : "Monthly"}`}
+          {switching ? (isCanceled ? "Opening…" : "Switching…") : isCanceled ? `Subscribe to ${billing === "yearly" ? "Yearly" : "Monthly"}` : `Switch to ${billing === "yearly" ? "Yearly" : "Monthly"}`}
         </button>;
       }
       return <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 11, fontWeight: 600, color: "var(--text-muted)", border: "1px solid var(--border)", borderRadius: 999, padding: "6px 12px" }}>
         <span style={{ width: 6, height: 6, borderRadius: 999, background: "#5AE497" }} />Current plan
       </span>;
     }
-    // No button for a plan with no CTA (the Free column) — e.g. when a paid plan is active.
+    // No button for a plan with no CTA — e.g. when a paid plan is active.
     if (!c.cta) return null;
     const label = busyPlan === c.name ? "Starting…" : c.cta;
+    // Free plan → register the free site in place (not a Stripe checkout). Only
+    // offered when no plan is taken yet; a paid plan is current-plan handled above
+    // and shouldn't see a "downgrade to free" button.
+    if (c.name === "Free") {
+      if (hasPlan) return null;
+      return <button className="btn btn-sm" disabled={!!busyPlan || freeBlocked} onClick={handleContinueFree} style={{ width: "100%", justifyContent: "center", background: "var(--surface-3)", color: "var(--text)", border: "1px solid var(--border-2)", fontWeight: 600, fontSize: 12, padding: "9px 10px", opacity: busyPlan && busyPlan !== "Free" ? 0.6 : 1 }}>{label}</button>;
+    }
     if (c.ctaStyle === "accent") {
       return <button className="btn btn-sm" disabled={!!busyPlan} onClick={() => handleUpgrade(c.name)} style={{ width: "100%", justifyContent: "center", background: ACC, color: "#fff", fontWeight: 700, fontSize: 12, padding: "9px 10px", boxShadow: "0 6px 16px rgba(7,118,230,0.45)", opacity: busyPlan && busyPlan !== c.name ? 0.6 : 1 }}>{label}</button>;
     }
@@ -148,13 +238,19 @@ function WUpgrade() {
       {confirmSwitch &&
       <div onClick={() => setConfirmSwitch(false)} style={{ position: "fixed", inset: 0, zIndex: 100, background: "rgba(8,6,20,0.65)", backdropFilter: "blur(2px)", display: "grid", placeItems: "center", padding: 20 }}>
         <div onClick={(e) => e.stopPropagation()} className="card" style={{ width: 360, maxWidth: "100%", padding: 22, background: "var(--surface)", textAlign: "center", boxShadow: "0 24px 60px rgba(0,0,0,0.55)" }}>
-          <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 8 }}>Switch to {billing === "yearly" ? "yearly" : "monthly"} billing?</div>
+          <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 8 }}>
+            {isCanceled
+              ? `Subscribe to ${currentLabel} (${billing === "yearly" ? "yearly" : "monthly"})?`
+              : `Switch to ${billing === "yearly" ? "yearly" : "monthly"} billing?`}
+          </div>
           <div style={{ color: "var(--text-muted)", fontSize: 12.5, lineHeight: 1.55, marginBottom: 20 }}>
-            Your {currentLabel} plan will move to {billing === "yearly" ? "yearly" : "monthly"} billing. Stripe prorates the difference and charges your saved card — no re-entering card details.
+            {isCanceled
+              ? `Your ${currentLabel} plan was canceled, so it can't be switched in place. Continue to checkout to subscribe with ${billing === "yearly" ? "yearly" : "monthly"} billing.`
+              : `Your ${currentLabel} plan will move to ${billing === "yearly" ? "yearly" : "monthly"} billing. Stripe prorates the difference and charges your saved card — no re-entering card details.`}
           </div>
           <div style={{ display: "flex", gap: 8 }}>
             <button className="btn btn-secondary btn-sm" style={{ flex: 1, justifyContent: "center" }} onClick={() => setConfirmSwitch(false)}>Cancel</button>
-            <button className="btn btn-primary btn-sm" style={{ flex: 1, justifyContent: "center" }} disabled={switching} onClick={handleSwitchInterval}>{switching ? "Switching…" : "Confirm"}</button>
+            <button className="btn btn-primary btn-sm" style={{ flex: 1, justifyContent: "center" }} disabled={switching} onClick={handleSwitchInterval}>{switching ? (isCanceled ? "Opening…" : "Switching…") : (isCanceled ? "Continue to checkout" : "Confirm")}</button>
           </div>
         </div>
       </div>
@@ -165,11 +261,13 @@ function WUpgrade() {
         {/* Tight headline block */}
         <div className="card" style={{ background: "var(--surface)", padding: "14px 16px", marginBottom: 16 }}>
           <div style={{ fontSize: 14, fontWeight: 700, letterSpacing: "-0.01em", marginBottom: 4 }}>
-            {currentKey === "free"
-              ? "You're on Free. Unlock full compliance with Essential."
-              : currentKey === "growth"
-                ? "You're on the Growth plan — our top plan."
-                : `You're on ${currentLabel}. Manage or change your plan below.`}
+            {!currentKey
+              ? "Unlock full compliance with Essential."
+              : currentKey === "free"
+                ? "You're on Free. Unlock full compliance with Essential."
+                : currentKey === "growth"
+                  ? "You're on the Growth plan — our top plan."
+                  : `You're on ${currentLabel}. Manage or change your plan below.`}
           </div>
           <div style={{ fontSize: 11.5, color: "var(--text-muted)", lineHeight: 1.5 }}>
             {currentKey === "growth"
@@ -201,7 +299,15 @@ function WUpgrade() {
         </div>
 
         {/* Pricing table */}
-        <div className="card" style={{ padding: 0, overflow: "visible", marginTop: 6 }}>
+        <div className="card" style={{ padding: 0, overflow: "visible", marginTop: 6, position: "relative" }}>
+          {/* Free plan blocked — hover tip over the Free column (matches the plan page). */}
+          {freeBlocked &&
+          <div className="cb-free-col-tip" style={{ position: "absolute", top: 0, bottom: 0, left: "120px", width: "calc((100% - 120px) / 4)", zIndex: 6, cursor: "not-allowed" }}>
+            <span style={{ position: "absolute", bottom: "calc(100% - 64px)", left: "50%", transform: "translateX(-50%)", width: 180, background: "#0a0a14", color: "#fff", fontSize: 11, lineHeight: 1.45, textAlign: "center", padding: "8px 10px", borderRadius: 8, boxShadow: "0 10px 24px rgba(0,0,0,0.55)", opacity: 0, pointerEvents: "none", transition: "opacity 0.15s", zIndex: 7 }}>You've already taken a free subscription for this account.
+              <span style={{ position: "absolute", top: "100%", left: "50%", transform: "translateX(-50%)", width: 0, height: 0, borderLeft: "6px solid transparent", borderRight: "6px solid transparent", borderTop: "6px solid #0a0a14" }} />
+            </span>
+          </div>
+          }
           {/* Header row */}
           <div style={{ display: "grid", gridTemplateColumns: "120px repeat(4, 1fr)", borderBottom: "1px solid var(--border)" }}>
             <div />
@@ -210,7 +316,9 @@ function WUpgrade() {
               padding: "12px 10px 10px",
               textAlign: "center",
               position: "relative",
-              opacity: c.current ? 0.6 : 1,
+              opacity: freeBlocked && c.name === "Free" ? 0.45 : 1,
+              filter: freeBlocked && c.name === "Free" ? "blur(2px)" : "none",
+              pointerEvents: freeBlocked && c.name === "Free" ? "none" : "auto",
               background: c.best ? accentTint : "transparent",
               borderLeft: i > 0 && !c.best ? "1px solid var(--border)" : "none",
               border: c.best ? "2px solid " + ACC : undefined,
@@ -229,8 +337,8 @@ function WUpgrade() {
                 boxShadow: "0 4px 12px rgba(7,118,230,0.5)"
               }}>Recommended</div>
               }
-                <div style={{ fontSize: 12, color: c.best ? ACC : "var(--text-muted)", marginBottom: 4, fontWeight: c.best ? 700 : 500 }}>{c.name}</div>
-                <div style={{ fontSize: 18, fontWeight: 700, lineHeight: 1, marginBottom: 8 }}>
+                <div style={{ fontSize: 12, color: c.best ? ACC : "var(--text)", marginBottom: 4, fontWeight: c.best ? 700 : 500 }}>{c.name}</div>
+                <div style={{ fontSize: 18, fontWeight: 700, lineHeight: 1, marginBottom: 8, color: "var(--text)" }}>
                   {c[billing]}<span style={{ fontSize: 10, color: "var(--text-muted)", fontWeight: 400 }}>{priceSuffix}</span>
                 </div>
                 <div style={{ marginTop: "auto", width: "100%", display: "flex", justifyContent: "center" }}>{renderCta(c)}</div>
@@ -250,7 +358,9 @@ function WUpgrade() {
               padding: "7px 10px",
               fontSize: 11,
               textAlign: "center",
-              color: cols[j].current ? "var(--text-muted)" : "var(--text)",
+              color: "var(--text)",
+              opacity: freeBlocked && cols[j].name === "Free" ? 0.45 : 1,
+              filter: freeBlocked && cols[j].name === "Free" ? "blur(2px)" : "none",
               borderLeft: cols[j].best ? "2px solid " + ACC : "1px solid var(--border)",
               borderRight: cols[j].best ? "2px solid " + ACC : "none",
               fontWeight: cols[j].best ? 600 : 400,

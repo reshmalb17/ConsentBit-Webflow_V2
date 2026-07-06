@@ -113,7 +113,6 @@ function WProfile() {
           </div>
           <div style={{ display: "flex", gap: 6 }}>
             <button className="btn btn-secondary btn-sm" onClick={() => setEditing(true)}>Edit</button>
-            <button className="btn btn-primary btn-sm">Transfer Ownership</button>
           </div>
         </div>
 
@@ -122,7 +121,7 @@ function WProfile() {
         <div className="card" style={{ padding: 14, marginBottom: 12 }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
             <div style={{ fontWeight: 600, fontSize: 13 }}>Your Current plan</div>
-            <div style={{ color: "var(--purple-hi)", fontWeight: 600, fontSize: 13 }}>{feat.label}</div>
+            <div style={{ color: "var(--text)", fontWeight: 600, fontSize: 13 }}>{feat.label}</div>
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 10, marginBottom: 12 }}>
             {[

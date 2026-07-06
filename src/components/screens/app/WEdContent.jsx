@@ -72,8 +72,16 @@ function WEdContent() {
     nav.setCcpaContent((c) => ({ ...c, optOutTitle: cc.optOutTitle, optOutBody: cc.optOutBody, doNotShare: cc.doNotShare, cancel: cc.cancel, save: cc.save }));
   };
 
+  // Apply a language's button labels (reject/customize) — these live in their own
+  // state, so they must be updated alongside `fields` on every language change.
+  const applyLangButtons = (src) => {
+    setRejectLabel(src?.reject ?? editorDefaults.default.rejectLabel);
+    setCustomizeLabel(src?.customize ?? editorDefaults.default.customizeLabel);
+  };
+
   const applyTranslation = (l) => {
     setFields({ ...T[l] });
+    applyLangButtons(T[l]);
     setLang(l);
     if (l !== "English") setTranslated((p) => ({ ...p, [l]: true }));
     setEdited((p) => ({ ...p, [l]: {} }));
@@ -83,7 +91,9 @@ function WEdContent() {
   // Load a language's default content (translation, or English source).
   const loadLang = (l) => {
     if (translated[l] || l === "English") {
-      setFields(l === "English" ? { ...T.English } : { ...T[l] });
+      const src = l === "English" ? T.English : T[l];
+      setFields({ ...src });
+      applyLangButtons(src);
       setLang(l);
       applyLangToPref(l);
     } else {
@@ -186,7 +196,6 @@ function WEdContent() {
                 </div>
               </div>
             </div>
-            <div style={{ color: "var(--text-muted)", fontSize: 10.5, marginTop: 7, lineHeight: 1.45 }}>Edit your banner content per language. Translations are editable.</div>
           </div>
 
           {/* Banner type sub-tabs */}
@@ -206,22 +215,8 @@ function WEdContent() {
 
           {tab === "default" &&
             <div className="card" style={{ padding: 14, marginBottom: 12 }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12, gap: 8, flexWrap: "wrap" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <div style={{ fontWeight: 600, fontSize: 12.5 }}>Cookie Notice</div>
-                {isAuto &&
-                  <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontWeight: 600, color: "var(--purple-hi)", background: "var(--purple-soft)", border: "1px solid rgba(124,92,252,0.4)", borderRadius: 999, fontSize: "9px", lineHeight: 1, padding: "2px 7px", whiteSpace: "nowrap" }}>
-                  <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><circle cx="12" cy="12" r="10" /><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" /></svg>
-                  Auto-translated · editable
-                </span>
-                  }
-              </div>
-              {lang !== "English" &&
-                <button onClick={onReTranslate} className="cb-ed-reset" style={{ padding: "4px 9px", fontSize: 10.5 }}>
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8" /><path d="M3 3v5h5" /></svg>
-                Re-translate
-              </button>
-                }
+            <div style={{ display: "flex", alignItems: "center", marginBottom: 12 }}>
+              <div style={{ fontWeight: 600, fontSize: 12.5 }}>Cookie Notice</div>
             </div>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
               <span className="field-label" style={{ marginBottom: 0, display: "inline-flex", alignItems: "center", gap: 6 }}>Title {editedChip("title")}</span>
@@ -237,7 +232,14 @@ function WEdContent() {
             <WEdRow label="Close button" checked={nav ? nav.closeBtn : false} onChange={(v) => nav && nav.setCloseBtn(v)} />
 
             {isCCPA ?
+            <>
             <Field label={<>{'"Do Not Share" link'} {diffChip(ccpaContent.doNotShare, CCcur.doNotShare)}</>} help={false}><input className="input" maxLength={50} value={ccpaContent.doNotShare} onChange={(e) => setCcpa({ doNotShare: e.target.value })} /></Field>
+
+            <WEdRow label={<>{'"Cookie policy" Link'} {diffChip(policyLabel, editorDefaults.default.policyLinkLabel)}</>} checked={nav ? nav.showPolicy : false} onChange={(v) => nav && nav.setShowPolicy(v)} />
+            <input className="input" maxLength={LIMITS.policyLabel} value={policyLabel} onChange={(e) => setPolicyLabel(e.target.value)} style={{ marginBottom: 12 }} />
+
+            <Field label={<>URL {diffChip(policyUrl, editorDefaults.default.policyUrl)}</>} help={false}><input className="input" value={policyUrl} onChange={(e) => setPolicyUrl(e.target.value)} /></Field>
+            </>
             : <>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
               <span className="field-label" style={{ marginBottom: 0, display: "inline-flex", alignItems: "center", gap: 6 }}>Accept All {editedChip("accept")}</span>
@@ -251,7 +253,7 @@ function WEdContent() {
             <WEdRow label={<>{'"Customize" button'} {diffChip(customizeLabel, editorDefaults.default.customizeLabel)}</>} checked={nav ? nav.showCustomize : true} onChange={(v) => nav && nav.setShowCustomize(v)} />
             <input className="input" maxLength={LIMITS.button} value={customizeLabel} onChange={(e) => setCustomizeLabel(e.target.value)} style={{ marginBottom: 12 }} />
 
-            <WEdRow label={<>{'"Cookie policy" Link'} {diffChip(policyLabel, editorDefaults.default.policyLinkLabel)}</>} checked={nav ? nav.showPolicy : true} onChange={(v) => nav && nav.setShowPolicy(v)} />
+            <WEdRow label={<>{'"Cookie policy" Link'} {diffChip(policyLabel, editorDefaults.default.policyLinkLabel)}</>} checked={nav ? nav.showPolicy : false} onChange={(v) => nav && nav.setShowPolicy(v)} />
             <input className="input" maxLength={LIMITS.policyLabel} value={policyLabel} onChange={(e) => setPolicyLabel(e.target.value)} style={{ marginBottom: 12 }} />
 
             <Field label={<>URL {diffChip(policyUrl, editorDefaults.default.policyUrl)}</>} help={false}><input className="input" value={policyUrl} onChange={(e) => setPolicyUrl(e.target.value)} /></Field>

@@ -169,7 +169,7 @@ function WConsentLogs() {
                   <td className="mono" style={{ color: "var(--purple-hi)" }}>{String(r.id).slice(0, 12)}</td>
                   <td style={{ fontWeight: 500 }}>{fmtTime(r.createdAt)}</td>
                   <td>{displayStatus(r.status)}</td>
-                  <td><span className="badge badge-blue">{bannerTypeOf(r)}</span></td>
+                  <td><span className="badge badge-grey">{bannerTypeOf(r)}</span></td>
                   <td>
                     <button className="btn btn-secondary btn-sm" title="Download PDF" aria-label="Download PDF" disabled={pdfBusyId === r.id} style={{ padding: "6px 8px" }} onClick={() => exportPdf(r.id)}>
                       {pdfBusyId === r.id ? "…" : <Icon.download />}

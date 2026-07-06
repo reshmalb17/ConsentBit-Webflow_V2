@@ -100,7 +100,9 @@ function WEdPreview({ variant = "default" }) {
   const bannerTextAlign = nav ? nav.bannerTextAlign : "left";
 
   const cardBase = { background: colors.bannerBg, borderRadius: 10, padding: 14, boxShadow: "0 14px 30px rgba(0,0,0,0.4)" };
-  const titleStyle = { fontSize: 14, fontWeight: bannerWeight, marginBottom: 6, color: colors.headingColor, textAlign: bannerTextAlign, overflowWrap: "break-word", wordBreak: "break-word" };
+  // Reserve clearance on the right so a right-aligned heading doesn't run under
+  // the close ✕ (pinned top-right at right:12).
+  const titleStyle = { fontSize: 14, fontWeight: bannerWeight, marginBottom: 6, color: colors.headingColor, textAlign: bannerTextAlign, overflowWrap: "break-word", wordBreak: "break-word", paddingRight: bannerTextAlign === "right" ? 22 : 0 };
   const bodyStyle = { fontSize: "11px", lineHeight: 1.5, marginBottom: 10, color: colors.textColor, fontWeight: bannerWeight, textAlign: bannerTextAlign, overflowWrap: "break-word", wordBreak: "break-word" };
   // Live banner text from the Content editor.
   const content = nav ? nav.bannerContent : { title: simpleBanner.title, message: simpleBanner.body, accept: simpleBanner.buttons.accept, reject: simpleBanner.buttons.reject, customize: simpleBanner.buttons.preference };
@@ -112,7 +114,7 @@ function WEdPreview({ variant = "default" }) {
   const showClose = nav ? nav.closeBtn : false; // Content "Close button" toggle
   const showReject = nav ? nav.showReject : true;
   const showCustomize = nav ? nav.showCustomize : true;
-  const showPolicy = nav ? nav.showPolicy : true;
+  const showPolicy = nav ? nav.showPolicy : false;
   // Cookie policy link, appended inline to the message (matches the webapp).
   const policyHref = content.policyUrl && !/^https?:\/\//i.test(content.policyUrl) ? "https://" + content.policyUrl : content.policyUrl;
   const policyLink = showPolicy && content.policyUrl ?

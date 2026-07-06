@@ -22,6 +22,7 @@ export const cookieCategories = [
   { id: "analytics", name: "Analytics", alwaysActive: false, description: "Analytical cookies are used to understand how visitors interact with the website. These cookies help provide information on metrics such as the number of visitors, bounce rate, traffic source, etc." },
   { id: "performance", name: "Performance", alwaysActive: false, description: "Performance cookies are used to understand and analyze the key performance indexes of the website which helps in delivering a better user experience for the visitors." },
   { id: "advertisement", name: "Advertisement", alwaysActive: false, description: "Advertisement cookies are used to provide visitors with customized advertisements based on the pages you visited previously and to analyze the effectiveness of the ad campaigns." },
+  { id: "uncategorized", name: "Uncategorized", alwaysActive: false, description: "Uncategorized cookies are cookies that are currently being reviewed and have not yet been assigned to a specific category." },
 ];
 
 // ── IAB / TCF purposes, special purposes & features ──────────────────────────
@@ -215,9 +216,9 @@ export const ccpaLocalization = {
 };
 
 export const localization = {
-  English: { title: "We value your privacy", message: "We use cookies to enhance your browsing experience, serve personalised ads or content, and analyse our traffic. By clicking \"Accept All\", you consent to our use of cookies.", accept: "Accept" },
-  Spanish: { title: "Valoramos su privacidad", message: "Usamos cookies para mejorar su experiencia de navegación, mostrar anuncios o contenido personalizado y analizar nuestro tráfico. Al hacer clic en «Aceptar todo», acepta nuestro uso de cookies.", accept: "Aceptar" },
-  French: { title: "Nous respectons votre vie privée", message: "Nous utilisons des cookies pour améliorer votre expérience de navigation, diffuser des publicités ou contenus personnalisés et analyser notre trafic. En cliquant sur « Tout accepter », vous consentez à notre utilisation des cookies.", accept: "Accepter" },
-  German: { title: "Wir schätzen Ihre Privatsphäre", message: "Wir verwenden Cookies, um Ihr Surferlebnis zu verbessern, personalisierte Anzeigen oder Inhalte bereitzustellen und unseren Datenverkehr zu analysieren. Durch Klicken auf „Alle akzeptieren“ stimmen Sie unserer Verwendung von Cookies zu.", accept: "Akzeptieren" },
-  Dutch: { title: "Wij waarderen uw privacy", message: "We gebruiken cookies om uw browse-ervaring te verbeteren, gepersonaliseerde advertenties of inhoud weer te geven en ons verkeer te analyseren. Door op \"Alles accepteren\" te klikken, stemt u in met ons gebruik van cookies.", accept: "Accepteren" },
+  English: { title: "We value your privacy", message: "We use cookies to enhance your browsing experience, serve personalised ads or content, and analyse our traffic. By clicking \"Accept All\", you consent to our use of cookies.", accept: "Accept", reject: "Reject", customize: "Customize" },
+  Spanish: { title: "Valoramos su privacidad", message: "Usamos cookies para mejorar su experiencia de navegación, mostrar anuncios o contenido personalizado y analizar nuestro tráfico. Al hacer clic en «Aceptar todo», acepta nuestro uso de cookies.", accept: "Aceptar", reject: "Rechazar", customize: "Personalizar" },
+  French: { title: "Nous respectons votre vie privée", message: "Nous utilisons des cookies pour améliorer votre expérience de navigation, diffuser des publicités ou contenus personnalisés et analyser notre trafic. En cliquant sur « Tout accepter », vous consentez à notre utilisation des cookies.", accept: "Accepter", reject: "Refuser", customize: "Personnaliser" },
+  German: { title: "Wir schätzen Ihre Privatsphäre", message: "Wir verwenden Cookies, um Ihr Surferlebnis zu verbessern, personalisierte Anzeigen oder Inhalte bereitzustellen und unseren Datenverkehr zu analysieren. Durch Klicken auf „Alle akzeptieren“ stimmen Sie unserer Verwendung von Cookies zu.", accept: "Akzeptieren", reject: "Ablehnen", customize: "Anpassen" },
+  Dutch: { title: "Wij waarderen uw privacy", message: "We gebruiken cookies om uw browse-ervaring te verbeteren, gepersonaliseerde advertenties of inhoud weer te geven en ons verkeer te analyseren. Door op \"Alles accepteren\" te klikken, stemt u in met ons gebruik van cookies.", accept: "Accepteren", reject: "Weigeren", customize: "Aanpassen" },
 };

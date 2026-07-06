@@ -1,6 +1,5 @@
 import React from "react";
 import { Icon } from "../lib/icons.jsx";
-import { WLogo } from "./WLogo.jsx";
 import { useNav } from "../../nav.jsx";
 
 const PLAN_LABELS = { free: "Free", basic: "Basic", essential: "Essential", growth: "Growth" };
@@ -14,7 +13,6 @@ function WTopBar({ minimal = false }) {
   const avatarInitials = (nav?.accountEmail || "").trim().slice(0, 2).toUpperCase() || "—";
   return (
     <div className="cb-topbar">
-      <WLogo />
       <div style={{ flex: 1 }} />
       <div className="cb-topbar-right">
         {planLabel && <span className="cb-plan-pill">Plan <b>{planLabel}</b></span>}

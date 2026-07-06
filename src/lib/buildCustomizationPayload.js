@@ -85,7 +85,9 @@ export function buildCustomizationPayload(ctx = {}) {
     closeBtn = false,
     showReject = true,
     showCustomize = true,
-    showPolicy = true,
+    showPolicy = false,
+    floating = false,
+    floatPos = "left",
     language = "English",
     iab = false,
     gac = false,
@@ -153,7 +155,10 @@ export function buildCustomizationPayload(ctx = {}) {
     autoDetectLanguage:   0,
     cookieExpirationDays: 120,
     showBannerLogo:       1,
-    bannerLogoPosition:   "left",
+    // Mirror floatingButtonPosition — the runtime loaders read bannerLogoPosition
+    // FIRST when positioning the floating trigger, so these two MUST agree (matches
+    // the live app, which sets both from bannerToggleStates.logoPosition).
+    bannerLogoPosition:   floatPos === "right" ? "right" : "left",
     privacyPolicyUrl:     privacyUrl ?? "",
 
     configJson: null,
@@ -173,8 +178,13 @@ export function buildCustomizationPayload(ctx = {}) {
         rejectButtonEnabled:     showReject ? "1" : "0",
         customizeButtonEnabled:  showCustomize ? "1" : "0",
         cookiePolicyLinkEnabled: privacyUrl ? "1" : "0",
-        floatingButtonEnabled:   "1",
-        floatingButtonPosition:  "left",
+        floatingButtonEnabled:   floating ? "1" : "0",
+        floatingButtonPosition:  floatPos === "right" ? "right" : "left",
+        // IAB / Google Additional Consent (config-level, matching the webapp — the
+        // runtime reads these here). Gated on IAB: GAC only applies when IAB is on.
+        isIab:                   iabEnabled,
+        isGoogleAc:              googleAc,       // !!iab && !!gac
+        googleAdditionalConsent: googleAc,       // !!iab && !!gac
       },
       // en: language-specific text content (always stored under the 'en' key)
       en: {

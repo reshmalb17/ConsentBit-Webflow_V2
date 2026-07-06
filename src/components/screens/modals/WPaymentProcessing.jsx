@@ -13,7 +13,7 @@ import { getPaymentSubscription } from "../../../lib/api.js";
 //     instantly; then every 30s, for up to 10 polls = 5 minutes.
 //   • After 5 minutes with no payment → "timeout" phase shows a Retry button,
 //     which restarts a fresh 10-poll / 5-minute cycle.
-//   • Cancel ("I don't want to make payment") stops polling and closes.
+//   • Cancel ("Cancel") stops polling and closes.
 //   • On success → onPaid({ plan }) (parent closes the popup + updates the UI).
 
 const POLL_INTERVAL_MS = 30000; // 30s between polls
@@ -162,7 +162,7 @@ export function WPaymentProcessing({ siteId, baseline, onPaid, onCancel }) {
             className="btn btn-ghost btn-sm"
             style={{ width: "100%", justifyContent: "center", color: "var(--text-muted)" }}
             onClick={handleCancel}
-          >I don't want to make payment</button>
+          >Cancel</button>
         </div>
       </div>
     </div>

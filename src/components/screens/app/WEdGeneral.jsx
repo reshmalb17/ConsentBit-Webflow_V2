@@ -13,7 +13,6 @@ function WEdGeneral({ cta }) {
   const planKey = String(nav?.plan || "free").toLowerCase();
   const canUseTcf = planKey === "essential" || planKey === "growth";
   const showProUpsell = !canUseTcf;
-  const [subs, setSubs] = React.useState([false, false]); // the two Google consent toggles
   return (
     <WEdShell active="general" cta={cta}>
       <div
@@ -58,38 +57,33 @@ function WEdGeneral({ cta }) {
               </div>
               {/* Enable IAB TCF only on Essential/Growth (gated via props — no wrapper,
                   so the toggle keeps its original design). */}
-              <Toggle on={canUseTcf && iab} onClick={canUseTcf ? () => setIab((v) => !v) : undefined} />
+              <Toggle on={canUseTcf && iab} onClick={canUseTcf ? () => {
+                const next = !iab;
+                setIab(next);
+                // Google Additional Consent depends on IAB TCF — turn it off too.
+                if (!next && nav) nav.setGac(false);
+              } : undefined} />
             </div>
             {/* Google Consent Mode toggles are only accessible when IAB TCF is on (and allowed by plan). */}
             <div style={{ opacity: (canUseTcf && iab) ? 1 : 0.45, pointerEvents: (canUseTcf && iab) ? "auto" : "none" }} title={(canUseTcf && iab) ? undefined : "Enable IAB TCF v2.3 first"}>
-            {[
-              "Support Google's Additional Consent Mode",
-              "Enable Google's Advertiser Consent Mode",
-            ].map((l, i) => (
-              <div
-                key={i}
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                  gap: 10,
-                  padding: "10px 0",
-                  borderTop: "1px solid var(--border)",
-                }}
-              >
-                <div style={{ fontSize: 11.5, color: "var(--text-muted)" }}>
-                  {l}
-                </div>
-                <Toggle
-                  on={i === 0 ? (nav ? nav.gac : false) : subs[i]}
-                  onClick={
-                    i === 0
-                      ? () => nav && nav.setGac((v) => !v)
-                      : () => setSubs((s) => s.map((v, j) => (j === i ? !v : v)))
-                  }
-                />
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                gap: 10,
+                padding: "10px 0",
+                borderTop: "1px solid var(--border)",
+              }}
+            >
+              <div style={{ fontSize: 11.5, color: "var(--text-muted)" }}>
+                Support Google's Additional Consent Mode
               </div>
-            ))}
+              <Toggle
+                on={nav ? nav.gac : false}
+                onClick={() => nav && nav.setGac((v) => !v)}
+              />
+            </div>
             </div>
             {showProUpsell &&
             <div

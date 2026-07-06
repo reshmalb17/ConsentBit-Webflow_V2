@@ -86,28 +86,20 @@ function WEdLayout() {
           </div>
           </>}
 
-          {/* Border Radius */}
+          {/* Border Radius — editable value field (0–25) */}
           <div className="card" style={{ padding: 14, marginBottom: 12 }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
-              <div style={{ fontWeight: 600, fontSize: 12.5 }}>Border Radius</div>
-              <span style={{ fontSize: 11, color: "var(--text-muted)" }}>{radius}px</span>
-            </div>
+            <div style={{ fontWeight: 600, fontSize: 12.5, marginBottom: 10 }}>Border Radius</div>
             <input
-              type="range" min={0} max={25} value={radius}
-              onChange={(e) => setRadius(Math.min(25, Math.max(0, Number(e.target.value) || 0)))}
-              style={{ width: "100%", accentColor: "var(--purple)" }} />
+              type="number" min={0} max={25} value={radius} className="input"
+              onChange={(e) => setRadius(Math.min(25, Math.max(0, Number(e.target.value) || 0)))} />
           </div>
 
-          {/* Button Radius */}
+          {/* Button Radius — editable value field (0–24) */}
           <div className="card" style={{ padding: 14, marginBottom: 12 }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
-              <div style={{ fontWeight: 600, fontSize: 12.5 }}>Button Radius</div>
-              <span style={{ fontSize: 11, color: "var(--text-muted)" }}>{btnRadius}px</span>
-            </div>
+            <div style={{ fontWeight: 600, fontSize: 12.5, marginBottom: 10 }}>Button Radius</div>
             <input
-              type="range" min={0} max={24} value={btnRadius}
-              onChange={(e) => setBtnRadius(Math.min(24, Math.max(0, Number(e.target.value) || 0)))}
-              style={{ width: "100%", accentColor: "var(--purple)" }} />
+              type="number" min={0} max={24} value={btnRadius} className="input"
+              onChange={(e) => setBtnRadius(Math.min(24, Math.max(0, Number(e.target.value) || 0)))} />
           </div>
 
           {/* Animation — custom dropdown that opens upward so it stays in-frame */}

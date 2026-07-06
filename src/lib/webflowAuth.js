@@ -104,16 +104,19 @@ async function currentSiteDomain(info) {
 }
 
 /**
- * Open the paid-plan checkout (`/checkoutplan`) on the webapp front-end for the
- * current Webflow site. Passes the site context + version so the checkout page
- * and Worker route the v2 Webflow flow.
+ * Open the paid-plan checkout on the webapp front-end for the current Webflow
+ * site. Passes the site context + version so the checkout page and Worker route
+ * the v2 Webflow flow.
  *
  *   plan     — optional: 'basic' | 'essential' | 'growth' (omit → page default)
  *   interval — 'monthly' | 'yearly'
+ *   dest     — which checkout page to land on (allow-listed server-side):
+ *                'checkoutplan'  → interactive plan picker (install / plan page) [default]
+ *                'checkout-plan' → read-only, shows the plan already chosen here (upgrade page)
  *
  * The extension runs in the Designer iframe, so this opens a top-level tab.
  */
-export async function startCheckout({ plan, interval = "monthly", email } = {}) {
+export async function startCheckout({ plan, interval = "monthly", email, dest } = {}) {
   const info = await window.webflow?.getSiteInfo?.().catch(() => null);
   const wfSiteId = info?.siteId || info?.id || null;
   const domain = await currentSiteDomain(info);
@@ -149,12 +152,14 @@ export async function startCheckout({ plan, interval = "monthly", email } = {}) 
     /* fall back to posting the raw context below */
   }
 
-  // Open /checkoutplan by POSTing the context in the request BODY via an
+  // Open the checkout page by POSTing the context in the request BODY via an
   // auto-submitting form in a new top-level tab. The /api/checkout-open route
-  // stashes it in a short-lived cookie and redirects to a clean /checkoutplan URL
-  // — so nothing (token or PII) ever appears in the URL.
+  // stashes it in a short-lived cookie and redirects to a clean checkout URL —
+  // so nothing (token or PII) ever appears in the URL. `dest` selects which
+  // checkout page to land on (install/plan → /checkoutplan, upgrade → /checkout-plan).
   const action = `${CHECKOUT_BASE_URL}/api/checkout-open`;
-  const fields = token ? { t: token } : payload;
+  const fields = token ? { t: token } : { ...payload };
+  if (dest) fields.dest = dest;
   const form = document.createElement("form");
   form.method = "POST";
   form.action = action;

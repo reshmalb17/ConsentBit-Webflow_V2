@@ -271,11 +271,26 @@ export async function verifyInstallation() {
     return { published: true, found: false, error: "This site isn't registered yet. Select a plan first." };
   }
 
-  const result = await verifyScript({
-    publicUrl,
-    scriptUrl: status.scriptUrl,
-    siteId: status.webappSiteId,
-  });
+  // Webflow's publish propagates across its CDN asynchronously, so the script
+  // can be missing from the very first fetch even when it's correctly in the
+  // <head>. Retry a few times with a short backoff before declaring failure —
+  // stop as soon as it's found (or a hard error other than "not found").
+  const VERIFY_ATTEMPTS = 4;
+  const VERIFY_RETRY_MS = 3000;
+  let result = { success: false, found: false };
+  for (let attempt = 1; attempt <= VERIFY_ATTEMPTS; attempt++) {
+    result = await verifyScript({
+      publicUrl,
+      scriptUrl: status.scriptUrl,
+      siteId: status.webappSiteId,
+    });
+    if (result.found) break; // script is live — done
+    // A hard error (site blocking us, 404, server error) won't fix itself on
+    // retry — surface it immediately. Only a clean "loaded but not found yet"
+    // (success:true, found:false, no error) is the propagation race worth retrying.
+    if (result.error && result.success === false) break;
+    if (attempt < VERIFY_ATTEMPTS) await new Promise((r) => setTimeout(r, VERIFY_RETRY_MS));
+  }
   return { published: true, ...result };
 }
 
@@ -435,7 +450,10 @@ export async function scanSiteNow(siteId) {
   const timeoutId = setTimeout(() => controller.abort(), 45000);
   let res;
   try {
-    res = await fetch(`${WORKER_BASE_URL}/api/scan-site`, {
+    // Consented scan: accepts the ConsentBit banner during the scan so consent-gated
+    // tags fire and their post-consent cookies are captured. Same response shape as
+    // /api/scan-site, so the existing polling flow is unchanged.
+    res = await fetch(`${WORKER_BASE_URL}/api/scan-site-consented`, {
       method: "POST",
       headers: { "Content-Type": "application/json", "X-Requested-With": "XMLHttpRequest" },
       body: JSON.stringify({ siteId }),

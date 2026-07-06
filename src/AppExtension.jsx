@@ -69,7 +69,7 @@ export default function AppExtension() {
   });
   const [showReject, setShowReject] = React.useState(true);      // Content: show the Reject button
   const [showCustomize, setShowCustomize] = React.useState(true); // Content: show the Customize/Preference button
-  const [showPolicy, setShowPolicy] = React.useState(true);      // Content: show the Cookie policy link
+  const [showPolicy, setShowPolicy] = React.useState(false);     // Content: show the Cookie policy link (off by default)
   const [floating, setFloating] = React.useState(false);         // Content: floating reopen button/logo enabled
   const [floatPos, setFloatPos] = React.useState("left");        // Content: floating button position (left | right)
   const [bannerWeight, setBannerWeight] = React.useState("700");  // Type: font weight (heading + text)
@@ -235,7 +235,7 @@ export default function AppExtension() {
       <WSelectPlan
         freeDisabled={freeUsed}
         onSelectPlan={() => { setRegistered(true); setScreen("install-verify"); }}
-        onFreeRegistered={(result) => { setFreeResult(result); setRegistered(true); setScreen("install-verify"); }}
+        onFreeRegistered={(result) => { setFreeResult(result); setPlan("free"); setRegistered(true); setScreen("install-verify"); }}
         onFreeLimitReached={() => setFreeUsed(true)}
         onSkip={() => setScreen("app")}
       />
