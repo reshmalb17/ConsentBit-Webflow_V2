@@ -61,6 +61,7 @@ export default function AppExtension() {
   const [closeBtn, setCloseBtn] = React.useState(false);         // Content: show the close (X) icon
   const [activeRegion, setActiveRegion] = React.useState("GDPR"); // preview region (GDPR | CCPA) — drives the Content editor too
   const [ccpaContent, setCcpaContent] = React.useState({         // CCPA-specific editable content
+    message: ccpaBanner.message,
     doNotShare: ccpaBanner.doNotShare,
     optOutTitle: ccpaBanner.optOutTitle,
     optOutBody: ccpaBanner.optOutBody,
@@ -187,11 +188,29 @@ export default function AppExtension() {
 
   // Payment confirmed by the popup's polling: update the plan, close the popup,
   // and send the user to the install + verify code section.
-  const handlePaymentSuccess = React.useCallback(({ plan: paidPlan } = {}) => {
-    if (paidPlan) setPlan(paidPlan);
+  const handlePaymentSuccess = React.useCallback(async ({ plan: paidPlan } = {}) => {
+    if (paidPlan) setPlan(paidPlan); // optimistic — from the payment poll
     setRegistered(true); // a paid plan is now taken → Install & verify is allowed
     setPaymentFlow({ open: false, siteId: null });
+    // Land on Install & verify and STAY there: this flag both (a) stops WInstallVerify's
+    // "script already present → jump to customization" auto-redirect, and (b) shows the
+    // "Back to customization" link so the user can return when they're ready.
+    setInstallVerifyFromApp(true);
     setScreen("install-verify");
+    // Reconcile against the authoritative source (D1 via oauth/status) so the new
+    // plan survives a reload instead of relying only on the optimistic poll value.
+    try {
+      const { wfSiteId } = await getWebflowSiteContext();
+      if (!wfSiteId) return;
+      const status = await getWebflowSiteStatus(wfSiteId);
+      if (status && status.registered) {
+        setRegistered(true);
+        if (status.plan) setPlan(status.plan);
+        setBannerCreated(!!status.bannerCreated);
+      }
+    } catch {
+      /* keep the optimistic plan if the reconcile fetch fails */
+    }
   }, []);
 
   // Navigate to the Install & verify page from anywhere in the app, and back.

@@ -97,8 +97,9 @@ function WProfile() {
   return (
     <WPage style={{ position: "relative" }}>
       <WTopBar />
-      <WMainTabs active="" left />
-      <div style={{ padding: "16px 16px", borderTop: "1px solid var(--border)", marginTop: 12 }}>
+      {/* Navbar (Cookie Banner / Scan / Consent Logs / Upgrade) hidden in the profile section */}
+      {/* <WMainTabs active="" left /> */}
+      <div style={{ padding: "16px 16px", marginTop: 12 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
           <div style={{ fontSize: 15, fontWeight: 600 }}>Profile Settings</div>
           <div style={{ display: "flex", gap: 6 }}>

@@ -15,7 +15,7 @@ function WMainTabs({ active, right, left }) {
   { id: "upgrade", label: "Upgrade" }];
 
   return (
-    <div className="cb-main-tabs" style={right ? { justifyContent: "space-between", alignItems: "center", padding: "10px 16px 0" } : left ? { justifyContent: "flex-start", padding: "10px 16px 0" } : undefined}>
+    <div className="cb-main-tabs" style={right ? { justifyContent: "space-between", alignItems: "center", padding: "18px 32px 10px" } : left ? { justifyContent: "flex-start", padding: "18px 32px 10px" } : undefined}>
       <div className="cb-main-tabs-inner">
         {tabs.map((t) =>
         <button key={t.id} onClick={nav ? () => nav.setMainTab(t.id) : undefined} className={"cb-tab " + (t.id === "upgrade" ? "cb-tab-glow " : "") + (current === t.id ? "active" : "")} style={{ opacity: "1", color: "rgb(244, 242, 255)" }}>{t.label}</button>

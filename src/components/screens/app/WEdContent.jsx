@@ -278,7 +278,7 @@ function WEdContent() {
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
               <div style={{ fontWeight: 600, fontSize: 12.5 }}>Preference Banner</div>
             </div>
-            <Field label={<>Title {diffChip(prefContent.title, PLcur.title)}</>}><input className="input" maxLength={LIMITS.title} value={prefContent.title} onChange={(e) => setPref({ title: e.target.value })} /></Field>
+            <Field label={<>Title {diffChip(prefContent.title, PLcur.title)}</>} help={false}><input className="input" maxLength={LIMITS.title} value={prefContent.title} onChange={(e) => setPref({ title: e.target.value })} /></Field>
             <Field label={<>Privacy overview {diffChip(prefContent.overview, PLcur.overview)}</>} help={false}>
               <textarea className="input" rows="4" maxLength={LIMITS.message} value={prefContent.overview} onChange={(e) => setPref({ overview: e.target.value })} />
             </Field>

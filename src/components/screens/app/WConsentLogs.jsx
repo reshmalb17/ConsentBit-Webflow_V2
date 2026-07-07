@@ -54,6 +54,22 @@ function WConsentLogs() {
   const pageCount = Math.max(1, Math.ceil(total / PER_PAGE));
   const start = (page - 1) * PER_PAGE;
 
+  // Collapse duplicate rows: a single accept/reject can write two identical
+  // Consent records within the same second (overlapping client handlers), which
+  // otherwise show up as two identical rows. De-dupe by content so they render
+  // as one. Duplicates land adjacently here (ORDER BY createdAt DESC).
+  const visibleConsents = React.useMemo(() => {
+    const seen = new Set();
+    const out = [];
+    for (const r of consents) {
+      const key = `${r.createdAt}|${r.status}|${bannerTypeOf(r)}|${r.deviceId ?? ""}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      out.push(r);
+    }
+    return out;
+  }, [consents]);
+
   // Resolve the webapp site id once.
   React.useEffect(() => {
     let cancelled = false;
@@ -160,11 +176,11 @@ function WConsentLogs() {
               </tr>
             </thead>
             <tbody>
-              {loading && consents.length === 0 ?
+              {loading && visibleConsents.length === 0 ?
               <tr><td colSpan={5} style={{ textAlign: "center", color: "var(--text-muted)", padding: "22px 12px" }}>Loading…</td></tr> :
-              consents.length === 0 ?
+              visibleConsents.length === 0 ?
               <tr><td colSpan={5} style={{ textAlign: "center", color: "var(--text-muted)", padding: "22px 12px" }}>No consent logs yet.</td></tr> :
-              consents.map((r) =>
+              visibleConsents.map((r) =>
               <tr key={r.id}>
                   <td className="mono" style={{ color: "var(--purple-hi)" }}>{String(r.id).slice(0, 12)}</td>
                   <td style={{ fontWeight: 500 }}>{fmtTime(r.createdAt)}</td>

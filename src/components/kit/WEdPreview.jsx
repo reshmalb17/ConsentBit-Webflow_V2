@@ -37,6 +37,20 @@ function WEdPreview({ variant = "default" }) {
   const [prefMore, setPrefMore] = React.useState(false);   // preference overview "Show more"
   const [catMore, setCatMore] = React.useState(null);      // index of the one expanded category description
 
+  // Any terminal action (Accept/Reject/Save/Cancel) or a click outside the
+  // banner card returns the preview to the initial default banner and clears
+  // interaction state — mirrors finishing/dismissing the real consent flow.
+  // Applies to every variant (GDPR default + preference, CCPA opt-out).
+  const resetToInitial = () => {
+    setView("default");
+    setOpenAcc(null);
+    setCatOn({});
+    setCcpaCheck(false);
+    setMsgMore(false);
+    setPrefMore(false);
+    setCatMore(null);
+  };
+
   // Simulated viewport width per device.
   const winWidth = device === "Phone" ? 250 : device === "Tab" ? 380 : "100%";
   // Desktop initial banner is wider so it reads correctly on the full-width
@@ -93,7 +107,7 @@ function WEdPreview({ variant = "default" }) {
   const solidBtn = { background: colors.btnBg, color: colors.btnText, border: "1px solid " + colors.btnBg, borderRadius: bannerBtnRadius, padding: "6px 14px", fontSize: 11, fontWeight: 600, cursor: "pointer", ...btnText };
   // Preferences buttons (Preference / Save my preferences).
   const prefBtn = { background: colors.prefBtnBg, color: colors.prefBtnText, border: "1px solid " + colors.prefBtnText, borderRadius: bannerBtnRadius, padding: "6px 14px", fontSize: 11, fontWeight: 600, cursor: "pointer", ...btnText };
-  const closeX = <span onClick={() => setView("default")} style={{ position: "absolute", top: 10, right: 12, fontSize: 13, color: "#888", cursor: "pointer" }}>✕</span>;
+  const closeX = <span onClick={resetToInitial} style={{ position: "absolute", top: 10, right: 12, fontSize: 13, color: "#888", cursor: "pointer" }}>✕</span>;
 
   // Type tab: font weight + text alignment.
   const bannerWeight = nav ? nav.bannerWeight : "400";
@@ -107,7 +121,7 @@ function WEdPreview({ variant = "default" }) {
   // Live banner text from the Content editor.
   const content = nav ? nav.bannerContent : { title: simpleBanner.title, message: simpleBanner.body, accept: simpleBanner.buttons.accept, reject: simpleBanner.buttons.reject, customize: simpleBanner.buttons.preference };
   const prefC = nav ? nav.prefContent : { title: preferenceBanner.title, overview: preferenceBanner.overview, save: preferenceBanner.buttons.save };
-  const ccpaC = nav ? nav.ccpaContent : { doNotShare: ccpaBanner.doNotShare, optOutTitle: ccpaBanner.optOutTitle, optOutBody: ccpaBanner.optOutBody, cancel: ccpaBanner.buttons.cancel, save: ccpaBanner.buttons.save };
+  const ccpaC = nav ? nav.ccpaContent : { message: ccpaBanner.message, doNotShare: ccpaBanner.doNotShare, optOutTitle: ccpaBanner.optOutTitle, optOutBody: ccpaBanner.optOutBody, cancel: ccpaBanner.buttons.cancel, save: ccpaBanner.buttons.save };
   const PREF_TRUNC = preferenceBanner.overview.length;
   const prefLong = prefC.overview.length > PREF_TRUNC;
   const prefShown = prefMore || !prefLong ? prefC.overview : prefC.overview.slice(0, PREF_TRUNC).trimEnd() + "… ";
@@ -135,7 +149,7 @@ function WEdPreview({ variant = "default" }) {
     </>;
 
   return (
-    <div style={{ width: "450px", position: "sticky", top: 0, alignSelf: "start" }}>
+    <div style={{ width: "450px", paddingRight: 12, position: "sticky", top: 0, alignSelf: "start" }}>
       {/* Header: Preview label + region tabs */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
         <div style={{ fontSize: 12, color: "var(--text-muted)" }}>Preview</div>
@@ -149,7 +163,7 @@ function WEdPreview({ variant = "default" }) {
       </div>
 
       {/* Browser window */}
-      <div className="preview-window" style={{ width: winWidth, margin: device === "Desktop" ? undefined : "0 auto", height: iab ? 400 : isPref ? 400 : 320, position: "relative", overflow: "hidden", transition: "width 0.2s ease" }}>
+      <div className="preview-window" onClick={(e) => { if (e.target === e.currentTarget) resetToInitial(); }} style={{ width: winWidth, margin: device === "Desktop" ? undefined : "0 auto", height: iab ? 400 : isPref ? 400 : 320, position: "relative", overflow: "hidden", transition: "width 0.2s ease" }}>
         <div className="preview-titlebar"><span className="dot" /><span className="dot" /><span className="dot" /></div>
 
         {/* Floating reopen button/logo — positioned by the Floating button setting.
@@ -168,9 +182,9 @@ function WEdPreview({ variant = "default" }) {
         isCCPA ?
         /* ---- CCPA · Opt-out Preference ---- */
         <div style={{ position: "absolute", top: "50%", left: 16, right: 16, transform: "translateY(-50%)", maxHeight: "calc(100% - 24px)", overflowY: "auto", ...cardBase, zoom: prefZoom }}>
-          {closeX}
+          {showClose && closeX}
           <div style={{ ...titleStyle, marginBottom: 8 }}>{ccpaC.optOutTitle}</div>
-          <div style={{ fontSize: "9.5px", lineHeight: 1.5, marginBottom: 10, color: colors.textColor, textAlign: bannerTextAlign, overflowWrap: "break-word", wordBreak: "break-word" }}>
+          <div style={{ fontSize: "9.5px", fontWeight: bannerWeight, lineHeight: 1.5, marginBottom: 10, color: colors.textColor, textAlign: bannerTextAlign, overflowWrap: "break-word", wordBreak: "break-word" }}>
             {ccpaC.optOutBody}
           </div>
           <label onClick={() => setCcpaCheck((v) => !v)} style={{ display: "flex", alignItems: "center", gap: 8, margin: "8px 0 14px", fontSize: 10.5, fontWeight: 700, cursor: "pointer", color: colors.headingColor }}>
@@ -180,15 +194,15 @@ function WEdPreview({ variant = "default" }) {
             {ccpaC.doNotShare}
           </label>
           <div style={{ display: "flex", flexDirection: device === "Phone" ? "column" : "row", gap: 8 }}>
-            <button style={{ ...solidBtn, flex: device === "Phone" ? undefined : 1, width: device === "Phone" ? "100%" : undefined }}>{ccpaC.cancel}</button>
-            <button style={{ ...prefBtn, flex: device === "Phone" ? undefined : 1, width: device === "Phone" ? "100%" : undefined }}>{ccpaC.save}</button>
+            <button onClick={resetToInitial} style={{ ...solidBtn, flex: device === "Phone" ? undefined : 1, width: device === "Phone" ? "100%" : undefined }}>{ccpaC.cancel}</button>
+            <button onClick={resetToInitial} style={{ ...prefBtn, flex: device === "Phone" ? undefined : 1, width: device === "Phone" ? "100%" : undefined }}>{ccpaC.save}</button>
           </div>
         </div> :
         /* ---- GDPR · Cookie Preferences ---- */
         <div style={{ position: "absolute", top: "50%", left: 16, right: 16, transform: "translateY(-50%)", maxHeight: "calc(100% - 24px)", overflowY: "auto", ...cardBase, zoom: prefZoom }}>
-          {closeX}
+          {showClose && closeX}
           <div style={{ ...titleStyle, marginBottom: 6 }}>{prefC.title}</div>
-          <div style={{ fontSize: "10px", fontWeight: 600, marginBottom: 10, color: colors.textColor, textAlign: bannerTextAlign, overflowWrap: "break-word", wordBreak: "break-word" }}>
+          <div style={{ fontSize: "10px", fontWeight: bannerWeight, marginBottom: 10, color: colors.textColor, textAlign: bannerTextAlign, overflowWrap: "break-word", wordBreak: "break-word" }}>
             {prefShown}
             {prefLong &&
             <span onClick={() => setPrefMore((m) => !m)} style={{ color: colors.btnBg, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap", fontSize: "inherit" }}>{prefMore ? " Show less" : " Show more"}</span>
@@ -205,11 +219,11 @@ function WEdPreview({ variant = "default" }) {
                 <div onClick={() => { setOpenAcc(open ? null : i); setCatMore(null); }} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 10px", cursor: "pointer" }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
                     <span style={{ width: 15, height: 15, border: "1px solid #ccc", borderRadius: 3, display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 11, lineHeight: 1, color: "#555", flexShrink: 0 }}>{open ? "−" : "+"}</span>
-                    <span style={{ fontSize: 10.5, fontWeight: 700, color: colors.headingColor, overflowWrap: "break-word", wordBreak: "break-word", minWidth: 0 }}>{c.name}</span>
+                    <span style={{ fontSize: 10.5, fontWeight: bannerWeight, color: colors.headingColor, overflowWrap: "break-word", wordBreak: "break-word", minWidth: 0 }}>{c.name}</span>
                   </div>
                   {c.always ?
                   <span style={{ fontSize: 9.5, color: "#555", flexShrink: 0 }}>{prefC.alwaysActive}</span> :
-                  <span onClick={(e) => { e.stopPropagation(); setCatOn((s) => ({ ...s, [i]: !s[i] })); }} style={{ width: 26, height: 15, borderRadius: 999, background: on ? colors.btnBg : "#d4d4dc", position: "relative", flexShrink: 0, cursor: "pointer", transition: "background 0.15s" }}>
+                  <span onClick={(e) => { e.stopPropagation(); setCatOn((s) => ({ ...s, [i]: !s[i] })); }} style={{ width: 26, height: 15, borderRadius: 999, background: on ? "#22c55e" : "#d4d4dc", position: "relative", flexShrink: 0, cursor: "pointer", transition: "background 0.15s" }}>
                     <span style={{ position: "absolute", top: 2, left: on ? 13 : 2, width: 11, height: 11, borderRadius: 999, background: "#fff", transition: "left 0.15s" }} />
                   </span>
                   }
@@ -220,7 +234,7 @@ function WEdPreview({ variant = "default" }) {
                   const expanded = catMore === i;
                   const shown = expanded || !long ? c.desc : c.desc.slice(0, defLen).trimEnd() + "… ";
                   return (
-                  <div style={{ fontSize: 8.5, color: "#777", lineHeight: 1.45, padding: "0 10px 8px 33px", textAlign: bannerTextAlign, overflowWrap: "break-word", wordBreak: "break-word" }}>
+                  <div style={{ fontSize: 8.5, fontWeight: bannerWeight, color: "#777", lineHeight: 1.45, padding: "0 10px 8px 33px", textAlign: bannerTextAlign, overflowWrap: "break-word", wordBreak: "break-word" }}>
                     {shown}
                     {long &&
                     <span onClick={() => setCatMore(expanded ? null : i)} style={{ color: colors.btnBg, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap", fontSize: "inherit" }}>{expanded ? " Show less" : " Show more"}</span>
@@ -234,9 +248,9 @@ function WEdPreview({ variant = "default" }) {
 
           <div style={{ display: "flex", flexDirection: device === "Phone" ? "column" : "row", gap: 8, justifyContent: "flex-end", marginTop: 12 }}>
             {showReject &&
-            <button title={content.reject} style={{ ...solidBtn, width: device === "Phone" ? "100%" : undefined }}>{content.reject}</button>
+            <button onClick={resetToInitial} title={content.reject} style={{ ...solidBtn, width: device === "Phone" ? "100%" : undefined }}>{content.reject}</button>
             }
-            <button title={prefC.save} style={{ ...prefBtn, width: device === "Phone" ? "100%" : undefined }}>{prefC.save}</button>
+            <button onClick={resetToInitial} title={prefC.save} style={{ ...prefBtn, width: device === "Phone" ? "100%" : undefined }}>{prefC.save}</button>
           </div>
         </div>
         ) : (
@@ -245,7 +259,7 @@ function WEdPreview({ variant = "default" }) {
         <div key={animKey} style={{ position: "absolute", ...posStyle, ...cardBase, borderRadius: bannerRadius, animation: bannerAnimCss, maxHeight: "calc(100% - 24px)", overflowY: "auto", zoom: bannerZoom }}>
           {showClose && closeX}
           <div style={titleStyle}>{content.title}</div>
-          <div style={bodyStyle}>{bodyNode}</div>
+          <div style={bodyStyle}>{ccpaC.message || ccpaBanner.message}{policyLink}</div>
           <a href="#" onClick={(e) => { e.preventDefault(); setView("pref"); }} style={{ color: colors.btnBg, fontSize: 11, fontWeight: 600, textDecoration: "underline" }}>{ccpaC.doNotShare}</a>
         </div> :
         /* ---- GDPR · default banner ---- */
@@ -258,15 +272,16 @@ function WEdPreview({ variant = "default" }) {
             <button title={content.customize} style={{ ...prefBtn, flex: device === "Phone" ? undefined : "1 1 0", width: device === "Phone" ? "100%" : undefined }} onClick={() => setView("pref")}>{content.customize}</button>
             }
             {showReject &&
-            <button title={content.reject} style={{ ...solidBtn, flex: device === "Phone" ? undefined : "1 1 0", width: device === "Phone" ? "100%" : undefined }}>{content.reject}</button>
+            <button onClick={resetToInitial} title={content.reject} style={{ ...solidBtn, flex: device === "Phone" ? undefined : "1 1 0", width: device === "Phone" ? "100%" : undefined }}>{content.reject}</button>
             }
-            <button title={content.accept} style={{ ...solidBtn, flex: device === "Phone" ? undefined : "1 1 0", width: device === "Phone" ? "100%" : undefined }}>{content.accept}</button>
+            <button onClick={resetToInitial} title={content.accept} style={{ ...solidBtn, flex: device === "Phone" ? undefined : "1 1 0", width: device === "Phone" ? "100%" : undefined }}>{content.accept}</button>
           </div>
         </div>
         )}
       </div>
 
-      {/* Device tabs */}
+      {/* Device tabs — hidden: preview is desktop-only (device stays "Desktop") */}
+      {/*
       <div style={{ display: "flex", gap: 6, marginTop: 12 }}>
         {[
         { l: "Phone", d: "M10.5 1.5H8.25A2.25 2.25 0 0 0 6 3.75v16.5a2.25 2.25 0 0 0 2.25 2.25h7.5A2.25 2.25 0 0 0 18 20.25V3.75a2.25 2.25 0 0 0-2.25-2.25H13.5m-3 0V3h3V1.5m-3 0h3m-3 18.75h3" },
@@ -279,6 +294,7 @@ function WEdPreview({ variant = "default" }) {
           </button>
         )}
       </div>
+      */}
     </div>);
 
 }

@@ -65,7 +65,7 @@ function WEdShell({ active = "general", children, showAdvanced = true, cta = "Cr
           >{saving ? "Saving…" : (nav && nav.bannerCreated ? "Update Banner" : cta)}</button>
         </>
       } />
-      <div className="cb-section-tabs" style={{ padding: "0 16px", margin: "14px 0 14px" }}>
+      <div className="cb-section-tabs" style={{ padding: "0 32px", margin: "14px 0 14px" }}>
         {items.map((it) => {
           // The Content tab is disabled while IAB TCF is enabled.
           const disabled = it.id === "content" && nav && nav.iab;
@@ -81,7 +81,7 @@ function WEdShell({ active = "general", children, showAdvanced = true, cta = "Cr
         })}
       </div>
       {/* Scrolls independently of the fixed header above. */}
-      <div style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "0 16px 18px" }}>{children}</div>
+      <div style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "0 32px 18px" }}>{children}</div>
     </WPage>);
 
 }

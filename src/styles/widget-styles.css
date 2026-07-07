@@ -123,8 +123,9 @@
 
 /* Compact topbar */
 .cb-widget-wrap .cb-topbar {
-  height: 48px;
-  padding: 0 16px;
+  height: auto;
+  min-height: 48px;
+  padding: 10px 16px;
   gap: 12px;
 }
 .cb-widget-wrap .cb-logo { font-size: 15px; gap: 6px; }

@@ -298,7 +298,9 @@ function WScan() {
                   {selCookies.map((c) =>
                     <div key={c.id} style={{ display: "flex", justifyContent: "space-between", gap: 10, fontSize: 11, padding: "6px 8px", background: "var(--bg-2)", borderRadius: 6 }}>
                       <span style={{ fontWeight: 600, wordBreak: "break-all" }}>{c.name}</span>
-                      <span style={{ color: "var(--text-muted)", flexShrink: 0 }}>{c.provider || c.domain || ""}</span>
+                      {String(sel.key).toLowerCase() !== "uncategorized" &&
+                        <span style={{ color: "var(--text-muted)", flexShrink: 0 }}>{c.provider || c.domain || ""}</span>
+                      }
                     </div>
                   )}
                 </div>

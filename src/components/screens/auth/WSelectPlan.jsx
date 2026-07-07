@@ -84,7 +84,9 @@ function WSelectPlan({ freeDisabled = false, onSelectPlan, onFreeRegistered, onF
     try {
       const { wfSiteId } = await getWebflowSiteContext();
       const email = await resolveEmail(wfSiteId);
-      await startCheckout({ plan, interval: billing, email });
+      // Use the read-only checkout-plan page (same as the upgrade flow) — the plan +
+      // interval are already chosen here in the plugin, so both flows share one page.
+      await startCheckout({ plan, interval: billing, email, dest: "checkout-plan" });
       // Stripe checkout opened in a new tab — show the payment-processing popup
       // here, which polls until the subscription lands then routes to install.
       if (nav?.startPaymentFlow) await nav.startPaymentFlow();

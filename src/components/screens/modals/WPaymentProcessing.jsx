@@ -42,23 +42,20 @@ export function WPaymentProcessing({ siteId, baseline, onPaid, onCancel }) {
     if (timerRef.current) { clearTimeout(timerRef.current); timerRef.current = null; }
   };
 
-  // One poll attempt. Schedules the next one (30s later) unless we've hit the
-  // 10-poll ceiling, found a paid subscription, or the popup was stopped.
-  const runPoll = React.useCallback(async () => {
-    if (stoppedRef.current) return;
-    attemptsRef.current += 1;
-    const attempt = attemptsRef.current;
-
+  // Fetch the latest subscription from the payment worker ONCE and, if it shows a
+  // paid plan that DIFFERS from the pre-payment baseline (new/upgraded plan or a
+  // newer timestamp), report success via onPaid and return true. Shared by the
+  // background polling loop AND the Cancel button's final reconcile so a payment
+  // that landed late is never missed. Returns false on no-change / error.
+  const checkBackendOnce = React.useCallback(async () => {
     let result = { isSubscribed: false, plan: null };
     try {
       result = await getPaymentSubscription(siteId);
     } catch {
-      /* network hiccup — treat as not-yet-paid and keep polling */
+      return false; // network hiccup — caller decides whether to keep waiting
     }
-    if (stoppedRef.current) return;
+    if (stoppedRef.current) return false;
 
-    // Success = an active paid plan that DIFFERS from the pre-payment baseline
-    // (new subscription, upgraded plan, or a newer subscription timestamp).
     const base = baselineRef.current;
     const changedFromBaseline =
       !base ||
@@ -69,15 +66,27 @@ export function WPaymentProcessing({ siteId, baseline, onPaid, onCancel }) {
       clearTimer();
       stoppedRef.current = true;
       onPaidRef.current?.({ plan: result.plan, isSubscribed: true });
-      return;
+      return true;
     }
+    return false;
+  }, [siteId]);
+
+  // One poll attempt. Schedules the next one (30s later) unless we've hit the
+  // poll ceiling, found a paid subscription, or the popup was stopped.
+  const runPoll = React.useCallback(async () => {
+    if (stoppedRef.current) return;
+    attemptsRef.current += 1;
+    const attempt = attemptsRef.current;
+
+    const paid = await checkBackendOnce();
+    if (stoppedRef.current || paid) return;
 
     if (attempt >= MAX_POLLS) {
       setPhase("timeout");
       return;
     }
     timerRef.current = setTimeout(runPoll, POLL_INTERVAL_MS);
-  }, [siteId]);
+  }, [checkBackendOnce]);
 
   // Start (or restart on Retry) a fresh 10-poll / 5-minute cycle. Poll #1 fires
   // immediately so a payment that already landed resolves without a 30s wait.
@@ -95,9 +104,18 @@ export function WPaymentProcessing({ siteId, baseline, onPaid, onCancel }) {
     return () => { stoppedRef.current = true; clearTimer(); };
   }, [startCycle]);
 
-  const handleCancel = () => {
+  // Cancel does a FINAL backend check before closing — silently, with no UI
+  // change: if the payment landed (e.g. the user paid after the timeout appeared)
+  // we update the plan instead of closing empty-handed. Only if nothing changed
+  // do we actually close.
+  const handleCancel = async () => {
+    clearTimer(); // stop any scheduled poll; keep stoppedRef false so the check runs
+    let paid = false;
+    if (siteId) {
+      try { paid = await checkBackendOnce(); } catch { /* fall through to close */ }
+    }
+    if (paid) return; // onPaid already fired → parent closes + updates the UI
     stoppedRef.current = true;
-    clearTimer();
     onCancel?.();
   };
 
@@ -144,8 +162,7 @@ export function WPaymentProcessing({ siteId, baseline, onPaid, onCancel }) {
             </svg>
             <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 4 }}>Payment processing…</div>
             <div style={{ color: "var(--text-muted)", fontSize: 11.5, lineHeight: 1.5, marginBottom: 18 }}>
-              Complete your payment in the checkout tab. We'll update your plan here
-              automatically once it's confirmed.
+              Complete your payment in the checkout tab.
             </div>
           </>
         )}

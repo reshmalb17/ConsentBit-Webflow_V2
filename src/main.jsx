@@ -8,7 +8,7 @@ import "./styles/gallery.css";
 // Bundled assets — exposed where the components look for them.
 import logo from "./assets/logo.svg";
 import logoIcon from "./assets/logo-icon.svg";
-import webflowHeadcode from "./assets/webflow-headcode.png";
+import webflowHeadcode from "./assets/Head-section.png";
 import webflowPublish from "./assets/webflow-publish.png";
 
 window.__resources = { logo, logoIcon, webflowHeadcode, webflowPublish };

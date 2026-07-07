@@ -2,7 +2,6 @@ import React from "react";
 import { WAuthShell } from "../../kit/WAuthShell.jsx";
 import { Icon } from "../../lib/icons.jsx";
 import { WVerifyModal } from "../../kit/WVerifyModal.jsx";
-import { WImageZoom } from "../../kit/WImageZoom.jsx";
 import { verifyInstallation, getWebflowSiteContext, getWebflowSiteStatus, getLegacyScriptStatus, removeLegacyScripts } from "../../../lib/api.js";
 import { publishSite, listSiteDomains } from "../../../lib/webflowAuth.js";
 import { useNav } from "../../../nav.jsx";
@@ -42,9 +41,12 @@ function WInstallVerify() {
           const status = await getWebflowSiteStatus(wfSiteId);
           if (!cancelled && status?.scriptUrl) setScriptUrl(status.scriptUrl);
           const ls = await getLegacyScriptStatus(wfSiteId);
-          // Already upgraded — the current-version script is in the head. Nothing
-          // to install, so skip this screen entirely and go to the app.
-          if (!cancelled && ls.hasCurrent) { nav?.goToApp?.(); return; }
+          // Already upgraded — the current-version script is in the head. During
+          // onboarding there's nothing to install, so skip this screen and go to
+          // the app. But when the user explicitly opened Install & verify from the
+          // app (installVerifyFromApp), don't yank them away — they came here on
+          // purpose (e.g. to re-verify), so keep them on the page.
+          if (!cancelled && ls.hasCurrent && !nav?.installVerifyFromApp) { nav?.goToApp?.(); return; }
           if (!cancelled) setLegacy((s) => ({ ...s, checking: false, hasLegacy: ls.hasLegacy, count: ls.legacyCount }));
         } else if (!cancelled) {
           setLegacy((s) => ({ ...s, checking: false }));
@@ -210,20 +212,22 @@ function WInstallVerify() {
               <div style={{ color: "var(--text-muted)", fontSize: 11, lineHeight: 1.5, marginTop: 10 }}>
                 Paste it right after the opening <code className="mono" style={{ background: "var(--purple-soft)", padding: "1px 5px", borderRadius: 4, color: "var(--purple-hi)" }}>&lt;head&gt;</code> tag in your site's source code. Refer to our <a href="https://help.webflow.com/hc/en-us/articles/33961356296723-Custom-code-in-head-and-body-tags" target="_blank" rel="noopener noreferrer" style={{ color: "var(--purple-hi)", textDecoration: "none" }}>platform-wise guides</a> for instructions.
               </div>
-               <button
-            className="btn btn-primary"
-            style={{ width: "100%", justifyContent: "center", marginTop: 14, padding: "10px", height: "auto", fontSize: 13, fontWeight: 600 }}
-            disabled={publishing}
-            onClick={handlePublish}
-          >
-            {legacy.removing ? "Removing old code…" : publishing ? "Publishing…" : "Publish"}
-          </button>
+              <button
+                className="btn btn-primary"
+                style={{ width: "100%", justifyContent: "center", marginTop: 14, padding: "10px", height: "auto", fontSize: 13, fontWeight: 600 }}
+                disabled={publishing}
+                onClick={handlePublish}
+              >
+                {legacy.removing ? "Removing old code…" : publishing ? "Publishing…" : "Publish"}
+              </button>
             </div>
-            <WImageZoom
-              src={window.__resources && window.__resources.webflowHeadcode || "assets/webflow-headcode.png"}
-              alt="Webflow head code panel"
-              style={{ display: "block", width: "100%", minHeight: 150, maxHeight: 200, objectFit: "cover", objectPosition: "top", borderRadius: 8, border: "1px solid var(--border)", boxShadow: "0 8px 18px rgba(0,0,0,0.3)" }}
-            />
+            <div style={{ height: 140, overflow: "hidden", borderRadius: 8, border: "1px solid var(--border)", boxShadow: "0 8px 18px rgba(0,0,0,0.3)" }}>
+              <img
+                src={window.__resources && window.__resources.webflowHeadcode || "assets/webflow-headcode.png"}
+                alt="Webflow head code panel"
+                style={{ display: "block", height: "100%", width: "auto", minWidth: "100%", objectFit: "cover", objectPosition: "left top" }}
+              />
+            </div>
           </div>
 
           {/* Publish → publishes the site, then verifies the banner is live. */}

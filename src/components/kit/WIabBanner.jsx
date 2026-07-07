@@ -68,7 +68,7 @@ function Switch({ checked, onChange, disabled = false, accent = "#007AFF", size 
   const knob = size === "sm" ? 14 : 18;
   const inset = 3;
   return (
-    <button type="button" role="switch" aria-checked={checked} disabled={disabled} onClick={() => !disabled && onChange(!checked)} style={{ position: "relative", display: "inline-flex", alignItems: "center", width: `${w}px`, height: `${h}px`, borderRadius: "999px", border: "none", padding: 0, background: checked ? "#34C759" : "#d0d5d2", boxShadow: "inset 0 0 0 1px rgba(0,0,0,0.12)", cursor: disabled ? "not-allowed" : "pointer", transition: "background-color 0.2s", opacity: disabled ? 0.7 : 1, flexShrink: 0 }}>
+    <button type="button" role="switch" aria-checked={checked} disabled={disabled} onClick={() => !disabled && onChange(!checked)} style={{ position: "relative", display: "inline-flex", alignItems: "center", width: `${w}px`, height: `${h}px`, borderRadius: "999px", border: "none", padding: 0, background: checked ? "#007AFF" : "#d0d5d2", boxShadow: "inset 0 0 0 1px rgba(0,0,0,0.12)", cursor: disabled ? "not-allowed" : "pointer", transition: "background-color 0.2s", opacity: disabled ? 0.7 : 1, flexShrink: 0 }}>
       <span style={{ position: "absolute", top: `${inset}px`, left: `${inset}px`, width: `${knob}px`, height: `${knob}px`, borderRadius: "50%", background: "#fff", boxShadow: "0 1px 3px rgba(0,0,0,0.35)", transform: checked ? `translateX(${w - knob - inset * 2}px)` : "translateX(0)", transition: "transform 0.2s" }} />
     </button>
   );
@@ -191,7 +191,7 @@ function PreferenceModal({ open, onClose, onAccept, onReject, s, radii, device =
   if (!open) return null;
   return (
     <div style={{ position: "absolute", inset: 0, zIndex: 1000000, background: "rgba(0,0,0,0.5)", padding: "12px", display: "flex", alignItems: "center", justifyContent: "center", boxSizing: "border-box" }} onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
-      <div style={{ background: s.bannerBg, border: "1px solid #f4f4f4", borderRadius: radii.br, width: "100%", maxWidth: "720px", maxHeight: "92%", display: "flex", flexDirection: "column", boxShadow: "0 4px 20px rgba(0,0,0,0.15)", zoom: prefScale }}>
+      <div style={{ background: s.bannerBg, border: "1px solid #f4f4f4", borderRadius: radii.br, width: "100%", maxWidth: "720px", maxHeight: "80%", display: "flex", flexDirection: "column", boxShadow: "0 4px 20px rgba(0,0,0,0.15)", zoom: prefScale }}>
         <div style={{ padding: "14px 16px", borderBottom: "1px solid #f4f4f4", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <span style={{ fontSize: "15px", fontWeight: 600, color: s.headingColor }}>{iabBanner.modalTitle}</span>
           <button type="button" onClick={onClose} aria-label="Close" style={{ background: "none", border: "none", cursor: "pointer", padding: "4px", opacity: 0.5, display: "flex", color: s.textColor }}>

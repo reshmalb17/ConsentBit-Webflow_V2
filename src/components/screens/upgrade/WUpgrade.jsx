@@ -35,6 +35,9 @@ function WUpgrade() {
   // Live subscription status ("active" | "trialing" | "canceled" | …). A canceled sub
   // can't switch interval in place — it must resubscribe via a fresh checkout.
   const [subStatus, setSubStatus] = React.useState(null);
+  // Manual refresh of the live billing/payment details (status, interval, plan).
+  const [refreshing, setRefreshing] = React.useState(false);
+  const [refreshTip, setRefreshTip] = React.useState(false);
   const [switching, setSwitching] = React.useState(false);
   const [confirmSwitch, setConfirmSwitch] = React.useState(false);
   const [switchMsg, setSwitchMsg] = React.useState("");
@@ -65,6 +68,26 @@ function WUpgrade() {
     })();
     return () => { cancelled = true; };
   }, []);
+
+  // Manually pull the latest billing/payment details (status, interval, plan) from the
+  // worker — wired to the refresh icon so users can sync after a payment without a reload.
+  const refreshBilling = async () => {
+    if (refreshing || !wfSiteId) return;
+    setRefreshing(true);
+    try {
+      const b = await getWebflowBilling(wfSiteId);
+      if (b?.status) setSubStatus(String(b.status).toLowerCase());
+      if (b?.interval) {
+        const iv = String(b.interval).toLowerCase();
+        setCurrentInterval(iv);
+        if ((iv === "monthly" || iv === "yearly") && !userPickedBilling.current) setBilling(iv);
+      }
+      // Reflect a newly-taken/changed plan in the headline + column markers.
+      if (b?.plan && nav?.setPlan) nav.setPlan(String(b.plan).toLowerCase());
+    } catch { /* ignore — keep the current values */ } finally {
+      setRefreshing(false);
+    }
+  };
 
   // A canceled subscription can't switch interval in place. Detect it from the live
   // status so the confirm popup offers "resubscribe via checkout" instead of a prorated
@@ -232,7 +255,7 @@ function WUpgrade() {
   };
 
   return (
-    <WPage>
+    <WPage scroll={false} className="cb-scroll-page" style={{ display: "flex", flexDirection: "column" }}>
       <WToast message={error} type="error" onClose={() => setError("")} />
       <WToast message={switchMsg} type="success" onClose={() => setSwitchMsg("")} />
       {confirmSwitch &&
@@ -257,10 +280,37 @@ function WUpgrade() {
       }
       <WTopBar />
       <WMainTabs active="upgrade" left />
-      <div className="cb-page" style={{ paddingTop: 16 }}>
+      <div className="cb-page" style={{ flex: 1, minHeight: 0, overflowY: "auto", paddingTop: 16 }}>
         {/* Tight headline block */}
-        <div className="card" style={{ background: "var(--surface)", padding: "14px 16px", marginBottom: 16 }}>
-          <div style={{ fontSize: 14, fontWeight: 700, letterSpacing: "-0.01em", marginBottom: 4 }}>
+        <div className="card" style={{ position: "relative", background: "var(--surface)", padding: "14px 16px", marginBottom: 16 }}>
+          {/* Refresh the live billing/payment details */}
+          <div
+            style={{ position: "absolute", top: 10, right: 12 }}
+            onMouseEnter={() => setRefreshTip(true)}
+            onMouseLeave={() => setRefreshTip(false)}
+          >
+            <button
+              type="button"
+              onClick={refreshBilling}
+              disabled={refreshing}
+              aria-label="Refresh to get the latest payment details"
+              style={{ background: "none", border: "none", padding: 4, display: "inline-flex", alignItems: "center", color: "var(--text-muted)", cursor: refreshing ? "default" : "pointer", opacity: refreshing ? 0.6 : 1 }}
+            >
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <g>
+                  <path d="M23 4v6h-6" />
+                  <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" />
+                  {refreshing &&
+                    <animateTransform attributeName="transform" type="rotate" from="0 12 12" to="360 12 12" dur="0.8s" repeatCount="indefinite" />}
+                </g>
+              </svg>
+            </button>
+            {refreshTip &&
+              <span style={{ position: "absolute", top: "calc(100% + 6px)", right: 0, whiteSpace: "nowrap", background: "#0a0a14", color: "#fff", fontSize: 10.5, lineHeight: 1.4, padding: "5px 8px", borderRadius: 6, boxShadow: "0 8px 20px rgba(0,0,0,0.5)", zIndex: 10, pointerEvents: "none" }}>
+                Refresh to get the latest payment details
+              </span>}
+          </div>
+          <div style={{ fontSize: 14, fontWeight: 700, letterSpacing: "-0.01em", marginBottom: 4, paddingRight: 26 }}>
             {!currentKey
               ? "Unlock full compliance with Essential."
               : currentKey === "free"

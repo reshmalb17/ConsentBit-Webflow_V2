@@ -12,10 +12,13 @@ function WToast({ message, type = "error", onClose, duration = 5000 }) {
 
   if (!message) return null;
 
+  // Solid gradient background + white text — matches the dashboard toast
+  // (consentbitwebapp/components/auth/Toast.tsx) so messages stay readable on
+  // the dark app panel instead of low-contrast translucent tints.
   const palette =
-    type === "success" ? { bg: "rgba(34,197,94,0.12)", border: "rgba(34,197,94,0.45)", fg: "#22c55e" } :
-    type === "info"    ? { bg: "rgba(124,92,252,0.12)", border: "rgba(124,92,252,0.45)", fg: "var(--purple-hi)" } :
-                         { bg: "rgba(239,68,68,0.12)", border: "rgba(239,68,68,0.45)", fg: "#ef4444" };
+    type === "success" ? { bg: "linear-gradient(90deg, #16a34a 41.8%, #4ade80 98%)", border: "rgba(34,197,94,0.55)", fg: "#ffffff" } :
+    type === "info"    ? { bg: "linear-gradient(90deg, #6d5cf5 41.8%, #a78bfa 98%)", border: "rgba(124,92,252,0.55)", fg: "#ffffff" } :
+                         { bg: "linear-gradient(90deg, #b03240 41.8%, #ff6374 98%)", border: "rgba(239,68,68,0.55)", fg: "#ffffff" };
 
   return (
     <div
@@ -26,8 +29,8 @@ function WToast({ message, type = "error", onClose, duration = 5000 }) {
         display: "flex", alignItems: "center", gap: 12,
         padding: "10px 12px 10px 14px", borderRadius: 10,
         background: palette.bg, border: `1px solid ${palette.border}`, color: palette.fg,
-        fontSize: 12, lineHeight: 1.45,
-        boxShadow: "0 16px 40px rgba(0,0,0,0.45)", backdropFilter: "blur(2px)",
+        fontSize: 12, lineHeight: 1.45, fontWeight: 600,
+        boxShadow: "0 16px 40px rgba(0,0,0,0.45)",
       }}>
       <span style={{ flex: 1 }}>{message}</span>
       <button

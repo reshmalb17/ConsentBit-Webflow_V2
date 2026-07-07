@@ -72,10 +72,6 @@ function WVerifyModal({ mode = "success", position = "fixed", onClose, onPrimary
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" style={{ marginLeft: 5, flexShrink: 0 }}><path d="M7 17L17 7M17 7H8M17 7V16" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" /></svg>
         </a>
         }
-        {error ?
-        <a href="https://discourse.webflow.com/t/webflow-site-not-publishing-despite-saying-published-successful/229949" target="_blank" rel="noopener noreferrer" style={{ color: "var(--text-muted)", fontSize: 12, textDecoration: "none" }}>Troubleshooting guide</a> :
-        null
-        }
       </div>
     </div>);
 

@@ -136,6 +136,9 @@ export const prefCategories = [
 // ── CCPA opt-out banner & preference ─────────────────────────────────────────
 export const ccpaBanner = {
   title: "We value your privacy",
+  // CCPA-specific initial-banner body (mirrors the dashboard's `ccpaOptOut` default),
+  // so the CCPA banner reads differently from the GDPR one.
+  message: "We use cookies and similar technologies to personalize and enhance your experience. Some of these technologies may involve the \"sale\" or \"sharing\" of your personal information under state privacy laws.",
   optOutTitle: "Opt-out Preference",
   optOutBody: "We use third-party cookies that help us analyze how you use this website, store your preferences, and provide the content and advertisements that are relevant to you. We do not sell your information. However, you can opt out of these cookies by checking Do Not Share My Personal Information and clicking the Save My Preferences button. Once you opt out, you can opt in again at any time by unchecking Do Not Share My Personal Information and clicking the Save My Preferences button.",
   doNotShare: "Do Not Share My Personal Information",

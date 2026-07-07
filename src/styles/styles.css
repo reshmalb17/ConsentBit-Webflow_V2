@@ -75,6 +75,7 @@ body, html { margin: 0; padding: 0; }
   padding: 0 32px;
   gap: 24px;
   background: var(--bg);
+  border-bottom: 1px solid var(--border);
 }
 .cb-logo {
   display: flex;
@@ -317,13 +318,21 @@ textarea.input { resize: none; }
 .radio {
   width: 18px; height: 18px;
   border-radius: 999px;
-  border: 1.5px solid var(--border-2);
-  display: inline-grid; place-items: center;
+  /* Ring drawn with an inset box-shadow instead of a border so it adds no layout
+     box — the dot then centers against the full element and is immune to the
+     sub-pixel rounding a 1.5px border introduces. */
+  box-shadow: inset 0 0 0 1.5px var(--border-2);
+  display: inline-block;
+  vertical-align: middle;
+  position: relative;
   flex-shrink: 0;
 }
-.radio.on { border-color: var(--purple); }
+.radio.on { box-shadow: inset 0 0 0 1.5px var(--purple); }
 .radio.on::after {
   content: "";
+  position: absolute;
+  inset: 0;
+  margin: auto;
   width: 10px; height: 10px;
   border-radius: 999px;
   background: var(--purple);
