@@ -623,6 +623,6 @@ export async function downloadConsentPdf(siteId, consentId) {
 }
 
 // Paid-plan checkout lives in webflowAuth.js (startCheckout) — it uses the same
-// CHECKOUT_BASE_URL (consentbit-webapp-frontend-test.pages.dev) as the plan page.
+// CHECKOUT_BASE_URL (accounts.consentbit.com) as the plan page.
 // Re-export it so callers can import from this single api module.
 export { startCheckout } from "./webflowAuth.js";

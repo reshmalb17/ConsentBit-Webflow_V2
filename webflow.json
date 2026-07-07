@@ -4,9 +4,10 @@
   "size": "comfortable",
   "apiVersion": "2",
   "dataConnections": [
-    { "url": "https://consent-webapp-manager.web-8fb.workers.dev" },
-    { "url": "https://consentbit-webapp-frontend-test.pages.dev" },
-    { "url": "https://cdn.consentbit.com" }
+    { "url": "https://manager.consentbit.com" },
+    { "url": "https://accounts.consentbit.com" },
+    { "url": "https://cdn.consentbit.com" },
+    { "url": "https://us.i.posthog.com" }
   ],
   "telemetry": {
     "global": {

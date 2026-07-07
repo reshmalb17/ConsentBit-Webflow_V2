@@ -23,6 +23,7 @@ import { WLoading } from "./components/screens/modals/WLoading.jsx";
 import { WPaymentProcessing } from "./components/screens/modals/WPaymentProcessing.jsx";
 import { getWebflowSiteContext, getWebflowSiteStatus, getPaymentSubscription, getBannerCustomization } from "./lib/api.js";
 import { mapCustomizationToState } from "./lib/loadCustomization.js";
+import { analytics } from "./lib/analytics.js";
 
 // What the Webflow Designer Extension panel renders: the main app, opening on
 // the Cookie Banner editor (General tab). The top tab bar (WMainTabs) and the
@@ -105,6 +106,7 @@ export default function AppExtension() {
   // registered + plan together — no extra round-trips.
   React.useEffect(() => {
     let cancelled = false;
+    analytics.init(); // PostHog (privacy-hardened, platform: "webflow")
     (async () => {
       try {
         const { wfSiteId } = await getWebflowSiteContext();
@@ -114,6 +116,9 @@ export default function AppExtension() {
         }
         const status = await getWebflowSiteStatus(wfSiteId);
         if (cancelled) return;
+        // Launch analytics — identify the account and record the Webflow app open.
+        analytics.appOpened(wfSiteId, status.email);
+        if (status.email) analytics.identify(status.email, "");
         setBannerCreated(!!status.bannerCreated);
         // Only show a plan once one is actually taken — no hardcoded "Free" for
         // unregistered/skipped users (keeps the top-bar plan pill blank).

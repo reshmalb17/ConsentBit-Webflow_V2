@@ -5,6 +5,7 @@ import { WVerifyModal } from "../../kit/WVerifyModal.jsx";
 import { verifyInstallation, getWebflowSiteContext, getWebflowSiteStatus, getLegacyScriptStatus, removeLegacyScripts } from "../../../lib/api.js";
 import { publishSite, listSiteDomains } from "../../../lib/webflowAuth.js";
 import { useNav } from "../../../nav.jsx";
+import { analytics } from "../../../lib/analytics.js";
 
 function WInstallVerify() {
   const nav = useNav();
@@ -114,6 +115,14 @@ function WInstallVerify() {
     setPublishing(true);
     try {
       await publishSite({ publishToWebflowSubdomain, customDomains });
+      // Track the publish — staging vs custom-domain is inferred from the domain inside
+      // analytics.bannerPublished(). email is auto-attached once the account is identified.
+      const publishedDomain = String(siteUrl || "").replace(/^https?:\/\//, "").replace(/\/.*$/, "");
+      analytics.bannerPublished(publishedDomain, {
+        site_id: wfSiteId || null,
+        plan_tier: nav?.plan || null,
+        is_subscribed: !!(nav?.plan && String(nav.plan).toLowerCase() !== "free"),
+      });
       await new Promise((r) => setTimeout(r, 2500));
       const result = await verifyInstallation();
       if (!result.published) setVerifyMode("unpublished");

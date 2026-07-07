@@ -9,19 +9,19 @@
 
 const WORKER_BASE_URL =
   import.meta.env.VITE_WORKER_BASE_URL ||
-  "https://consent-webapp-manager.web-8fb.workers.dev";
+  "https://manager.consentbit.com";
 
 // Front-end webapp that hosts the /checkoutplan page (paid-plan checkout).
 const CHECKOUT_BASE_URL =
   import.meta.env.VITE_CHECKOUT_BASE_URL ||
-  "https://consentbit-webapp-frontend-test.pages.dev";
+  "https://accounts.consentbit.com";
 
 // Worker that creates the checkout token + runs the Stripe charge. This is the
 // consent-manager worker (it holds the Stripe keys) — NOT the test copy. It also
 // backs the checkoutplan page's token read, so the token is found in the shared KV.
 const CHECKOUT_API_BASE =
   import.meta.env.VITE_CHECKOUT_API_BASE_URL ||
-  "https://consent-webapp-manager.web-8fb.workers.dev";
+  "https://manager.consentbit.com";
 
 /**
  * Kick off the Webflow install/authorize flow. Navigates the browser to the
