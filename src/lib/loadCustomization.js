@@ -62,6 +62,12 @@ export function mapCustomizationToState(c) {
   if (cfg.customizeButtonEnabled !== undefined) out.showCustomize = truthy(cfg.customizeButtonEnabled);
   if (cfg.cookiePolicyLinkEnabled !== undefined) out.showPolicy = truthy(cfg.cookiePolicyLinkEnabled);
 
+  // ── Floating reopen button ──────────────────────────────────────────────
+  // Saved under translations.config by buildCustomizationPayload; without this
+  // the floating button set in an earlier customization is lost on reload.
+  if (cfg.floatingButtonEnabled !== undefined) out.floating = truthy(cfg.floatingButtonEnabled);
+  if (cfg.floatingButtonPosition) out.floatPos = cfg.floatingButtonPosition === "right" ? "right" : "left";
+
   // ── IAB / Google Additional Consent ─────────────────────────────────────
   if (en.isIab !== undefined || en.iab_enabled !== undefined) out.iab = truthy(en.isIab) || truthy(en.iab_enabled);
   if (en.isGoogleAc !== undefined || en.googleAdditionalConsent !== undefined) out.gac = truthy(en.isGoogleAc) || truthy(en.googleAdditionalConsent);

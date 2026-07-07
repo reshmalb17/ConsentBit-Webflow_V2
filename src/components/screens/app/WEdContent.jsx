@@ -57,6 +57,13 @@ function WEdContent() {
   const PLcur = PL[lang] || PL.English;
   const CLcur = CL[lang] || CL.English;
   const CCcur = CCL[lang] || CCL.English;
+  // Per-language defaults for the default-banner buttons (reject/customize).
+  // Mirrors applyLangButtons() so a localized label (e.g. German "Ablehnen") is
+  // NOT falsely flagged as "Edited" just because it differs from the English
+  // default — only a real manual change shows the chip.
+  const Tcur = T[lang] || T.English;
+  const rejectDefault = Tcur.reject ?? editorDefaults.default.rejectLabel;
+  const customizeDefault = Tcur.customize ?? editorDefaults.default.customizeLabel;
 
   // Translate the preference-banner copy to match the selected language.
   const applyLangToPref = (l) => {
@@ -247,10 +254,10 @@ function WEdContent() {
             </div>
             <input className="input" maxLength={LIMITS.button} style={{ marginBottom: 12 }} value={fields.accept} onChange={(e) => editField("accept", e.target.value)} />
 
-            <WEdRow label={<>{'"Reject All" button'} {diffChip(rejectLabel, editorDefaults.default.rejectLabel)}</>} checked={nav ? nav.showReject : true} onChange={(v) => nav && nav.setShowReject(v)} />
+            <WEdRow label={<>{'"Reject All" button'} {diffChip(rejectLabel, rejectDefault)}</>} checked={nav ? nav.showReject : true} onChange={(v) => nav && nav.setShowReject(v)} />
             <input className="input" maxLength={LIMITS.button} value={rejectLabel} onChange={(e) => setRejectLabel(e.target.value)} style={{ marginBottom: 12 }} />
 
-            <WEdRow label={<>{'"Customize" button'} {diffChip(customizeLabel, editorDefaults.default.customizeLabel)}</>} checked={nav ? nav.showCustomize : true} onChange={(v) => nav && nav.setShowCustomize(v)} />
+            <WEdRow label={<>{'"Customize" button'} {diffChip(customizeLabel, customizeDefault)}</>} checked={nav ? nav.showCustomize : true} onChange={(v) => nav && nav.setShowCustomize(v)} />
             <input className="input" maxLength={LIMITS.button} value={customizeLabel} onChange={(e) => setCustomizeLabel(e.target.value)} style={{ marginBottom: 12 }} />
 
             <WEdRow label={<>{'"Cookie policy" Link'} {diffChip(policyLabel, editorDefaults.default.policyLinkLabel)}</>} checked={nav ? nav.showPolicy : false} onChange={(v) => nav && nav.setShowPolicy(v)} />
@@ -266,7 +273,7 @@ function WEdContent() {
           /* CCPA · Opt-out Preference editor */
           <div className="card" style={{ padding: 14, marginBottom: 12 }}>
             <div style={{ fontWeight: 600, fontSize: 12.5, marginBottom: 12 }}>Opt-out Preference</div>
-            <Field label={<>Title {diffChip(ccpaContent.optOutTitle, CCcur.optOutTitle)}</>}><input className="input" maxLength={LIMITS.title} value={ccpaContent.optOutTitle} onChange={(e) => setCcpa({ optOutTitle: e.target.value })} /></Field>
+            <Field label={<>Title {diffChip(ccpaContent.optOutTitle, CCcur.optOutTitle)}</>} help={false}><input className="input" maxLength={LIMITS.title} value={ccpaContent.optOutTitle} onChange={(e) => setCcpa({ optOutTitle: e.target.value })} /></Field>
             <Field label={<>Description {diffChip(ccpaContent.optOutBody, CCcur.optOutBody)}</>} help={false}><textarea className="input" rows="4" maxLength={LIMITS.message} value={ccpaContent.optOutBody} onChange={(e) => setCcpa({ optOutBody: e.target.value })} /></Field>
             <Field label={<>{'"Do Not Share" checkbox label'} {diffChip(ccpaContent.doNotShare, CCcur.doNotShare)}</>} help={false}><input className="input" maxLength={50} value={ccpaContent.doNotShare} onChange={(e) => setCcpa({ doNotShare: e.target.value })} /></Field>
             <Field label={<>{'"Cancel" button'} {diffChip(ccpaContent.cancel, CCcur.cancel)}</>} help={false}><input className="input" maxLength={LIMITS.button} value={ccpaContent.cancel} onChange={(e) => setCcpa({ cancel: e.target.value })} /></Field>

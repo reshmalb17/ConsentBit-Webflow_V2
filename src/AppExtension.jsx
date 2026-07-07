@@ -153,6 +153,8 @@ export default function AppExtension() {
             if (m.showReject !== undefined) setShowReject(m.showReject);
             if (m.showCustomize !== undefined) setShowCustomize(m.showCustomize);
             if (m.showPolicy !== undefined) setShowPolicy(m.showPolicy);
+            if (m.floating !== undefined) setFloating(m.floating);
+            if (m.floatPos) setFloatPos(m.floatPos);
             if (m.template) setTemplate(m.template);
             if (m.iab !== undefined) setIab(m.iab);
             if (m.gac !== undefined) setGac(m.gac);

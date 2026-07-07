@@ -363,7 +363,7 @@ function WScan() {
                       <span className="badge badge-yellow"><span className="badge-dot" />Scanning</span>}
                   </td>
                   <td style={{ wordBreak: "break-all" }}>{r.scanUrl || "—"}</td>
-                  <td style={{ color: "var(--text-muted)" }}>{Array.isArray(r.categories) ? r.categories.length : "—"}</td>
+                  <td>{Array.isArray(r.categories) ? r.categories.length : "—"}</td>
                   <td>{r.cookiesFound ?? 0}</td>
                   <td>{r.scriptsFound ?? 0}</td>
                 </tr>);

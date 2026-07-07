@@ -176,7 +176,14 @@ function WEdPreview({ variant = "default" }) {
 
         {iab ?
         /* ---- IAB / TCF banner (ported from the webapp) ---- */
-        <WIabBanner key={animKey} device={device === "Phone" ? "mobile" : "desktop"} scale={iabZoom} prefScale={iabPrefZoom} alignment={bannerAlign === "right" ? "bottom-right" : "bottom-left"} config={{ isGAC: nav ? nav.gac : false, bannerType: bannerPos, borderRadius: bannerRadius, buttonBorderRadius: bannerBtnRadius, bannerEntranceAnimation: bannerAnim, bannerBg: colors.bannerBg, textColor: colors.textColor, headingColor: colors.headingColor, buttonColor: colors.btnBg, buttonTextColor: colors.btnText, SecButtonColor: colors.prefBtnBg, SecButtonTextColor: colors.prefBtnText, fontWeight: bannerWeight, textAlign: bannerTextAlign }} /> :
+        /* Clip the IAB banner to the area BELOW the titlebar and make this the
+           positioning context for its absolute children. Otherwise the banner is
+           anchored to the full preview-window (top hidden behind the titlebar) and
+           its zoomed max-height lets "Show more" grow it up over the titlebar and
+           out of the frame. This sub-frame keeps it inside the visible area. */
+        <div style={{ position: "absolute", top: 28, left: 0, right: 0, bottom: 0, overflow: "hidden" }}>
+          <WIabBanner key={animKey} device={device === "Phone" ? "mobile" : "desktop"} scale={iabZoom} prefScale={iabPrefZoom} alignment={bannerAlign === "right" ? "bottom-right" : "bottom-left"} config={{ isGAC: nav ? nav.gac : false, bannerType: bannerPos, borderRadius: bannerRadius, buttonBorderRadius: bannerBtnRadius, bannerEntranceAnimation: bannerAnim, bannerBg: colors.bannerBg, textColor: colors.textColor, headingColor: colors.headingColor, buttonColor: colors.btnBg, buttonTextColor: colors.btnText, SecButtonColor: colors.prefBtnBg, SecButtonTextColor: colors.prefBtnText, fontWeight: bannerWeight, textAlign: bannerTextAlign }} />
+        </div> :
 
         isPref ? (
         isCCPA ?
