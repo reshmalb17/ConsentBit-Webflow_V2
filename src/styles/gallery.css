@@ -1,7 +1,7 @@
 /* Gallery chrome — prefixed gx- so it never collides with cb-* */
 html, body { margin: 0; padding: 0; height: 100%; background: var(--bg, #15112E); }
 body {
-  font-family: "DM Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   color: var(--text, #F4F2FF);
   display: flex;
   min-height: 100vh;
@@ -103,6 +103,3 @@ body {
 .cb-ext .cb-avatar { width: 24px; height: 24px; }
 .cb-ext .cb-avatar { font-size: 10px; }
 .cb-ext .cb-plan-pill { padding: 3px 8px; font-size: 9px; }
-/* Center the bell glyph in its (24px) button — grid place-items handles the box,
-   line-height:1 + block removes the glyph's baseline offset so it sits dead center. */
-.cb-ext .cb-icon-btn .material-symbols-rounded { font-size: 15px; line-height: 1; display: block; }

@@ -1,0 +1,10 @@
+.cb-main-tabs-btn {
+  opacity: 1;
+  color: rgb(244, 242, 255);
+}
+
+.cb-main-tabs-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}

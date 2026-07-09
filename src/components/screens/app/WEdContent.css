@@ -1,0 +1,267 @@
+/* Static styles extracted from WEdContent.jsx (Webflow inline-style review). */
+
+.cb-edcontent-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 9px;
+  line-height: 1;
+  font-weight: 600;
+  color: #FFC178;
+  background: rgba(245, 166, 35, 0.14);
+  border: 1px solid rgba(245, 166, 35, 0.4);
+  border-radius: 999px;
+  padding: 2px 6px;
+  white-space: nowrap;
+  vertical-align: middle;
+}
+
+.cb-edcontent-chip-dot {
+  width: 4px;
+  height: 4px;
+  border-radius: 999px;
+  background: #F5A623;
+  flex-shrink: 0;
+}
+
+.cb-edcontent-relative {
+  position: relative;
+}
+
+.cb-edcontent-grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+
+.cb-edcontent-col {
+  width: 300px;
+}
+
+.cb-edcontent-mb6 {
+  margin-bottom: 6px;
+}
+
+.cb-edcontent-row-between-mb8 {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.cb-edcontent-heading {
+  font-weight: 600;
+  font-size: 12.5px;
+}
+
+.cb-edcontent-grid-2-sm {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.cb-edcontent-mb5 {
+  margin-bottom: 5px;
+}
+
+/* Scoped (0,0,2,0) so it beats the global `.select` padding shorthand (0,0,1,0)
+   regardless of bundle CSS order — otherwise the value text isn't indented and the
+   language badge overlaps it. */
+.cb-edcontent-relative .cb-edcontent-select-lang {
+  padding-left: 38px;
+}
+
+/* Scoped selector (0,0,2,0) so its color/background always beat the global
+   `.cb-app *` rule (0,0,1,0) regardless of CSS load order in the bundle. */
+.cb-edcontent-relative .cb-edcontent-lang-badge {
+  position: absolute;
+  left: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: inline-flex;
+  align-items: center;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--purple-hi);
+  background: var(--purple-soft);
+  border-radius: 5px;
+  padding: 2px 5px;
+  line-height: 1;
+  pointer-events: none;
+}
+
+.cb-edcontent-subtabs {
+  display: flex;
+  gap: 6px;
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  padding: 3px;
+  margin: 14px 0;
+}
+
+.cb-edcontent-subtab-btn {
+  flex: 1;
+  font-size: 11.5px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 7px 0;
+  border-radius: 7px;
+  border: none;
+}
+
+.cb-edcontent-card {
+  padding: 14px;
+  margin-bottom: 12px;
+}
+
+.cb-edcontent-row-center-mb12 {
+  display: flex;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.cb-edcontent-row-between-mb4 {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 4px;
+}
+
+.cb-edcontent-field-label-chip {
+  margin-bottom: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.cb-edcontent-counter {
+  font-size: 10px;
+  color: var(--text-faint);
+}
+
+.cb-edcontent-mb12 {
+  margin-bottom: 12px;
+}
+
+.cb-edcontent-heading-mb12 {
+  font-weight: 600;
+  font-size: 12.5px;
+  margin-bottom: 12px;
+}
+
+.cb-edcontent-row-between-mb12 {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.cb-edcontent-accordion-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+}
+
+.cb-edcontent-chevron {
+  display: inline-block;
+  transition: transform 0.15s;
+  color: var(--text-muted);
+}
+
+.cb-edcontent-mt12 {
+  margin-top: 12px;
+}
+
+.cb-edcontent-cat-row {
+  border-top: 1px solid var(--border);
+  padding-top: 10px;
+}
+
+.cb-edcontent-cat-label {
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--purple-hi);
+  margin-bottom: 8px;
+}
+
+.cb-edcontent-card-pad {
+  padding: 14px;
+}
+
+.cb-edcontent-mb8 {
+  margin-bottom: 8px;
+}
+
+.cb-edcontent-radio-group {
+  display: flex;
+  gap: 24px;
+}
+
+.cb-edcontent-radio-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  font-size: 12.5px;
+}
+
+.cb-edcontent-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(8, 6, 20, 0.7);
+  backdrop-filter: blur(2px);
+  display: grid;
+  place-items: center;
+  z-index: 100;
+}
+
+.cb-edcontent-modal-card {
+  width: 340px;
+  padding: 22px;
+  text-align: center;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.55);
+}
+
+.cb-edcontent-modal-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 999px;
+  margin: 0 auto 14px;
+  display: grid;
+  place-items: center;
+  background: rgba(245, 159, 69, 0.14);
+  color: #F49F45;
+}
+
+.cb-edcontent-modal-title {
+  font-size: 15px;
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+
+.cb-edcontent-modal-body {
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 1.55;
+  margin-bottom: 20px;
+}
+
+.cb-edcontent-modal-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.cb-edcontent-btn-center {
+  justify-content: center;
+}
+
+.cb-edcontent-btn-danger {
+  justify-content: center;
+  background: transparent;
+  color: #FF8A8A;
+  border: 1px solid rgba(255, 107, 107, 0.4);
+}

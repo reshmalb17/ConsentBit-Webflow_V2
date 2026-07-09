@@ -1,5 +1,6 @@
 import React from "react";
 import { getPaymentSubscription } from "../../../lib/api.js";
+import "./WPaymentProcessing.css";
 
 // Payment-processing popup. Opened when the user clicks a paid-plan checkout
 // link; Stripe checkout opens in a separate tab while this overlay polls the
@@ -127,26 +128,22 @@ export function WPaymentProcessing({ siteId, baseline, onPaid, onCancel }) {
     <div
       role="status"
       aria-live="polite"
-      style={{ position: "absolute", inset: 0, zIndex: 80 }}
+      className="cb-pay-overlay"
     >
       {/* dimmed click-blocking backdrop */}
-      <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.45)", backdropFilter: "blur(2px)" }} />
+      <div className="cb-pay-backdrop" />
 
-      <div style={{
-        position: "absolute", top: "50%", left: "50%", transform: "translate(-50%, -50%)",
-        width: 300, background: "var(--surface)", border: "1px solid var(--border)",
-        borderRadius: 14, padding: 26, textAlign: "center"
-      }}>
+      <div className="cb-pay-card">
         {isTimeout ? (
           // ── Timeout state — payment not confirmed within 5 minutes ──
           <>
             <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="#F59E0B" strokeWidth="2"
-              strokeLinecap="round" strokeLinejoin="round" style={{ marginBottom: 12 }}>
+              strokeLinecap="round" strokeLinejoin="round" className="cb-pay-icon">
               <circle cx="12" cy="12" r="9" />
               <path d="M12 7v5l3 2" />
             </svg>
-            <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 4 }}>Still waiting for payment</div>
-            <div style={{ color: "var(--text-muted)", fontSize: 11.5, lineHeight: 1.5, marginBottom: 18 }}>
+            <div className="cb-pay-title">Still waiting for payment</div>
+            <div className="cb-pay-desc">
               We couldn't confirm your payment yet. If you've completed checkout in
               the other tab, click Retry — otherwise you can close this.
             </div>
@@ -154,30 +151,28 @@ export function WPaymentProcessing({ siteId, baseline, onPaid, onCancel }) {
         ) : (
           // ── Processing state — spinner + polling ──
           <>
-            <svg width="44" height="44" viewBox="0 0 56 56" style={{ marginBottom: 12 }}>
+            <svg width="44" height="44" viewBox="0 0 56 56" className="cb-pay-icon">
               <circle cx="28" cy="14" r="4" fill="#7C5CFC"><animate attributeName="opacity" values="1;.3;1" dur="1s" begin="0s" repeatCount="indefinite" /></circle>
               <circle cx="40" cy="28" r="4" fill="#8E72FF"><animate attributeName="opacity" values="1;.3;1" dur="1s" begin="0.2s" repeatCount="indefinite" /></circle>
               <circle cx="28" cy="42" r="4" fill="#A78BFA"><animate attributeName="opacity" values="1;.3;1" dur="1s" begin="0.4s" repeatCount="indefinite" /></circle>
               <circle cx="16" cy="28" r="4" fill="#7C5CFC"><animate attributeName="opacity" values="1;.3;1" dur="1s" begin="0.6s" repeatCount="indefinite" /></circle>
             </svg>
-            <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 4 }}>Payment processing…</div>
-            <div style={{ color: "var(--text-muted)", fontSize: 11.5, lineHeight: 1.5, marginBottom: 18 }}>
+            <div className="cb-pay-title">Payment processing…</div>
+            <div className="cb-pay-desc">
               Complete your payment in the checkout tab.
             </div>
           </>
         )}
 
-        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+        <div className="cb-pay-actions">
           {isTimeout && (
             <button
-              className="btn btn-primary btn-sm"
-              style={{ width: "100%", justifyContent: "center" }}
+              className="btn btn-primary btn-sm cb-pay-btn"
               onClick={handleRetry}
             >Retry</button>
           )}
           <button
-            className="btn btn-ghost btn-sm"
-            style={{ width: "100%", justifyContent: "center", color: "var(--text-muted)" }}
+            className="btn btn-ghost btn-sm cb-pay-btn-cancel"
             onClick={handleCancel}
           >Cancel</button>
         </div>

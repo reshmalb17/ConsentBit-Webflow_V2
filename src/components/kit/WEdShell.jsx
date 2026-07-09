@@ -1,4 +1,5 @@
 import React from "react";
+import "./WEdShell.css";
 import { WMainTabs } from "./WMainTabs.jsx";
 import { WPage } from "./WPage.jsx";
 import { WTopBar } from "./WTopBar.jsx";
@@ -46,28 +47,28 @@ function WEdShell({ active = "general", children, showAdvanced = true, cta = "Cr
   { id: "type", label: "Type" }];
 
   return (
-    <WPage scroll={false} className="cb-scroll-page" style={{ display: "flex", flexDirection: "column" }}>
+    <WPage scroll={false} className="cb-scroll-page cb-edshell-page">
       <WToast message={toast.message} type={toast.type} onClose={() => setToast({ message: "", type: "error" })} />
       <WTopBar />
       <WMainTabs active="cookie" right={
       <>
           <button
-            className="btn btn-secondary btn-sm"
-            style={{ height: "38px", ...(hasPlan ? {} : { opacity: 0.5, cursor: "not-allowed" }) }}
+            className="btn btn-secondary btn-sm cb-edshell-secondary"
+            style={hasPlan ? undefined : { opacity: 0.5, cursor: "not-allowed" }}
             disabled={!hasPlan}
             title={hasPlan ? undefined : "Subscribe to a plan first to install & verify"}
             onClick={hasPlan && nav ? () => nav.goToInstallVerify() : undefined}
           >Install &amp; verify</button>
           <button
-            className="btn btn-primary btn-sm"
-            style={{ height: "38px", minWidth: "122px", ...(hasPlan ? {} : { opacity: 0.5, cursor: "not-allowed" }) }}
+            className="btn btn-primary btn-sm cb-edshell-primary"
+            style={hasPlan ? undefined : { opacity: 0.5, cursor: "not-allowed" }}
             disabled={saving || !hasPlan}
             title={hasPlan ? undefined : "Subscribe to a plan first to create your banner"}
             onClick={handleSave}
           >{saving ? "Saving…" : (nav && nav.bannerCreated ? "Update Banner" : cta)}</button>
         </>
       } />
-      <div className="cb-section-tabs" style={{ padding: "0 32px", margin: "14px 0 14px" }}>
+      <div className="cb-section-tabs cb-edshell-tabs">
         {items.map((it) => {
           // The Content tab is disabled while IAB TCF is enabled.
           const disabled = it.id === "content" && nav && nav.iab;
@@ -83,7 +84,7 @@ function WEdShell({ active = "general", children, showAdvanced = true, cta = "Cr
         })}
       </div>
       {/* Scrolls independently of the fixed header above. */}
-      <div style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "0 32px 18px" }}>{children}</div>
+      <div className="cb-edshell-content">{children}</div>
     </WPage>);
 
 }

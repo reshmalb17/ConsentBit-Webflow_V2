@@ -2,6 +2,7 @@ import React from "react";
 import { WEdPreview } from "../../kit/WEdPreview.jsx";
 import { WEdShell } from "../../kit/WEdShell.jsx";
 import { useNav } from "../../../nav.jsx";
+import "./WEdType.css";
 
 const ALIGNS = ["left", "center", "right"];
 
@@ -15,11 +16,11 @@ function WEdType() {
 
   return (
     <WEdShell active="type">
-      <div style={{ display: "grid", gridTemplateColumns: "300px 1fr", gap: 18 }}>
+      <div className="cb-edtype-grid">
         <div>
-          <div className="card" style={{ padding: 14 }}>
-            <div className="field-label" style={{ marginBottom: 6 }}>Weight</div>
-            <select className="select" style={{ marginBottom: 14 }} value={weight} onChange={(e) => setWeight(e.target.value)}>
+          <div className="card cb-edtype-card">
+            <div className="field-label cb-edtype-label">Weight</div>
+            <select className="select cb-edtype-weight-select" value={weight} onChange={(e) => setWeight(e.target.value)}>
               <option value="100">Thin</option>
               <option value="300">Light</option>
               <option value="400">Regular</option>
@@ -30,9 +31,9 @@ function WEdType() {
               <option value="900">Black</option>
             </select>
 
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <div className="field-label" style={{ marginBottom: 0 }}>Alignment</div>
-              <div style={{ display: "flex", gap: 6 }}>
+            <div className="cb-edtype-align-row">
+              <div className="field-label cb-edtype-align-label">Alignment</div>
+              <div className="cb-edtype-align-btns">
                 {ALIGNS.map((al, i) => {
                   const on = align === al;
                   return (

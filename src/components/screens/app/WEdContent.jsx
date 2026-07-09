@@ -1,4 +1,5 @@
 import React from "react";
+import "./WEdContent.css";
 import { WEdPreview } from "../../kit/WEdPreview.jsx";
 import { WEdReset } from "../../kit/WEdReset.jsx";
 import { WEdRow } from "../../kit/WEdRow.jsx";
@@ -170,8 +171,8 @@ function WEdContent() {
   };
 
   const EDITED_CHIP =
-  <span style={{ display: "inline-flex", alignItems: "center", gap: 3, fontSize: "9px", lineHeight: 1, fontWeight: 600, color: "#FFC178", background: "rgba(245,166,35,0.14)", border: "1px solid rgba(245,166,35,0.4)", borderRadius: 999, padding: "2px 6px", whiteSpace: "nowrap", verticalAlign: "middle" }}>
-      <span style={{ width: 4, height: 4, borderRadius: 999, background: "#F5A623", flexShrink: 0 }} />Edited
+  <span className="cb-edcontent-chip">
+      <span className="cb-edcontent-chip-dot" />Edited
     </span>;
   // Localized fields use the per-language edit tracking; other fields compare to their default.
   const editedChip = (k) => langEdited[k] ? EDITED_CHIP : null;
@@ -179,41 +180,39 @@ function WEdContent() {
 
   return (
     <WEdShell active="content">
-      <div style={{ position: "relative" }}>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
-        <div style={{ width: "300px" }}>
+      <div className="cb-edcontent-relative">
+      <div className="cb-edcontent-grid-2">
+        <div className="cb-edcontent-col">
           {/* Consent template + Language (two-up) */}
-          <div style={{ marginBottom: 6 }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-              <div style={{ fontWeight: 600, fontSize: 12.5 }}>Localization</div>
+          <div className="cb-edcontent-mb6">
+            <div className="cb-edcontent-row-between-mb8">
+              <div className="cb-edcontent-heading">Localization</div>
               <WEdReset onClick={resetContent} />
             </div>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+            <div className="cb-edcontent-grid-2-sm">
               <div>
-                <div className="field-label" style={{ marginBottom: 5 }}>Consent template</div>
+                <div className="field-label cb-edcontent-mb5">Consent template</div>
                 <select className="select" value={nav ? nav.template : "CCPA+GDPR"} onChange={(e) => nav && nav.setTemplate(e.target.value)}><option>CCPA (USA)</option><option>GDPR (EU)</option><option>CCPA+GDPR</option></select>
               </div>
               <div>
-                <div className="field-label" style={{ marginBottom: 5 }}>Language</div>
-                <div style={{ position: "relative" }}>
-                  <select className="select" value={lang} onChange={(e) => onPickLang(e.target.value)} style={{ paddingLeft: 38 }}>
+                <div className="field-label cb-edcontent-mb5">Language</div>
+                <div className="cb-edcontent-relative">
+                  <select className="select cb-edcontent-select-lang" value={lang} onChange={(e) => onPickLang(e.target.value)}>
                     {langs.map((l) => <option key={l} value={l}>{l}</option>)}
                   </select>
-                  <span style={{ position: "absolute", left: 8, top: "50%", transform: "translateY(-50%)", fontSize: 9, fontWeight: 700, letterSpacing: "0.04em", color: "var(--purple-hi)", background: "var(--purple-soft)", borderRadius: 5, padding: "2px 5px", pointerEvents: "none" }}>{codes[lang]}</span>
+                  <span className="cb-edcontent-lang-badge">{codes[lang]}</span>
                 </div>
               </div>
             </div>
           </div>
 
           {/* Banner type sub-tabs */}
-          <div style={{ display: "flex", gap: 6, background: "var(--bg-2)", border: "1px solid var(--border)", borderRadius: 9, padding: 3, margin: "14px 0" }}>
+          <div className="cb-edcontent-subtabs">
             {[
               { id: "default", label: "Default Banner" },
               { id: "pref", label: "Preference Banner" }].
               map((t) =>
-              <button key={t.id} onClick={() => setTab(t.id)} style={{
-                flex: 1, fontSize: 11.5, fontWeight: 600, cursor: "pointer",
-                padding: "7px 0", borderRadius: 7, border: "none",
+              <button key={t.id} onClick={() => setTab(t.id)} className="cb-edcontent-subtab-btn" style={{
                 background: tab === t.id ? "var(--purple)" : "transparent",
                 color: tab === t.id ? "#fff" : "var(--text-muted)"
               }}>{t.label}</button>
@@ -221,20 +220,20 @@ function WEdContent() {
           </div>
 
           {tab === "default" &&
-            <div className="card" style={{ padding: 14, marginBottom: 12 }}>
-            <div style={{ display: "flex", alignItems: "center", marginBottom: 12 }}>
-              <div style={{ fontWeight: 600, fontSize: 12.5 }}>Cookie Notice</div>
+            <div className="card cb-edcontent-card">
+            <div className="cb-edcontent-row-center-mb12">
+              <div className="cb-edcontent-heading">Cookie Notice</div>
             </div>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
-              <span className="field-label" style={{ marginBottom: 0, display: "inline-flex", alignItems: "center", gap: 6 }}>Title {editedChip("title")}</span>
-              <span style={{ fontSize: 10, color: "var(--text-faint)" }}>{fields.title.length}/{LIMITS.title}</span>
+            <div className="cb-edcontent-row-between-mb4">
+              <span className="field-label cb-edcontent-field-label-chip">Title {editedChip("title")}</span>
+              <span className="cb-edcontent-counter">{fields.title.length}/{LIMITS.title}</span>
             </div>
-            <input className="input" maxLength={LIMITS.title} style={{ marginBottom: 12 }} value={fields.title} onChange={(e) => editField("title", e.target.value)} />
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
-              <span className="field-label" style={{ marginBottom: 0, display: "inline-flex", alignItems: "center", gap: 6 }}>Message {editedChip("message")}</span>
-              <span style={{ fontSize: 10, color: "var(--text-faint)" }}>{fields.message.length}/{LIMITS.message}</span>
+            <input className="input cb-edcontent-mb12" maxLength={LIMITS.title} value={fields.title} onChange={(e) => editField("title", e.target.value)} />
+            <div className="cb-edcontent-row-between-mb4">
+              <span className="field-label cb-edcontent-field-label-chip">Message {editedChip("message")}</span>
+              <span className="cb-edcontent-counter">{fields.message.length}/{LIMITS.message}</span>
             </div>
-            <textarea className="input" rows="4" maxLength={LIMITS.message} style={{ marginBottom: 12 }} value={fields.message} onChange={(e) => editField("message", e.target.value)} />
+            <textarea className="input cb-edcontent-mb12" rows="4" maxLength={LIMITS.message} value={fields.message} onChange={(e) => editField("message", e.target.value)} />
 
             <WEdRow label="Close button" checked={nav ? nav.closeBtn : false} onChange={(v) => nav && nav.setCloseBtn(v)} />
 
@@ -243,25 +242,25 @@ function WEdContent() {
             <Field label={<>{'"Do Not Share" link'} {diffChip(ccpaContent.doNotShare, CCcur.doNotShare)}</>} help={false}><input className="input" maxLength={50} value={ccpaContent.doNotShare} onChange={(e) => setCcpa({ doNotShare: e.target.value })} /></Field>
 
             <WEdRow label={<>{'"Cookie policy" Link'} {diffChip(policyLabel, editorDefaults.default.policyLinkLabel)}</>} checked={nav ? nav.showPolicy : false} onChange={(v) => nav && nav.setShowPolicy(v)} />
-            <input className="input" maxLength={LIMITS.policyLabel} value={policyLabel} onChange={(e) => setPolicyLabel(e.target.value)} style={{ marginBottom: 12 }} />
+            <input className="input cb-edcontent-mb12" maxLength={LIMITS.policyLabel} value={policyLabel} onChange={(e) => setPolicyLabel(e.target.value)} />
 
             <Field label={<>URL {diffChip(policyUrl, editorDefaults.default.policyUrl)}</>} help={false}><input className="input" value={policyUrl} onChange={(e) => setPolicyUrl(e.target.value)} /></Field>
             </>
             : <>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
-              <span className="field-label" style={{ marginBottom: 0, display: "inline-flex", alignItems: "center", gap: 6 }}>Accept All {editedChip("accept")}</span>
-              <span style={{ fontSize: 10, color: "var(--text-faint)" }}>{fields.accept.length}/{LIMITS.button}</span>
+            <div className="cb-edcontent-row-between-mb4">
+              <span className="field-label cb-edcontent-field-label-chip">Accept All {editedChip("accept")}</span>
+              <span className="cb-edcontent-counter">{fields.accept.length}/{LIMITS.button}</span>
             </div>
-            <input className="input" maxLength={LIMITS.button} style={{ marginBottom: 12 }} value={fields.accept} onChange={(e) => editField("accept", e.target.value)} />
+            <input className="input cb-edcontent-mb12" maxLength={LIMITS.button} value={fields.accept} onChange={(e) => editField("accept", e.target.value)} />
 
             <WEdRow label={<>{'"Reject All" button'} {diffChip(rejectLabel, rejectDefault)}</>} checked={nav ? nav.showReject : true} onChange={(v) => nav && nav.setShowReject(v)} />
-            <input className="input" maxLength={LIMITS.button} value={rejectLabel} onChange={(e) => setRejectLabel(e.target.value)} style={{ marginBottom: 12 }} />
+            <input className="input cb-edcontent-mb12" maxLength={LIMITS.button} value={rejectLabel} onChange={(e) => setRejectLabel(e.target.value)} />
 
             <WEdRow label={<>{'"Customize" button'} {diffChip(customizeLabel, customizeDefault)}</>} checked={nav ? nav.showCustomize : true} onChange={(v) => nav && nav.setShowCustomize(v)} />
-            <input className="input" maxLength={LIMITS.button} value={customizeLabel} onChange={(e) => setCustomizeLabel(e.target.value)} style={{ marginBottom: 12 }} />
+            <input className="input cb-edcontent-mb12" maxLength={LIMITS.button} value={customizeLabel} onChange={(e) => setCustomizeLabel(e.target.value)} />
 
             <WEdRow label={<>{'"Cookie policy" Link'} {diffChip(policyLabel, editorDefaults.default.policyLinkLabel)}</>} checked={nav ? nav.showPolicy : false} onChange={(v) => nav && nav.setShowPolicy(v)} />
-            <input className="input" maxLength={LIMITS.policyLabel} value={policyLabel} onChange={(e) => setPolicyLabel(e.target.value)} style={{ marginBottom: 12 }} />
+            <input className="input cb-edcontent-mb12" maxLength={LIMITS.policyLabel} value={policyLabel} onChange={(e) => setPolicyLabel(e.target.value)} />
 
             <Field label={<>URL {diffChip(policyUrl, editorDefaults.default.policyUrl)}</>} help={false}><input className="input" value={policyUrl} onChange={(e) => setPolicyUrl(e.target.value)} /></Field>
             </>
@@ -271,8 +270,8 @@ function WEdContent() {
 
           {tab === "pref" && (isCCPA ?
           /* CCPA · Opt-out Preference editor */
-          <div className="card" style={{ padding: 14, marginBottom: 12 }}>
-            <div style={{ fontWeight: 600, fontSize: 12.5, marginBottom: 12 }}>Opt-out Preference</div>
+          <div className="card cb-edcontent-card">
+            <div className="cb-edcontent-heading-mb12">Opt-out Preference</div>
             <Field label={<>Title {diffChip(ccpaContent.optOutTitle, CCcur.optOutTitle)}</>} help={false}><input className="input" maxLength={LIMITS.title} value={ccpaContent.optOutTitle} onChange={(e) => setCcpa({ optOutTitle: e.target.value })} /></Field>
             <Field label={<>Description {diffChip(ccpaContent.optOutBody, CCcur.optOutBody)}</>} help={false}><textarea className="input" rows="4" maxLength={LIMITS.message} value={ccpaContent.optOutBody} onChange={(e) => setCcpa({ optOutBody: e.target.value })} /></Field>
             <Field label={<>{'"Do Not Share" checkbox label'} {diffChip(ccpaContent.doNotShare, CCcur.doNotShare)}</>} help={false}><input className="input" maxLength={50} value={ccpaContent.doNotShare} onChange={(e) => setCcpa({ doNotShare: e.target.value })} /></Field>
@@ -281,9 +280,9 @@ function WEdContent() {
           </div>
           : <>
           {/* Preference Banner — expanded */}
-          <div className="card" style={{ padding: 14, marginBottom: 12 }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-              <div style={{ fontWeight: 600, fontSize: 12.5 }}>Preference Banner</div>
+          <div className="card cb-edcontent-card">
+            <div className="cb-edcontent-row-between-mb12">
+              <div className="cb-edcontent-heading">Preference Banner</div>
             </div>
             <Field label={<>Title {diffChip(prefContent.title, PLcur.title)}</>} help={false}><input className="input" maxLength={LIMITS.title} value={prefContent.title} onChange={(e) => setPref({ title: e.target.value })} /></Field>
             <Field label={<>Privacy overview {diffChip(prefContent.overview, PLcur.overview)}</>} help={false}>
@@ -294,16 +293,16 @@ function WEdContent() {
           </div>
 
           {/* Cookie List — accordion with editable category name + description */}
-          <div className="card" style={{ padding: 14, marginBottom: 12 }}>
-            <div onClick={() => setCookieListOpen((o) => !o)} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer" }}>
-              <div style={{ fontWeight: 600, fontSize: 12.5 }}>Cookie List</div>
-              <span style={{ display: "inline-block", transform: cookieListOpen ? "rotate(90deg)" : "none", transition: "transform 0.15s", color: "var(--text-muted)" }}>›</span>
+          <div className="card cb-edcontent-card">
+            <div onClick={() => setCookieListOpen((o) => !o)} className="cb-edcontent-accordion-head">
+              <div className="cb-edcontent-heading">Cookie List</div>
+              <span className="cb-edcontent-chevron" style={{ transform: cookieListOpen ? "rotate(90deg)" : "none" }}>›</span>
             </div>
             {cookieListOpen &&
-            <div style={{ marginTop: 12 }}>
+            <div className="cb-edcontent-mt12">
               {prefContent.cats.map((c, i) =>
-              <div key={i} style={{ borderTop: "1px solid var(--border)", paddingTop: 10, marginTop: i ? 10 : 0 }}>
-                <div style={{ fontSize: 11.5, fontWeight: 700, color: "var(--purple-hi)", marginBottom: 8 }}>{prefCategories[i].l}</div>
+              <div key={i} className="cb-edcontent-cat-row" style={{ marginTop: i ? 10 : 0 }}>
+                <div className="cb-edcontent-cat-label">{prefCategories[i].l}</div>
                 <Field label={<>Name {diffChip(c.name, CLcur[i] ? CLcur[i].name : prefCategories[i].l)}</>} help={false}><input className="input" maxLength={LIMITS.name} value={c.name} onChange={(e) => setCat(i, { name: e.target.value })} /></Field>
                 <Field label={<>Description {diffChip(c.desc, CLcur[i] ? CLcur[i].desc : prefCategories[i].desc)}</>} help={false}><textarea className="input" rows="3" maxLength={LIMITS.desc} value={c.desc} onChange={(e) => setCat(i, { desc: e.target.value })} /></Field>
               </div>
@@ -314,18 +313,18 @@ function WEdContent() {
           </>)}
 
           {/* Floating button */}
-          <div className="card" style={{ padding: 14 }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-              <div style={{ fontWeight: 600, fontSize: 12.5 }}>Floating button</div>
+          <div className="card cb-edcontent-card-pad">
+            <div className="cb-edcontent-row-between-mb12">
+              <div className="cb-edcontent-heading">Floating button</div>
               <Toggle on={floating} onClick={() => setFloating((v) => !v)} />
             </div>
             {floating && <>
-            <div className="field-label" style={{ marginBottom: 8 }}>Position</div>
-            <div style={{ display: "flex", gap: 24 }}>
-              <label onClick={() => setFloatPos("left")} style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", fontSize: 12.5 }}>
+            <div className="field-label cb-edcontent-mb8">Position</div>
+            <div className="cb-edcontent-radio-group">
+              <label onClick={() => setFloatPos("left")} className="cb-edcontent-radio-label">
                 <Radio on={floatPos === "left"} /> Bottom left
               </label>
-              <label onClick={() => setFloatPos("right")} style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", fontSize: 12.5 }}>
+              <label onClick={() => setFloatPos("right")} className="cb-edcontent-radio-label">
                 <Radio on={floatPos === "right"} /> Bottom right
               </label>
             </div>
@@ -339,28 +338,28 @@ function WEdContent() {
 
       {/* Re-translate / overwrite warning modal */}
       {pendingLang &&
-        <div style={{ position: "fixed", inset: 0, background: "rgba(8,6,20,0.7)", backdropFilter: "blur(2px)", display: "grid", placeItems: "center", zIndex: 100 }}>
-        <div className="card" style={{ width: 340, padding: 22, textAlign: "center", boxShadow: "0 24px 60px rgba(0,0,0,0.55)" }}>
-          <div style={{ width: 44, height: 44, borderRadius: 999, margin: "0 auto 14px", display: "grid", placeItems: "center", background: "rgba(245,159,69,0.14)", color: "#F49F45" }}>
+        <div className="cb-edcontent-modal-overlay">
+        <div className="card cb-edcontent-modal-card">
+          <div className="cb-edcontent-modal-icon">
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 9v4" /><path d="M12 17h.01" /><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z" /></svg>
           </div>
           {pendingLang.type === "switch" ? <>
-          <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 8 }}>Change language?</div>
-          <div style={{ color: "var(--text-muted)", fontSize: 12, lineHeight: 1.55, marginBottom: 20 }}>
+          <div className="cb-edcontent-modal-title">Change language?</div>
+          <div className="cb-edcontent-modal-body">
             The content you edited will be replaced with the default content of the selected language. This can't be undone.
           </div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            <button className="btn btn-primary btn-sm" style={{ justifyContent: "center" }} onClick={confirmSwitch}>Change language</button>
-            <button className="btn btn-secondary btn-sm" style={{ justifyContent: "center" }} onClick={() => setPendingLang(null)}>Cancel</button>
+          <div className="cb-edcontent-modal-actions">
+            <button className="btn btn-primary btn-sm cb-edcontent-btn-center" onClick={confirmSwitch}>Change language</button>
+            <button className="btn btn-secondary btn-sm cb-edcontent-btn-center" onClick={() => setPendingLang(null)}>Cancel</button>
           </div>
           </> : <>
-          <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 8 }}>Overwrite your edits?</div>
-          <div style={{ color: "var(--text-muted)", fontSize: 12, lineHeight: 1.55, marginBottom: 20 }}>
+          <div className="cb-edcontent-modal-title">Overwrite your edits?</div>
+          <div className="cb-edcontent-modal-body">
             You've made manual edits to this language's content. Re-translating will replace them with a fresh translation. This can't be undone.
           </div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            <button className="btn btn-primary btn-sm" style={{ justifyContent: "center" }} onClick={() => setPendingLang(null)}>Keep my edits</button>
-            <button className="btn btn-sm" style={{ justifyContent: "center", background: "transparent", color: "#FF8A8A", border: "1px solid rgba(255,107,107,0.4)" }} onClick={() => {
+          <div className="cb-edcontent-modal-actions">
+            <button className="btn btn-primary btn-sm cb-edcontent-btn-center" onClick={() => setPendingLang(null)}>Keep my edits</button>
+            <button className="btn btn-sm cb-edcontent-btn-danger" onClick={() => {
                 applyTranslation(pendingLang.lang);
                 setPendingLang(null);
               }}>Re-translate anyway</button>

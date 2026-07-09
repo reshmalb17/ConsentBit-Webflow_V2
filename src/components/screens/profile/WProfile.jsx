@@ -1,4 +1,5 @@
 import React from "react";
+import "./WProfile.css";
 import { WMainTabs } from "../../kit/WMainTabs.jsx";
 import { WPage } from "../../kit/WPage.jsx";
 import { WTopBar } from "../../kit/WTopBar.jsx";
@@ -95,34 +96,34 @@ function WProfile() {
   };
 
   return (
-    <WPage style={{ position: "relative" }}>
+    <WPage className="cb-profile-page">
       <WTopBar />
       {/* Navbar (Cookie Banner / Scan / Consent Logs / Upgrade) hidden in the profile section */}
       {/* <WMainTabs active="" left /> */}
-      <div style={{ padding: "16px 16px", marginTop: 12 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-          <div style={{ fontSize: 15, fontWeight: 600 }}>Profile Settings</div>
-          <div style={{ display: "flex", gap: 6 }}>
+      <div className="cb-profile-body">
+        <div className="cb-profile-header">
+          <div className="cb-profile-title">Profile Settings</div>
+          <div className="cb-profile-header-actions">
             <button className="btn btn-dark btn-sm" onClick={nav ? () => nav.setProfileOpen(false) : undefined}>← Back</button>
           </div>
         </div>
 
         {/* Account owner */}
-        <div className="card" style={{ padding: 12, marginBottom: 18, display: "flex", justifyContent: "space-between", alignItems: "center", background: "var(--purple-soft)", borderColor: "rgba(124,92,252,0.3)" }}>
+        <div className="card cb-profile-owner-card">
           <div>
-            <div style={{ fontWeight: 600, marginBottom: 4, fontSize: 12.5 }}>Account Owner</div>
-            <div style={{ fontSize: 12 }}>{accountEmail || "—"}</div>
+            <div className="cb-profile-owner-label">Account Owner</div>
+            <div className="cb-profile-owner-email">{accountEmail || "—"}</div>
           </div>
         </div>
 
         {/* Current plan — hidden until a plan is taken (no "Free" fallback card) */}
         {hasPlan &&
-        <div className="card" style={{ padding: 14, marginBottom: 12 }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
-            <div style={{ fontWeight: 600, fontSize: 13 }}>Your Current plan</div>
-            <div style={{ color: "var(--text)", fontWeight: 600, fontSize: 13 }}>{feat.label}</div>
+        <div className="card cb-profile-plan-card">
+          <div className="cb-profile-plan-head">
+            <div className="cb-profile-plan-title">Your Current plan</div>
+            <div className="cb-profile-plan-label">{feat.label}</div>
           </div>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 10, marginBottom: 12 }}>
+          <div className="cb-profile-plan-grid">
             {[
             ["Domains", feat.domains],
             ["Scans used", scansUsed, `of ${feat.scans}`],
@@ -130,13 +131,13 @@ function WProfile() {
             ["Compliance", feat.compliance]].
             map((r, i) =>
             <div key={i}>
-                <div style={{ fontSize: 10.5, color: "var(--text-muted)" }}>{r[0]}</div>
-                <div style={{ fontSize: 14, fontWeight: 600, color: "var(--purple-hi)" }}>{r[1]}</div>
-                {r[2] && <div style={{ fontSize: 9.5, color: "var(--text-muted)", marginTop: 1 }}>{r[2]}</div>}
+                <div className="cb-profile-stat-label">{r[0]}</div>
+                <div className="cb-profile-stat-value">{r[1]}</div>
+                {r[2] && <div className="cb-profile-stat-sub">{r[2]}</div>}
               </div>
             )}
           </div>
-          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+          <div className="cb-profile-plan-actions">
             {nextPlan &&
               <button className="btn btn-primary btn-sm" onClick={nav ? () => { nav.setProfileOpen(false); nav.setMainTab("upgrade"); } : undefined}>Upgrade to {nextPlan}</button>
             }
@@ -145,29 +146,29 @@ function WProfile() {
             }
           </div>
           {isPaid && cancelAtPeriodEnd &&
-            <div style={{ marginTop: 8, fontSize: 11.5 }}>
-              <span style={{ color: "var(--text-muted)" }}>Your subscription is cancelled{periodEndDate ? ` and will end on ${periodEndDate}` : ""}. </span>
-              <a href="#" onClick={(e) => { e.preventDefault(); if (nav) { nav.setProfileOpen(false); nav.setMainTab("upgrade"); } }} style={{ color: "var(--purple-hi)", fontWeight: 600, cursor: "pointer" }}>Subscribe Now</a>
+            <div className="cb-profile-cancel-note">
+              <span className="cb-profile-muted">Your subscription is cancelled{periodEndDate ? ` and will end on ${periodEndDate}` : ""}. </span>
+              <a href="#" onClick={(e) => { e.preventDefault(); if (nav) { nav.setProfileOpen(false); nav.setMainTab("upgrade"); } }} className="cb-profile-link">Subscribe Now</a>
             </div>
           }
           {cancelMsg && !cancelAtPeriodEnd &&
-            <div style={{ marginTop: 8, fontSize: 11.5, color: "var(--text-muted)" }}>{cancelMsg}</div>
+            <div className="cb-profile-cancel-msg">{cancelMsg}</div>
           }
         </div>
         }
 
         {/* Invoices — billing history, also hidden until a plan is taken */}
         {hasPlan &&
-        <div className="card" style={{ padding: 14 }}>
-          <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 10 }}>Invoices</div>
+        <div className="card cb-profile-invoices-card">
+          <div className="cb-profile-invoices-title">Invoices</div>
           <div className="cb-scroll-table cb-scroll-table-tall">
           <table className="tbl">
-            <thead><tr><th>Date</th><th>Number</th><th>Amount</th><th>Status</th><th style={{ width: 40, textAlign: "right" }}>Invoice</th></tr></thead>
+            <thead><tr><th>Date</th><th>Number</th><th>Amount</th><th>Status</th><th className="cb-profile-th-invoice">Invoice</th></tr></thead>
             <tbody>
               {loadingBilling ?
-                <tr><td colSpan={5} style={{ textAlign: "center", color: "var(--text-muted)", padding: "20px 12px" }}>Loading invoices…</td></tr> :
+                <tr><td colSpan={5} className="cb-profile-empty-cell">Loading invoices…</td></tr> :
               invoices.length === 0 ?
-                <tr><td colSpan={5} style={{ textAlign: "center", color: "var(--text-muted)", padding: "20px 12px" }}>No invoices yet.</td></tr> :
+                <tr><td colSpan={5} className="cb-profile-empty-cell">No invoices yet.</td></tr> :
               invoices.map((inv) => {
                 const amt = ((inv.amountPaid || inv.amountDue || 0) / 100).toFixed(2);
                 const date = inv.created ? new Date(inv.created).toLocaleDateString("en-US", { month: "short", day: "2-digit", year: "numeric" }) : "—";
@@ -176,14 +177,14 @@ function WProfile() {
                 return (
                 <tr key={inv.id}>
                   <td>{date}</td>
-                  <td className="mono" style={{ color: "var(--purple-hi)" }}>{inv.number || "—"}</td>
+                  <td className="mono cb-profile-inv-number">{inv.number || "—"}</td>
                   <td>{amt} {inv.currency || "USD"}</td>
                   <td><span className={"badge " + (paid ? "badge-green" : "badge-yellow")}><span className="badge-dot" />{inv.status || "—"}</span></td>
-                  <td style={{ textAlign: "right" }}>
+                  <td className="cb-profile-td-right">
                     {url ?
                     <a href={url} target="_blank" rel="noopener noreferrer" className="cb-inv-dl" aria-label="Download invoice">
                       <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"><path d="M12 15V3m9 12v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><path d="m7 10l5 5l5-5" /></g></svg>
-                    </a> : <span style={{ color: "var(--text-faint)" }}>—</span>}
+                    </a> : <span className="cb-profile-faint">—</span>}
                   </td>
                 </tr>);
               })}
@@ -196,18 +197,18 @@ function WProfile() {
 
       {/* Cancel-subscription confirmation popup */}
       {confirmCancel &&
-      <div style={{ position: "absolute", inset: 0, background: "rgba(8,6,20,0.6)", backdropFilter: "blur(2px)", display: "grid", placeItems: "center", zIndex: 30, padding: 20 }} onClick={() => setConfirmCancel(false)}>
-        <div className="card" style={{ width: 360, maxWidth: "100%", padding: 22, background: "var(--surface)", textAlign: "center", boxShadow: "0 24px 60px rgba(0,0,0,0.55)" }} onClick={(e) => e.stopPropagation()}>
-          <div style={{ width: 52, height: 52, borderRadius: 999, margin: "0 auto 14px", display: "grid", placeItems: "center", background: "rgba(244,159,69,0.14)", color: "#F49F45" }}>
+      <div className="cb-profile-cancel-overlay" onClick={() => setConfirmCancel(false)}>
+        <div className="card cb-profile-cancel-card" onClick={(e) => e.stopPropagation()}>
+          <div className="cb-profile-cancel-icon">
             <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M12 9v4" /><path d="M12 17h.01" /><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z" /></svg>
           </div>
-          <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 8 }}>Cancel subscription?</div>
-          <div style={{ color: "var(--text-muted)", fontSize: 12.5, lineHeight: 1.55, marginBottom: 20 }}>
-            You'll keep access to your <b style={{ color: "var(--text)" }}>{feat.label}</b> plan until the end of the current billing period, then it won't renew.
+          <div className="cb-profile-cancel-heading">Cancel subscription?</div>
+          <div className="cb-profile-cancel-text">
+            You'll keep access to your <b className="cb-profile-strong">{feat.label}</b> plan until the end of the current billing period, then it won't renew.
           </div>
-          <div style={{ display: "flex", gap: 8 }}>
-            <button className="btn btn-secondary btn-sm" style={{ flex: 1, justifyContent: "center" }} onClick={() => setConfirmCancel(false)}>Keep subscription</button>
-            <button className="btn btn-sm" style={{ flex: 1, justifyContent: "center", background: "#E5484D", color: "#fff", border: "none" }} disabled={cancelling} onClick={handleCancelSubscription}>{cancelling ? "Cancelling…" : "Yes, cancel"}</button>
+          <div className="cb-profile-cancel-buttons">
+            <button className="btn btn-secondary btn-sm cb-profile-btn-flex" onClick={() => setConfirmCancel(false)}>Keep subscription</button>
+            <button className="btn btn-sm cb-profile-btn-danger" disabled={cancelling} onClick={handleCancelSubscription}>{cancelling ? "Cancelling…" : "Yes, cancel"}</button>
           </div>
         </div>
       </div>

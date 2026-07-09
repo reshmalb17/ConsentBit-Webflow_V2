@@ -1,0 +1,23 @@
+.cb-notif2-stage {
+  position: relative;
+  padding: 16px;
+  min-height: 460px;
+}
+
+.cb-notif2-skeleton {
+  padding: 14px;
+  opacity: 0.3;
+  pointer-events: none;
+}
+
+.cb-notif2-skeleton-block {
+  height: 360px;
+  background: var(--surface-2);
+  border-radius: 8px;
+}
+
+.cb-notif2-panel {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+}

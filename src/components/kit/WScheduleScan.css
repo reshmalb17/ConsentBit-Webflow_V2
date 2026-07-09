@@ -1,0 +1,58 @@
+/* Static styles for WScheduleScan. Dynamic values (selected day/time colors,
+   the summary-chip active border) stay as inline styles on the elements. */
+
+/* Overlay reuses .cb-modal-overlay + .cb-modal-overlay--soft from modal.css;
+   only the (static here) position lives in the component class. */
+.cb-sched-overlay { position: fixed; }
+
+.cb-sched-card {
+  width: 420px;
+  max-width: 100%;
+  max-height: 92%;
+  overflow-y: auto;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 22px;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.55);
+}
+
+.cb-sched-title { font-size: 16px; font-weight: 700; margin-bottom: 6px; }
+
+.cb-sched-intro { font-size: 12px; color: var(--text-muted); line-height: 1.55; margin-bottom: 16px; }
+
+.cb-sched-strong { color: var(--text); }
+
+.cb-sched-chips { display: flex; gap: 10px; margin-bottom: 16px; }
+
+.cb-sched-picker { display: flex; gap: 12px; border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+
+.cb-sched-cal { flex: 1; padding: 10px; }
+
+.cb-sched-cal-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+
+.cb-sched-navbtn { background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 16px; padding: 0 6px; }
+
+.cb-sched-cal-month { font-size: 12.5px; font-weight: 600; }
+
+.cb-sched-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
+
+.cb-sched-dow { text-align: center; font-size: 10.5px; color: var(--text-muted); padding: 4px 0; }
+
+.cb-sched-day { text-align: center; font-size: 11.5px; padding: 6px 0; border-radius: 7px; }
+
+.cb-sched-times { width: 92px; border-left: 1px solid var(--border); display: flex; flex-direction: column; }
+
+.cb-sched-times-head { font-size: 12.5px; font-weight: 700; text-align: center; padding: 8px 0; border-bottom: 1px solid var(--border); }
+
+.cb-sched-times-list { overflow-y: auto; max-height: 200px; }
+
+.cb-sched-time { padding: 7px 10px; font-size: 11.5px; cursor: pointer; text-align: center; }
+
+.cb-sched-freq { margin-top: 16px; }
+
+.cb-sched-freq-label { margin-bottom: 6px; }
+
+.cb-sched-footer { display: flex; justify-content: space-between; align-items: center; margin-top: 18px; }
+
+.cb-sched-cancel { background: none; border: none; color: var(--text-muted); font-size: 13px; cursor: pointer; }

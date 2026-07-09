@@ -1,4 +1,5 @@
 import React from "react";
+import "./WToast.css";
 
 // Floating toast — renders fixed at the top on the highest z-index, above every
 // screen/modal. Auto-dismisses after `duration` ms and has a manual close (×).
@@ -23,20 +24,16 @@ function WToast({ message, type = "error", onClose, duration = 5000 }) {
   return (
     <div
       role="alert"
+      className="cb-toast"
       style={{
-        position: "fixed", top: 14, left: "50%", transform: "translateX(-50%)",
-        zIndex: 99999, width: "min(640px, calc(100% - 32px))",
-        display: "flex", alignItems: "center", gap: 12,
-        padding: "10px 12px 10px 14px", borderRadius: 10,
         background: palette.bg, border: `1px solid ${palette.border}`, color: palette.fg,
-        fontSize: 12, lineHeight: 1.45, fontWeight: 600,
-        boxShadow: "0 16px 40px rgba(0,0,0,0.45)",
       }}>
-      <span style={{ flex: 1 }}>{message}</span>
+      <span className="cb-toast-message">{message}</span>
       <button
         onClick={() => onClose && onClose()}
         aria-label="Dismiss"
-        style={{ background: "none", border: "none", cursor: "pointer", color: palette.fg, opacity: 0.8, flexShrink: 0, fontSize: 18, lineHeight: 1, padding: "0 2px" }}>
+        className="cb-toast-close"
+        style={{ color: palette.fg }}>
         ×
       </button>
     </div>

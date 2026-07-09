@@ -1,0 +1,12 @@
+.cb-edrow-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 0;
+  border-top: 1px solid var(--border);
+  width: 270px;
+}
+
+.cb-edrow-label {
+  font-size: 12.5px;
+}

@@ -1,0 +1,8 @@
+.cb-loading-stage {
+  min-height: 560px;
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+  align-items: center;
+  justify-content: center;
+}

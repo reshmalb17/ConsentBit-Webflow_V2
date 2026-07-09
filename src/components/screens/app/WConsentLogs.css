@@ -1,0 +1,13 @@
+.cb-logs-page { width: 698px; }
+.cb-logs-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+.cb-logs-title { font-size: 16px; font-weight: 600; }
+.cb-logs-toolbar { display: flex; gap: 8px; }
+.cb-logs-select { width: auto; }
+.cb-logs-table-card { overflow: hidden; width: 662px; }
+.cb-logs-empty-cell { text-align: center; color: var(--text-muted); padding: 22px 12px; }
+.cb-logs-id { color: var(--purple-hi); }
+.cb-logs-td-medium { font-weight: 500; }
+.cb-logs-dl-btn { padding: 6px 8px; }
+.cb-logs-pagination { display: flex; justify-content: space-between; align-items: center; margin-top: 12px; }
+.cb-logs-page-info { font-size: 11.5px; color: var(--text-muted); }
+.cb-logs-page-btns { display: flex; gap: 6px; align-items: center; }

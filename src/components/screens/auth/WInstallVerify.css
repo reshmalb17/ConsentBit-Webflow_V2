@@ -1,0 +1,29 @@
+.cb-install-wrap { max-width: 620px; margin: 0 auto; padding-bottom: 24px; }
+.cb-install-back-btn { display: inline-flex; align-items: center; gap: 5px; background: none; border: none; color: var(--text-muted); font-size: 12px; cursor: pointer; padding: 0; margin-bottom: 10px; }
+.cb-install-error-card { padding: 12px; margin-bottom: 12px; border: 1px solid #E0623E; background: rgba(224,98,62,0.08); }
+.cb-install-error-text { color: #E0623E; font-size: 11.5px; font-weight: 600; }
+.cb-install-main-card { padding: 14px 14px 24px; }
+.cb-install-head-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+.cb-install-head-title { font-weight: 600; font-size: 13px; }
+.cb-install-copy-btn { display: inline-flex; align-items: center; gap: 6px; }
+.cb-install-code-block { background: var(--bg-2); border: 1px solid var(--border); border-radius: 8px; padding: 10px; font-size: 9.5px; line-height: 1.5; word-break: break-all; }
+.cb-install-code-comment { color: #6E6890; }
+.cb-install-code-tag { color: #FF9F45; }
+.cb-install-code-attr { color: #5AE497; }
+.cb-install-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 12px; align-items: center; }
+.cb-install-open-link { text-decoration: none; display: inline-flex; align-items: center; gap: 5px; }
+.cb-install-ext-icon { flex-shrink: 0; }
+.cb-install-paste-note { color: var(--text-muted); font-size: 11px; line-height: 1.5; margin-top: 10px; }
+.cb-install-code-inline { background: var(--purple-soft); padding: 1px 5px; border-radius: 4px; color: var(--purple-hi); }
+.cb-install-link { color: var(--purple-hi); text-decoration: none; }
+.cb-install-publish-btn { width: 100%; justify-content: center; margin-top: 14px; padding: 10px; height: auto; font-size: 13px; font-weight: 600; }
+.cb-install-shot { height: 140px; overflow: hidden; border-radius: 8px; border: 1px solid var(--border); box-shadow: 0 8px 18px rgba(0,0,0,0.3); }
+.cb-install-shot-img { display: block; height: 100%; width: auto; min-width: 100%; object-fit: cover; object-position: left top; }
+.cb-install-domain-overlay { position: fixed; inset: 0; z-index: 100; background: rgba(8,6,20,0.65); backdrop-filter: blur(2px); display: grid; place-items: center; padding: 20px; }
+.cb-install-domain-card { width: 380px; max-width: 100%; background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 22px; box-shadow: 0 24px 60px rgba(0,0,0,0.55); }
+.cb-install-domain-title { font-size: 15px; font-weight: 700; margin-bottom: 6px; }
+.cb-install-domain-sub { font-size: 12px; color: var(--text-muted); line-height: 1.5; margin-bottom: 16px; }
+.cb-install-domain-option { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 9px; margin-bottom: 8px; cursor: pointer; }
+.cb-install-domain-opt-title { font-size: 12.5px; font-weight: 600; }
+.cb-install-domain-opt-sub { font-size: 11px; color: var(--text-muted); word-break: break-all; }
+.cb-install-domain-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 14px; }

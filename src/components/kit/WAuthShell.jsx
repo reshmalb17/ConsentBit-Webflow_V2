@@ -1,20 +1,21 @@
 import React from "react";
+import "./WAuthShell.css";
 import { WPage } from "./WPage.jsx";
 import { WSteps } from "./WSteps.jsx";
 import { WTopBar } from "./WTopBar.jsx";
 
 function WAuthShell({ step, title, subtitle, children, labels, hideSteps, topAlign, noScroll }) {
   return (
-    <WPage scroll={false} style={{ display: "flex", flexDirection: "column" }}>
+    <WPage scroll={false} className="cb-auth-page">
       <WTopBar minimal />
-      <div className="w-auth-center" style={{ padding: "14px 22px", alignItems: topAlign ? "flex-start" : "center" }}>
-        <div style={{ width: "100%", maxWidth: 640, maxHeight: "100%", display: "flex", flexDirection: "column", minHeight: 0 }}>
+      <div className="w-auth-center cb-auth-center" style={{ alignItems: topAlign ? "flex-start" : "center" }}>
+        <div className="cb-auth-card">
           {/* Fixed header — stays put while the content below scrolls */}
-          <div style={{ textAlign: "center", fontSize: 16, fontWeight: 600, marginBottom: subtitle ? 4 : 14 }}>{title}</div>
-          {subtitle && <div style={{ textAlign: "center", fontSize: 12, color: "var(--text-muted)", marginBottom: 12 }}>{subtitle}</div>}
+          <div className="cb-auth-title" style={{ marginBottom: subtitle ? 4 : 14 }}>{title}</div>
+          {subtitle && <div className="cb-auth-subtitle">{subtitle}</div>}
           {!hideSteps && <WSteps step={step} labels={labels || ["Authorize", "Choose plan", "Install & verify"]} />}
           {/* Content area — scrolls by default; noScroll lets a screen fit fully */}
-          <div style={{ flex: 1, minHeight: 0, overflowY: noScroll ? "visible" : "auto" }}>
+          <div className="cb-auth-content" style={{ overflowY: noScroll ? "visible" : "auto" }}>
             {children}
           </div>
         </div>

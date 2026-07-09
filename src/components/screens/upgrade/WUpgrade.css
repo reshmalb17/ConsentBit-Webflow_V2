@@ -1,0 +1,194 @@
+/* Static styles for WUpgrade. Dynamic values (accent color ACC, best-column
+   highlight, freeBlocked dimming, busyPlan/switching/refreshing state, current-plan
+   markers) stay inline on the elements. */
+
+.cb-upgrade-page { display: flex; flex-direction: column; }
+
+/* Switch-interval confirm modal (own card — padding differs from shared modal card). */
+.cb-upgrade-switch-card {
+  width: 360px;
+  max-width: 100%;
+  padding: 22px;
+  background: var(--surface);
+  text-align: center;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.55);
+}
+.cb-upgrade-switch-title { font-size: 15px; font-weight: 700; margin-bottom: 8px; }
+.cb-upgrade-switch-text { color: var(--text-muted); font-size: 12.5px; line-height: 1.55; margin-bottom: 20px; }
+.cb-upgrade-switch-actions { display: flex; gap: 8px; }
+.cb-upgrade-modal-btn { flex: 1; justify-content: center; }
+
+.cb-upgrade-body { flex: 1; min-height: 0; overflow-y: auto; padding-top: 16px; }
+
+/* Headline block */
+.cb-upgrade-headline { position: relative; background: var(--surface); padding: 14px 16px; margin-bottom: 16px; }
+.cb-upgrade-refresh-wrap { position: absolute; top: 10px; right: 12px; }
+.cb-upgrade-refresh-btn {
+  background: none;
+  border: none;
+  padding: 4px;
+  display: inline-flex;
+  align-items: center;
+  color: var(--text-muted);
+}
+.cb-upgrade-refresh-tip {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  white-space: nowrap;
+  background: #0a0a14;
+  color: #fff;
+  font-size: 10.5px;
+  line-height: 1.4;
+  padding: 5px 8px;
+  border-radius: 6px;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.5);
+  z-index: 10;
+  pointer-events: none;
+}
+.cb-upgrade-headline-title { font-size: 14px; font-weight: 700; letter-spacing: -0.01em; margin-bottom: 4px; padding-right: 26px; }
+.cb-upgrade-headline-sub { font-size: 11.5px; color: var(--text-muted); line-height: 1.5; }
+
+/* Billing toggle */
+.cb-upgrade-billing-row { display: flex; align-items: center; margin-bottom: 16px; }
+.cb-upgrade-billing-toggle {
+  display: flex;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 3px;
+  align-items: center;
+}
+.cb-upgrade-toggle-btn { border-radius: 999px; }
+.cb-upgrade-toggle-btn-yearly { border-radius: 999px; display: flex; align-items: center; gap: 6px; }
+.cb-upgrade-save-badge {
+  font-size: 9.5px;
+  font-weight: 700;
+  color: #5AE497;
+  background: var(--green-soft);
+  padding: 2px 7px;
+  border-radius: 999px;
+}
+
+/* Pricing table */
+.cb-upgrade-table { padding: 0; overflow: visible; margin-top: 6px; position: relative; }
+.cb-upgrade-free-tip {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 120px;
+  width: calc((100% - 120px) / 4);
+  z-index: 6;
+  cursor: not-allowed;
+}
+.cb-upgrade-free-tip-bubble {
+  position: absolute;
+  bottom: calc(100% - 64px);
+  left: 50%;
+  transform: translateX(-50%);
+  width: 180px;
+  background: #0a0a14;
+  color: #fff;
+  font-size: 11px;
+  line-height: 1.45;
+  text-align: center;
+  padding: 8px 10px;
+  border-radius: 8px;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.55);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s;
+  z-index: 7;
+}
+.cb-upgrade-free-tip-arrow {
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 0;
+  height: 0;
+  border-left: 6px solid transparent;
+  border-right: 6px solid transparent;
+  border-top: 6px solid #0a0a14;
+}
+
+.cb-upgrade-grid-head {
+  display: grid;
+  grid-template-columns: 120px repeat(4, 1fr);
+  border-bottom: 1px solid var(--border);
+}
+.cb-upgrade-grid-row { display: grid; grid-template-columns: 120px repeat(4, 1fr); }
+.cb-upgrade-col-head {
+  padding: 12px 10px 10px;
+  text-align: center;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.cb-upgrade-reco-badge {
+  position: absolute;
+  top: -12px;
+  left: 50%;
+  transform: translateX(-50%);
+  color: white;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 4px 14px;
+  border-radius: 999px;
+  white-space: nowrap;
+  z-index: 4;
+  box-shadow: 0 4px 12px rgba(7, 118, 230, 0.5);
+}
+.cb-upgrade-col-name { font-size: 12px; margin-bottom: 4px; }
+.cb-upgrade-col-price { font-size: 18px; font-weight: 700; line-height: 1; margin-bottom: 8px; color: var(--text); }
+.cb-upgrade-price-suffix { font-size: 10px; color: var(--text-muted); font-weight: 400; }
+.cb-upgrade-cta-wrap { margin-top: auto; width: 100%; display: flex; justify-content: center; }
+.cb-upgrade-pageview-note { font-size: 9px; color: var(--text-muted); margin-top: 1px; }
+
+.cb-upgrade-row-label { padding: 7px 12px; font-size: 11px; color: var(--text); font-weight: 500; display: flex; align-items: center; }
+.cb-upgrade-cell {
+  padding: 7px 10px;
+  font-size: 11px;
+  text-align: center;
+  color: var(--text);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+/* CTA buttons */
+.cb-upgrade-switch-btn { width: 100%; justify-content: center; color: #fff; font-weight: 700; font-size: 11px; padding: 8px 10px; }
+.cb-upgrade-current-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 6px 12px;
+}
+.cb-upgrade-current-dot { width: 6px; height: 6px; border-radius: 999px; background: #5AE497; }
+.cb-upgrade-cta-secondary {
+  width: 100%;
+  justify-content: center;
+  background: var(--surface-3);
+  color: var(--text);
+  border: 1px solid var(--border-2);
+  font-weight: 600;
+  font-size: 12px;
+  padding: 9px 10px;
+}
+.cb-upgrade-cta-accent {
+  width: 100%;
+  justify-content: center;
+  color: #fff;
+  font-weight: 700;
+  font-size: 12px;
+  padding: 9px 10px;
+  box-shadow: 0 6px 16px rgba(7, 118, 230, 0.45);
+}
+
+.cb-upgrade-trust { text-align: center; font-size: 11px; color: var(--text-muted); margin-top: 14px; }

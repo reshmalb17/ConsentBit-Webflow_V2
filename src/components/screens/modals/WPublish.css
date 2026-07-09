@@ -1,0 +1,65 @@
+.cb-publish-stage {
+  position: relative;
+  padding: 16px;
+  min-height: 460px;
+}
+
+.cb-publish-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(2px);
+}
+
+.cb-publish-card {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 360px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 24px;
+  text-align: center;
+}
+
+.cb-publish-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 999px;
+  background: var(--green-soft);
+  display: grid;
+  place-items: center;
+  margin: 0 auto 12px;
+  color: #5AE497;
+}
+
+.cb-publish-title {
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+.cb-publish-desc {
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 1.5;
+  margin-bottom: 16px;
+}
+
+.cb-publish-domain {
+  color: var(--text);
+}
+
+.cb-publish-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+}
+
+.cb-publish-ext-icon {
+  vertical-align: 0px;
+  margin-left: 1px;
+  flex-shrink: 0;
+}

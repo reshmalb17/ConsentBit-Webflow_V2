@@ -1,0 +1,38 @@
+.cb-steps-row {
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  gap: 0;
+  margin-bottom: 14px;
+}
+
+.cb-steps-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  width: 90px;
+}
+
+.cb-steps-badge {
+  width: 24px;
+  height: 24px;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  color: white;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.cb-steps-label {
+  font-size: 10.5px;
+}
+
+.cb-steps-connector {
+  flex: 0 0 50px;
+  height: 2px;
+  margin-top: 11px;
+  margin-left: -8px;
+  margin-right: -8px;
+}

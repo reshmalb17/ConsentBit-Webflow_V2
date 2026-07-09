@@ -1,5 +1,6 @@
 import React from "react";
 import { useNav } from "../../nav.jsx";
+import "./WMainTabs.css";
 
 function WMainTabs({ active, right, left }) {
   const nav = useNav();
@@ -18,10 +19,10 @@ function WMainTabs({ active, right, left }) {
     <div className="cb-main-tabs" style={right ? { justifyContent: "space-between", alignItems: "center", padding: "18px 32px 10px" } : left ? { justifyContent: "flex-start", padding: "18px 32px 10px" } : undefined}>
       <div className="cb-main-tabs-inner">
         {tabs.map((t) =>
-        <button key={t.id} onClick={nav ? () => nav.setMainTab(t.id) : undefined} className={"cb-tab " + (t.id === "upgrade" ? "cb-tab-glow " : "") + (current === t.id ? "active" : "")} style={{ opacity: "1", color: "rgb(244, 242, 255)" }}>{t.label}</button>
+        <button key={t.id} onClick={nav ? () => nav.setMainTab(t.id) : undefined} className={"cb-tab " + (t.id === "upgrade" ? "cb-tab-glow " : "") + (current === t.id ? "active" : "") + " cb-main-tabs-btn"}>{t.label}</button>
         )}
       </div>
-      {right && <div style={{ display: "flex", alignItems: "center", gap: 8 }}>{right}</div>}
+      {right && <div className="cb-main-tabs-actions">{right}</div>}
     </div>);
 
 }

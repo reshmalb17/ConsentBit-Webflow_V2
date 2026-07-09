@@ -1,0 +1,32 @@
+.cb-edtype-grid {
+  display: grid;
+  grid-template-columns: 300px 1fr;
+  gap: 18px;
+}
+
+.cb-edtype-card {
+  padding: 14px;
+}
+
+.cb-edtype-label {
+  margin-bottom: 6px;
+}
+
+.cb-edtype-weight-select {
+  margin-bottom: 14px;
+}
+
+.cb-edtype-align-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.cb-edtype-align-label {
+  margin-bottom: 0;
+}
+
+.cb-edtype-align-btns {
+  display: flex;
+  gap: 6px;
+}

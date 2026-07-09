@@ -1,0 +1,52 @@
+.cb-edsimple-grid {
+  display: grid;
+  grid-template-columns: 300px 1fr;
+  gap: 18px;
+}
+
+.cb-edsimple-spacer {
+  height: 18px;
+}
+
+.cb-edsimple-reset-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 0;
+}
+
+.cb-edsimple-reset-title {
+  font-size: 12.5px;
+}
+
+.cb-edsimple-compliance-block {
+  border-top: 1px solid var(--border);
+  padding-top: 12px;
+  margin-top: 6px;
+}
+
+.cb-edsimple-compliance-title {
+  font-size: 12.5px;
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.cb-edsimple-check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 0;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.cb-edsimple-export-block {
+  border-top: 1px solid var(--border);
+  padding-top: 12px;
+  margin-top: 12px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}

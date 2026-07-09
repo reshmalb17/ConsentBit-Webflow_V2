@@ -13,14 +13,15 @@ import webflowPublish from "./assets/webflow-publish.png";
 
 window.__resources = { logo, logoIcon, webflowHeadcode, webflowPublish };
 
-import App from "./App.jsx";
 import AppExtension from "./AppExtension.jsx";
 
-// The Designer Extension bundle opens straight to the Landing screen.
-// Set VITE_GALLERY=1 (see .env.development) to render the full screen gallery
-// instead — used for design review via `npm run dev`.
-const showGallery = import.meta.env.VITE_GALLERY === "1";
+const root = createRoot(document.getElementById("root"));
 
-createRoot(document.getElementById("root")).render(
-  showGallery ? <App /> : <AppExtension />
-);
+// Production renders the Designer Extension directly. The full-screen design gallery
+// (App.jsx) is a dev-only aid — it's dynamically imported behind a build-time flag so
+// it, and its demo/mock install snippets, are tree-shaken OUT of the production bundle.
+if (import.meta.env.VITE_GALLERY === "1") {
+  import("./App.jsx").then(({ default: App }) => root.render(<App />));
+} else {
+  root.render(<AppExtension />);
+}

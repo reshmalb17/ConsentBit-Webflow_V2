@@ -1,0 +1,163 @@
+.cb-edlayout-grid {
+  display: grid;
+  grid-template-columns: 300px 1fr;
+  gap: 18px;
+}
+
+.cb-edlayout-pos-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.cb-edlayout-heading {
+  font-weight: 600;
+  font-size: 12.5px;
+}
+
+.cb-edlayout-pos-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin-bottom: 22px;
+}
+
+.cb-edlayout-pos-item {
+  cursor: pointer;
+}
+
+.cb-edlayout-pos-box {
+  position: relative;
+  background: var(--bg-2);
+  border-radius: 8px;
+  height: 64px;
+}
+
+.cb-edlayout-check {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  width: 14px;
+  height: 14px;
+  border-radius: 999px;
+  background: #5AE497;
+  display: grid;
+  place-items: center;
+}
+
+.cb-edlayout-bar-box {
+  position: absolute;
+  left: 8px;
+  bottom: 8px;
+  width: 26px;
+  height: 9px;
+  border-radius: 3px;
+  background: var(--purple);
+}
+
+.cb-edlayout-bar-banner {
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  bottom: 8px;
+  height: 9px;
+  border-radius: 3px;
+  background: var(--purple);
+}
+
+.cb-edlayout-bar-popup {
+  position: absolute;
+  left: 50%;
+  bottom: 8px;
+  transform: translateX(-50%);
+  width: 26px;
+  height: 9px;
+  border-radius: 3px;
+  background: var(--purple);
+}
+
+.cb-edlayout-pos-label {
+  font-size: 11.5px;
+  color: var(--text-muted);
+  margin-top: 6px;
+}
+
+.cb-edlayout-align-title {
+  font-weight: 600;
+  font-size: 12.5px;
+  margin-bottom: 12px;
+}
+
+.cb-edlayout-align-row {
+  display: flex;
+  gap: 24px;
+  margin-bottom: 18px;
+}
+
+.cb-edlayout-radio {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  font-size: 12.5px;
+}
+
+.cb-edlayout-card {
+  padding: 14px;
+  margin-bottom: 12px;
+}
+
+.cb-edlayout-card-last {
+  padding: 14px;
+}
+
+.cb-edlayout-card-title {
+  font-weight: 600;
+  font-size: 12.5px;
+  margin-bottom: 10px;
+}
+
+.cb-edlayout-rel {
+  position: relative;
+}
+
+.cb-edlayout-select-btn {
+  width: 100%;
+  text-align: left;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+}
+
+.cb-edlayout-caret {
+  font-size: 10px;
+  opacity: 0.7;
+}
+
+.cb-edlayout-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+}
+
+.cb-edlayout-dropdown {
+  position: absolute;
+  bottom: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  z-index: 41;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 -10px 28px rgba(0, 0, 0, 0.45);
+}
+
+.cb-edlayout-option {
+  padding: 8px 12px;
+  font-size: 12.5px;
+  cursor: pointer;
+  color: var(--text);
+}

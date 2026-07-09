@@ -1,84 +1,92 @@
 // Product analytics for the Webflow Designer extension.
 //
-// Matches the CURRENTLY-LIVE ConsentBit plugin's PostHog setup (src/util/analytics.ts +
-// index.tsx) — NOT the standalone webapp's. The config is deliberately privacy-hardened
-// for Webflow app review: `persistence: "memory"` (no localStorage), autocapture off, no
-// session recording / surveys / web experiments, and no external dependency loading. So
-// PostHog only ever POSTs the explicit capture() events below to us.i.posthog.com.
-//
-// Every event is tagged `platform: "webflow"` and — once the account is known — the
-// account `email`, so the plugin's activity is distinguishable and attributable.
-import posthog from "posthog-js";
-
-let started = false;
-let customizeTimer = null;
-let currentEmail = null; // remembered from identify()/appOpened() → attached to every event
+// Privacy-hardened for Webflow Marketplace review:
+//   • No third-party analytics LIBRARY is bundled. Events are sent with a single
+//     first-party fetch() to PostHog's capture endpoint — so none of posthog-js's
+//     autocapture, session recording, heatmap, device-metadata, or external-script
+//     loading code ships in the bundle or ever runs.
+//   • No raw PII leaves the app. The account email is SHA-256 hashed and used only
+//     as an opaque distinct_id; email/name are never sent as event properties.
+//   • app_opened is DEFERRED until the first explicit user interaction — it is never
+//     fired automatically on load.
+//   • The project key below is a PUBLIC (publishable) PostHog key; nothing secret
+//     depends on it.
+const POSTHOG_KEY = "phc_pACPAPjdZRJRopr5EkE4AEHMwS9qqYdQC4pvEVMYdLzJ";
+const CAPTURE_URL = "https://us.i.posthog.com/capture/";
 const PLATFORM = "webflow";
 
-// Common properties on every event: platform + (once known) the account email.
-function base(extra = {}) {
-  return { platform: PLATFORM, ...(currentEmail ? { email: currentEmail } : {}), ...extra };
+let distinctId = null;   // SHA-256(email) once known, else a random per-load id
+let pendingOpen = null;  // { site_id } queued until the first user interaction
+let armed = false;       // first-interaction listener attached?
+let customizeTimer = null;
+
+// Hash the email so we get stable per-account attribution WITHOUT sending PII.
+async function sha256Hex(input) {
+  try {
+    const data = new TextEncoder().encode(String(input).trim().toLowerCase());
+    const buf = await crypto.subtle.digest("SHA-256", data);
+    return [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, "0")).join("");
+  } catch { return null; }
+}
+
+function anonId() {
+  try { return crypto.randomUUID(); } catch { return `anon-${PLATFORM}`; }
+}
+
+// Fire-and-forget a single capture event. Best-effort — never throws into the app.
+function send(event, properties = {}) {
+  try {
+    const id = distinctId || (distinctId = anonId());
+    fetch(CAPTURE_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      keepalive: true,
+      body: JSON.stringify({
+        api_key: POSTHOG_KEY,
+        event,
+        properties: { distinct_id: id, platform: PLATFORM, ...properties },
+      }),
+    }).catch(() => {});
+  } catch { /* analytics is best-effort */ }
 }
 
 export const analytics = {
-  // Idempotent — safe to call on every mount.
-  init() {
-    if (started || typeof window === "undefined") return;
-    started = true;
-    try {
-      posthog.init("phc_pACPAPjdZRJRopr5EkE4AEHMwS9qqYdQC4pvEVMYdLzJ", {
-        api_host: "https://us.i.posthog.com",
-        defaults: "2026-01-30",
-        persistence: "memory",
-        capture_pageview: false,
-        autocapture: false,
-        disable_session_recording: true,
-        disable_surveys: true,
-        disable_web_experiments: true,
-        disable_external_dependency_loading: true,
-        advanced_disable_decide: true,
-        capture_exceptions: false,
-      });
-    } catch (_) { /* analytics is best-effort — never break the app */ }
+  // No library to initialise — kept so existing call sites stay unchanged.
+  init() {},
+
+  // Store an OPAQUE, non-PII account id (hash of the email). Async & best-effort.
+  identify(email) {
+    if (!email) return;
+    sha256Hex(email).then((h) => { if (h) distinctId = h; });
   },
 
-  identify(email, name) {
-    try {
-      if (email) {
-        currentEmail = email;
-        posthog.identify(email, { email, name, platform: PLATFORM });
-      }
-    } catch (_) {}
-  },
+  reset() { distinctId = null; pendingOpen = null; },
 
-  reset() {
-    try { currentEmail = null; posthog.reset(); } catch (_) {}
-  },
-
-  // Fired when the app launches inside the Designer for an authorized Webflow site.
+  // Deferred: queue the open and send it on the FIRST explicit user interaction
+  // (pointer or key), never automatically on load.
   appOpened(siteId, email) {
-    if (email) currentEmail = email;
-    try { posthog.capture("app_opened", base({ site_id: siteId })); } catch (_) {}
+    if (email) this.identify(email);
+    pendingOpen = { site_id: siteId };
+    if (armed || typeof window === "undefined") return;
+    armed = true;
+    const fire = () => {
+      window.removeEventListener("pointerdown", fire);
+      window.removeEventListener("keydown", fire);
+      if (pendingOpen) { send("app_opened", pendingOpen); pendingOpen = null; }
+    };
+    window.addEventListener("pointerdown", fire, { once: true });
+    window.addEventListener("keydown", fire, { once: true });
   },
 
   // Debounced 5s — a customization session fires many edits; count it once.
   bannerCustomized() {
-    try {
-      if (customizeTimer) clearTimeout(customizeTimer);
-      customizeTimer = setTimeout(() => {
-        try { posthog.capture("banner_customized", base()); } catch (_) {}
-        customizeTimer = null;
-      }, 5000);
-    } catch (_) {}
+    if (customizeTimer) clearTimeout(customizeTimer);
+    customizeTimer = setTimeout(() => { send("banner_customized"); customizeTimer = null; }, 5000);
   },
 
   bannerPublished(domain, props = {}) {
-    try {
-      const isStaging = !domain || domain === "staging" || String(domain).includes(".webflow.io");
-      posthog.capture(
-        isStaging ? "banner_published_staging" : "banner_published_custom_domain",
-        base({ domain, ...props }),
-      );
-    } catch (_) {}
+    const isStaging = !domain || domain === "staging" || String(domain).includes(".webflow.io");
+    send(isStaging ? "banner_published_staging" : "banner_published_custom_domain", { domain, ...props });
   },
+  
 };

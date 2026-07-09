@@ -4,6 +4,7 @@ import { WEdPreview } from "../../kit/WEdPreview.jsx";
 import { WEdReset } from "../../kit/WEdReset.jsx";
 import { WEdShell } from "../../kit/WEdShell.jsx";
 import { useNav } from "../../../nav.jsx";
+import "./WEdColors.css";
 
 const groups = [
 { title: "General Colors", rows: [
@@ -78,13 +79,12 @@ function ColorField({ value, onChange }) {
   };
 
   return (
-    <div ref={wrapRef} style={{ position: "relative" }}>
-      <div style={{ display: "flex", alignItems: "center", border: "1px solid var(--border)", borderRadius: 7, overflow: "hidden", background: "var(--bg-2)" }}>
-        <div onClick={toggle} title="Pick a color" style={{ width: 26, height: 24, background: safe, cursor: "pointer", flexShrink: 0 }} />
+    <div ref={wrapRef} className="cb-edcolors-wrap">
+      <div className="cb-edcolors-field">
+        <div onClick={toggle} title="Pick a color" className="cb-edcolors-swatch" style={{ background: safe }} />
         <input
-          type="text" className="mono" value={value} onChange={(e) => onHex(e.target.value)}
-          maxLength={7} spellCheck={false}
-          style={{ width: 72, fontSize: 11, color: "var(--text-muted)", padding: "0 10px", background: "transparent", border: "none", outline: "none" }} />
+          type="text" className="mono cb-edcolors-hex" value={value} onChange={(e) => onHex(e.target.value)}
+          maxLength={7} spellCheck={false} />
       </div>
       {open &&
       <div style={{
@@ -111,25 +111,25 @@ function WEdColors() {
     nav ? nav.setBannerColors({ ...DEFAULT_COLORS }) : setLocalColors({ ...DEFAULT_COLORS });
 
   const Row = (r) =>
-    <div key={r.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
-      <span style={{ fontSize: 12 }}>{r.l}</span>
+    <div key={r.id} className="cb-edcolors-row">
+      <span className="cb-edcolors-row-label">{r.l}</span>
       <ColorField value={colors[r.id]} onChange={(v) => setColor(r.id, v)} />
     </div>;
 
   return (
     <WEdShell active="colors">
-      <div style={{ display: "grid", gridTemplateColumns: "300px 1fr", gap: 18 }}>
+      <div className="cb-edcolors-grid">
         <div>
           {groups.map((g, gi) =>
-          <div key={gi} className="card" style={{ padding: 14, marginBottom: 12 }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-                <div style={{ fontWeight: 600, fontSize: 12.5 }}>{g.title}</div>
+          <div key={gi} className="card cb-edcolors-card">
+              <div className="cb-edcolors-card-head">
+                <div className="cb-edcolors-card-title">{g.title}</div>
                 {gi === 0 && <WEdReset onClick={resetColors} />}
               </div>
               {g.rows && g.rows.map(Row)}
               {g.subgroups && g.subgroups.map((sg, si) =>
               <div key={si} style={{ marginTop: si ? 14 : 0 }}>
-                <div style={{ fontSize: 10.5, fontWeight: 600, color: "var(--text-muted)", marginBottom: 8 }}>{sg.sub}</div>
+                <div className="cb-edcolors-subhead">{sg.sub}</div>
                 {sg.rows.map(Row)}
               </div>
               )}

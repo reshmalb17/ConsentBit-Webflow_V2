@@ -1,4 +1,5 @@
 import React from "react";
+import "./WSelectPlan.css";
 import { WAuthShell } from "../../kit/WAuthShell.jsx";
 import { Page } from "../../primitives/Page.jsx";
 import { WToast } from "../../kit/WToast.jsx";
@@ -28,8 +29,8 @@ function WSelectPlan({ freeDisabled = false, onSelectPlan, onFreeRegistered, onF
   { label: "No of Page views", vals: [
     "PAID",
     "100,000 page views/m",
-    <><div>500,000 page views/m</div><div style={{ fontSize: 9.5, color: "var(--text-muted)", marginTop: 2 }}>+ $0.05 / additional 1000 page views</div></>,
-    <><div>2 Million page views/m</div><div style={{ fontSize: 9.5, color: "var(--text-muted)", marginTop: 2 }}>+ $0.05 / additional 1000 page views</div></>]
+    <><div>500,000 page views/m</div><div className="cb-selplan-pageview-note">+ $0.05 / additional 1000 page views</div></>,
+    <><div>2 Million page views/m</div><div className="cb-selplan-pageview-note">+ $0.05 / additional 1000 page views</div></>]
   },
   { label: "IAB / TCF", vals: ["NIL", "NIL", "Yes", "Yes"] },
   { label: "Compliance", vals: ["GDPR/CCPA", "GDPR/CCPA", "GDPR+CCPA", "GDPR+CCPA"] }];
@@ -99,57 +100,43 @@ function WSelectPlan({ freeDisabled = false, onSelectPlan, onFreeRegistered, onF
 
   return (
     <WAuthShell step={2} topAlign noScroll title="Choose your plan">
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
-        <div style={{ display: "flex", background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 999, padding: 3 }}>
+      <div className="cb-selplan-toolbar">
+        <div className="cb-selplan-billing-toggle">
           <button
-            className={"btn btn-sm " + (billing === "monthly" ? "btn-primary" : "btn-ghost")}
-            style={{ borderRadius: 999 }}
+            className={"btn btn-sm cb-selplan-toggle-btn " + (billing === "monthly" ? "btn-primary" : "btn-ghost")}
             onClick={() => setBilling("monthly")}
             aria-pressed={billing === "monthly"}
           >Monthly</button>
           <button
-            className={"btn btn-sm " + (billing === "yearly" ? "btn-primary" : "btn-ghost")}
-            style={{ borderRadius: 999, display: "flex", alignItems: "center", gap: 6 }}
+            className={"btn btn-sm cb-selplan-toggle-btn-yearly " + (billing === "yearly" ? "btn-primary" : "btn-ghost")}
             onClick={() => setBilling("yearly")}
             aria-pressed={billing === "yearly"}
-          >Yearly <span style={{ fontSize: 9.5, fontWeight: 700, color: "#5AE497", background: "var(--green-soft)", padding: "2px 7px", borderRadius: 999 }}>Save 20%</span></button>
+          >Yearly <span className="cb-selplan-save-badge">Save 20%</span></button>
         </div>
         <a
           href="#"
           onClick={(e) => { e.preventDefault(); if (onSkip) onSkip(); }}
-          style={{ color: "var(--text-muted)", fontSize: 12, display: "inline-flex", alignItems: "center", gap: 5 }}
-        >Skip for now<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><path d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3" /></svg></a>
+          className="cb-selplan-skip"
+        >Skip for now<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="cb-selplan-skip-icon"><path d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3" /></svg></a>
       </div>
 
       <WToast message={error} type="error" onClose={() => setError("")} />
 
-      <div className="card" style={{ padding: 0, overflow: "visible", marginTop: 10, position: "relative" }}>
+      <div className="card cb-selplan-table">
         {freeDisabled &&
-        <div className="cb-free-col-tip" style={{
-          position: "absolute", top: 0, bottom: 0,
-          left: "120px", width: "calc((100% - 120px) / 4)",
-          zIndex: 6, cursor: "not-allowed"
-        }}>
-          <span style={{
-            position: "absolute", bottom: "calc(100% - 64px)", left: "50%", transform: "translateX(-50%)",
-            width: 180, background: "#0a0a14", color: "#fff", fontSize: 11, lineHeight: 1.45,
-            textAlign: "center", padding: "8px 10px", borderRadius: 8, boxShadow: "0 10px 24px rgba(0,0,0,0.55)",
-            opacity: 0, pointerEvents: "none", transition: "opacity 0.15s", zIndex: 7
-          }}>You've already taken a free subscription for this account.
-            <span style={{ position: "absolute", top: "100%", left: "50%", transform: "translateX(-50%)", width: 0, height: 0, borderLeft: "6px solid transparent", borderRight: "6px solid transparent", borderTop: "6px solid #0a0a14" }} />
+        <div className="cb-free-col-tip cb-selplan-free-tip">
+          <span className="cb-selplan-free-tip-bubble">You've already taken a free subscription for this account.
+            <span className="cb-selplan-free-tip-arrow" />
           </span>
         </div>
         }
         {/* Header row: plan name, price, CTA */}
-        <div style={{ display: "grid", gridTemplateColumns: "120px repeat(4, 1fr)", borderBottom: "1px solid var(--border)" }}>
+        <div className="cb-selplan-grid-head">
           <div />
           {cols.map((c, i) => {
             const dim = freeDisabled && c.name === "Free";
             return (
-              <div key={i} style={{
-                padding: "14px 10px 10px",
-                textAlign: "center",
-                position: "relative",
+              <div key={i} className="cb-selplan-col-head" style={{
                 opacity: dim ? 0.45 : 1,
                 filter: dim ? "blur(2px)" : "none",
                 pointerEvents: dim ? "none" : "auto",
@@ -160,20 +147,13 @@ function WSelectPlan({ freeDisabled = false, onSelectPlan, onFreeRegistered, onF
                 borderTopRightRadius: c.best ? 12 : 0
               }}>
               {c.best &&
-                <div style={{
-                  position: "absolute", top: -12, left: "50%", transform: "translateX(-50%)",
-                  background: "var(--purple)", color: "white",
-                  fontSize: 10, fontWeight: 500,
-                  padding: "4px 12px", borderRadius: 999, whiteSpace: "nowrap",
-                  zIndex: 2,
-                  boxShadow: "0 4px 12px rgba(124,92,252,0.4)"
-                }}>Recommended</div>
+                <div className="cb-selplan-reco-badge">Recommended</div>
                 }
-              <div style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 4, fontWeight: 500 }}>{c.name}</div>
-              <div style={{ fontSize: 19, fontWeight: 700, lineHeight: 1, marginBottom: 8 }}>
-                {c[billing]}<span style={{ fontSize: 10, color: "var(--text-muted)", fontWeight: 400 }}>{priceSuffix}</span>
+              <div className="cb-selplan-col-name">{c.name}</div>
+              <div className="cb-selplan-col-price">
+                {c[billing]}<span className="cb-selplan-price-suffix">{priceSuffix}</span>
               </div>
-              <button className={"btn btn-" + c.ctaStyle + " btn-sm"} disabled={!!busyPlan} style={{ width: "100%", justifyContent: "center", opacity: busyPlan && busyPlan !== c.name ? 0.6 : 1, ...(c.ctaStyle === "secondary" ? { background: "var(--surface-3)", border: "1px solid var(--border-2)", color: "var(--text)" } : {}) }} onClick={() => {handleInstallClick(c.name)}}>
+              <button className={"btn btn-" + c.ctaStyle + " btn-sm cb-selplan-cta"} disabled={!!busyPlan} style={{ opacity: busyPlan && busyPlan !== c.name ? 0.6 : 1, ...(c.ctaStyle === "secondary" ? { background: "var(--surface-3)", border: "1px solid var(--border-2)", color: "var(--text)" } : {}) }} onClick={() => {handleInstallClick(c.name)}}>
                 {busyPlan === c.name ? "Creating…" : c.cta}
               </button>
             </div>);
@@ -182,22 +162,15 @@ function WSelectPlan({ freeDisabled = false, onSelectPlan, onFreeRegistered, onF
         </div>
         {/* Feature rows */}
         {rows.map((r, i) =>
-        <div key={i} style={{
-          display: "grid",
-          gridTemplateColumns: "120px repeat(4, 1fr)",
+        <div key={i} className="cb-selplan-grid-row" style={{
           borderBottom: i < rows.length - 1 ? "1px solid var(--border)" : "none"
         }}>
-            <div style={{ padding: "7px 12px", fontSize: 11.5, color: "var(--text-muted)", display: "flex", alignItems: "center" }}>{r.label}</div>
+            <div className="cb-selplan-row-label">{r.label}</div>
             {r.vals.map((v, j) =>
-          <div key={j} style={{
-            padding: "7px 10px",
-            fontSize: 11.5,
-            textAlign: "center",
+          <div key={j} className="cb-selplan-cell" style={{
             opacity: freeDisabled && cols[j].name === "Free" ? 0.45 : 1,
             filter: freeDisabled && cols[j].name === "Free" ? "blur(2px)" : "none",
-            borderLeft: "1px solid var(--border)",
-            background: cols[j].best ? "rgba(124, 92, 252, 0.06)" : "transparent",
-            display: "flex", flexDirection: "column", justifyContent: "center"
+            background: cols[j].best ? "rgba(124, 92, 252, 0.06)" : "transparent"
           }}>{v}</div>
           )}
           </div>

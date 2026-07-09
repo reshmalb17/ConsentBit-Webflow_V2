@@ -1,0 +1,32 @@
+.cb-toast {
+  position: fixed;
+  top: 14px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 99999;
+  width: min(640px, calc(100% - 32px));
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px 10px 14px;
+  border-radius: 10px;
+  font-size: 12px;
+  line-height: 1.45;
+  font-weight: 600;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.45);
+}
+
+.cb-toast-message {
+  flex: 1;
+}
+
+.cb-toast-close {
+  background: none;
+  border: none;
+  cursor: pointer;
+  opacity: 0.8;
+  flex-shrink: 0;
+  font-size: 18px;
+  line-height: 1;
+  padding: 0 2px;
+}

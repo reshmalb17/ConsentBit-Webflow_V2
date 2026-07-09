@@ -1,4 +1,5 @@
 import React from "react";
+import "./WScan.css";
 import { WMainTabs } from "../../kit/WMainTabs.jsx";
 import { WPage } from "../../kit/WPage.jsx";
 import { WTopBar } from "../../kit/WTopBar.jsx";
@@ -242,64 +243,63 @@ function WScan() {
     }
   };
   return (
-    <WPage scroll={false} className="cb-scroll-page" style={{ display: "flex", flexDirection: "column" }}>
+    <WPage scroll={false} className="cb-scroll-page cb-scan-page">
       <WToast message={scanError} type="error" onClose={() => setScanError("")} />
       <WTopBar />
       <WMainTabs active="scan" left />
-      <div className="cb-page" style={{ flex: 1, minHeight: 0, overflowY: "auto", paddingTop: 14 }}>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 16 }}>
-          <div className="card" style={{ padding: 12, display: "flex", justifyContent: "space-between", alignItems: "center", background: "var(--purple-soft)", borderColor: "rgba(124,92,252,0.3)" }}>
+      <div className="cb-page cb-scan-page-body">
+        <div className="cb-scan-cards">
+          <div className="card cb-scan-info-card">
             <div>
-              <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 2 }}>Last successful scan</div>
-              <div style={{ fontSize: 10.5, color: "var(--text-muted)" }}>{lastScan ? `${fmtDate(lastScan.createdAt)} (UTC)` : "No scans yet"}</div>
+              <div className="cb-scan-card-title">Last successful scan</div>
+              <div className="cb-scan-card-sub">{lastScan ? `${fmtDate(lastScan.createdAt)} (UTC)` : "No scans yet"}</div>
             </div>
             <button className="btn btn-primary btn-sm" disabled={scanning} onClick={handleScanNow}>{scanning ? "Scanning…" : "Scan Now"}</button>
           </div>
-          <div className="card" style={{ padding: 12, display: "flex", justifyContent: "space-between", alignItems: "center", background: "var(--purple-soft)", borderColor: "rgba(124,92,252,0.3)" }}>
+          <div className="card cb-scan-info-card">
             <div>
-              <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 2 }}>Next scan</div>
-              <div style={{ fontSize: 10.5, color: "var(--text-muted)" }}>{nextScan ? `${fmtDate(nextScan.when)} (UTC) · ${nextScan.frequency}` : "Not scheduled"}</div>
+              <div className="cb-scan-card-title">Next scan</div>
+              <div className="cb-scan-card-sub">{nextScan ? `${fmtDate(nextScan.when)} (UTC) · ${nextScan.frequency}` : "Not scheduled"}</div>
               {nextScan &&
-                <button onClick={handleCancelSchedule} disabled={cancelling} style={{ background: "none", border: "none", padding: 0, marginTop: 4, color: "#FF8888", fontSize: 10.5, fontWeight: 600, cursor: "pointer" }}>
+                <button onClick={handleCancelSchedule} disabled={cancelling} className="cb-scan-cancel-btn">
                   {cancelling ? "Cancelling…" : "Cancel scheduled scan"}
                 </button>
               }
             </div>
-            <button className="btn btn-primary btn-sm" style={{ padding: "6px 10px 5px" }} onClick={() => setSchedule(true)}>Schedule Scan</button>
+            <button className="btn btn-primary btn-sm cb-scan-btn-pad" onClick={() => setSchedule(true)}>Schedule Scan</button>
           </div>
         </div>
 
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
-          <div style={{ fontSize: 17, fontWeight: 700 }}>Cookie List</div>
-          <div style={{ display: "flex", gap: 8 }}>
-            <button className="btn btn-secondary btn-sm" style={{ padding: "6px 10px 5px" }} onClick={() => setAddCookie(true)}>Add Cookie <span style={{ color: "var(--purple-hi)", marginLeft: 2, fontWeight: 600 }}>+</span></button>
-            <button className="btn btn-success btn-sm" style={{ padding: "6px 10px 5px" }} disabled={publishing} onClick={handlePublishRules}>{publishing ? "Publishing…" : "Publish Changes"}</button>
+        <div className="cb-scan-row-head">
+          <div className="cb-scan-section-title">Cookie List</div>
+          <div className="cb-scan-btn-group">
+            <button className="btn btn-secondary btn-sm cb-scan-btn-pad" onClick={() => setAddCookie(true)}>Add Cookie <span className="cb-scan-plus">+</span></button>
+            <button className="btn btn-success btn-sm cb-scan-btn-pad" disabled={publishing} onClick={handlePublishRules}>{publishing ? "Publishing…" : "Publish Changes"}</button>
           </div>
         </div>
-        <div className="card" style={{ overflow: "hidden", marginBottom: 18 }}>
-          <div style={{ display: "grid", gridTemplateColumns: "180px 1fr" }}>
-            <div style={{ borderRight: "1px solid var(--border)", padding: "6px 0" }}>
+        <div className="card cb-scan-card-block">
+          <div className="cb-scan-grid">
+            <div className="cb-scan-cat-list">
               {cats.map((c) =>
               <div
                 key={c.id}
                 onClick={() => setActive(c.id)}
-                className={"cb-sub-item " + (active === c.id ? "active" : "")}
-                style={{ padding: "10px 14px", fontSize: 11.5, cursor: "pointer" }}>
-                
+                className={"cb-sub-item cb-scan-cat-item " + (active === c.id ? "active" : "")}>
+
                   {c.label}
                 </div>
               )}
             </div>
-            <div style={{ padding: "14px 16px" }}>
-              <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 8 }}>{sel.id}</div>
-              <div style={{ fontSize: 11.5, color: "var(--text-muted)", lineHeight: 1.55, marginBottom: selCookies.length ? 12 : 0 }}>{sel.desc}</div>
+            <div className="cb-scan-cat-body">
+              <div className="cb-scan-cat-name">{sel.id}</div>
+              <div className="cb-scan-cat-desc" style={{ marginBottom: selCookies.length ? 12 : 0 }}>{sel.desc}</div>
               {selCookies.length > 0 &&
-                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                <div className="cb-scan-cookie-list">
                   {selCookies.map((c) =>
-                    <div key={c.id} style={{ display: "flex", justifyContent: "space-between", gap: 10, fontSize: 11, padding: "6px 8px", background: "var(--bg-2)", borderRadius: 6 }}>
-                      <span style={{ fontWeight: 600, wordBreak: "break-all" }}>{c.name}</span>
+                    <div key={c.id} className="cb-scan-cookie-item">
+                      <span className="cb-scan-cookie-name">{c.name}</span>
                       {String(sel.key).toLowerCase() !== "uncategorized" &&
-                        <span style={{ color: "var(--text-muted)", flexShrink: 0 }}>{c.provider || c.domain || ""}</span>
+                        <span className="cb-scan-cookie-meta">{c.provider || c.domain || ""}</span>
                       }
                     </div>
                   )}
@@ -310,30 +310,27 @@ function WScan() {
         </div>
 
         {/* Tab bar — Scan History / My Cookie Rules */}
-        <div ref={historyRef} style={{ display: "flex", alignItems: "center", gap: 22, borderBottom: "1px solid var(--border)", marginBottom: 12 }}>
+        <div ref={historyRef} className="cb-scan-tabbar">
           {[
             { id: "history", label: "Scan History" },
             { id: "rules", label: "My Cookie Rules" }].
             map((t) => {
               const on = bottomTab === t.id;
               return (
-                <button key={t.id} onClick={() => setBottomTab(t.id)} style={{
-                  background: "none", border: "none", cursor: "pointer",
-                  padding: "6px 0 10px", fontSize: 13, fontWeight: 600,
+                <button key={t.id} onClick={() => setBottomTab(t.id)} className="cb-scan-tab" style={{
                   color: on ? "var(--purple-hi)" : "var(--text-muted)",
-                  borderBottom: "2px solid " + (on ? "var(--purple-hi)" : "transparent"),
-                  display: "inline-flex", alignItems: "center", gap: 7
+                  borderBottom: "2px solid " + (on ? "var(--purple-hi)" : "transparent")
                 }}>
                   {t.label}
                   {t.id === "rules" && draftCount > 0 &&
-                    <span style={{ fontSize: 10, fontWeight: 700, color: "#fff", background: "#F5A623", borderRadius: 999, minWidth: 16, height: 16, display: "inline-flex", alignItems: "center", justifyContent: "center", padding: "0 5px" }}>{draftCount}</span>
+                    <span className="cb-scan-badge">{draftCount}</span>
                   }
                 </button>);
             })}
         </div>
 
         {bottomTab === "history" &&
-        <div className="card" style={{ overflow: "hidden", marginBottom: 18 }}>
+        <div className="card cb-scan-card-block">
           <div className="cb-scroll-table">
           <table className="tbl">
             <thead>
@@ -348,13 +345,13 @@ function WScan() {
             </thead>
             <tbody>
               {scans.length === 0 ?
-              <tr><td colSpan={6} style={{ textAlign: "center", color: "var(--text-muted)", padding: "22px 12px" }}>No scans yet. Click <b role="button" tabIndex={0} onClick={() => !scanning && handleScanNow()} onKeyDown={(e) => { if ((e.key === "Enter" || e.key === " ") && !scanning) { e.preventDefault(); handleScanNow(); } }} style={{ color: "var(--purple-hi)", cursor: scanning ? "default" : "pointer", opacity: scanning ? 0.6 : 1 }}>Scan Now</b> to scan your site.</td></tr> :
+              <tr><td colSpan={6} className="cb-scan-empty-cell">No scans yet. Click <b role="button" tabIndex={0} onClick={() => !scanning && handleScanNow()} onKeyDown={(e) => { if ((e.key === "Enter" || e.key === " ") && !scanning) { e.preventDefault(); handleScanNow(); } }} className="cb-scan-link" style={{ cursor: scanning ? "default" : "pointer", opacity: scanning ? 0.6 : 1 }}>Scan Now</b> to scan your site.</td></tr> :
               scans.map((r) => {
                 const failed = String(r.scanStatus || "").toLowerCase() === "failed" || String(r.scanStatus || "").toLowerCase() === "error";
                 const done = isTerminalStatus(r.scanStatus);
                 return (
                 <tr key={r.id}>
-                  <td style={{ fontWeight: 500 }}>{fmtDate(r.createdAt)}</td>
+                  <td className="cb-scan-td-medium">{fmtDate(r.createdAt)}</td>
                   <td>
                     {failed ?
                       <span className="badge badge-red"><span className="badge-dot" />Failed</span> :
@@ -362,7 +359,7 @@ function WScan() {
                       <span className="badge badge-green"><span className="badge-dot" />Completed</span> :
                       <span className="badge badge-yellow"><span className="badge-dot" />Scanning</span>}
                   </td>
-                  <td style={{ wordBreak: "break-all" }}>{r.scanUrl || "—"}</td>
+                  <td className="cb-scan-td-break">{r.scanUrl || "—"}</td>
                   <td>{Array.isArray(r.categories) ? r.categories.length : "—"}</td>
                   <td>{r.cookiesFound ?? 0}</td>
                   <td>{r.scriptsFound ?? 0}</td>
@@ -375,15 +372,15 @@ function WScan() {
         }
 
         {bottomTab === "rules" &&
-        <div style={{ marginBottom: 18 }}>
-          <div style={{ fontSize: 11.5, color: "var(--text-muted)", marginBottom: 10, lineHeight: 1.5 }}>
+        <div className="cb-scan-rules-wrap">
+          <div className="cb-scan-rules-note">
             Rules are applied during scanning to override cookie categories. Publish drafts to activate them.
           </div>
           {rules.length === 0 ?
-            <div className="card" style={{ padding: "26px 16px", textAlign: "center", color: "var(--text-muted)", fontSize: 12 }}>
-              No cookie rules yet. Use <b role="button" tabIndex={0} onClick={() => setAddCookie(true)} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setAddCookie(true); } }} style={{ color: "var(--purple-hi)", cursor: "pointer" }}>Add Cookie</b> to create one.
+            <div className="card cb-scan-empty-card">
+              No cookie rules yet. Use <b role="button" tabIndex={0} onClick={() => setAddCookie(true)} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setAddCookie(true); } }} className="cb-scan-link-static">Add Cookie</b> to create one.
             </div> :
-            <div className="card" style={{ overflow: "hidden" }}>
+            <div className="card cb-scan-card-ovh">
             <div className="cb-scroll-table">
             <table className="tbl">
               <thead>
@@ -399,11 +396,11 @@ function WScan() {
               <tbody>
                 {rules.map((r) =>
                 <tr key={r.id}>
-                  <td style={{ fontWeight: 600 }}>
-                    <span style={{ display: "inline-flex", alignItems: "center", gap: 7 }}>
+                  <td className="cb-scan-td-bold">
+                    <span className="cb-scan-inline-gap">
                       {r.name}
                       {!Number(r.published) &&
-                        <span className="badge badge-yellow" style={{ textTransform: "uppercase", fontSize: 9, letterSpacing: "0.04em" }}>Draft</span>
+                        <span className="badge badge-yellow cb-scan-draft-badge">Draft</span>
                       }
                     </span>
                   </td>
@@ -411,8 +408,8 @@ function WScan() {
                   <td>{r.category}</td>
                   <td style={{ color: r.duration ? "var(--text)" : "var(--text-muted)" }}>{r.duration || "—"}</td>
                   <td style={{ color: r.scriptUrlPattern ? "var(--text)" : "var(--text-muted)" }}>{r.scriptUrlPattern || "—"}</td>
-                  <td style={{ textAlign: "right" }}>
-                    <button onClick={() => handleDeleteRule(r.id)} style={{ background: "none", border: "none", cursor: "pointer", color: "#FF8888", fontSize: 11, fontWeight: 600 }}>Delete</button>
+                  <td className="cb-scan-td-right">
+                    <button onClick={() => handleDeleteRule(r.id)} className="cb-scan-delete-btn">Delete</button>
                   </td>
                 </tr>
                 )}
@@ -427,16 +424,16 @@ function WScan() {
 
       {/* Scanning popup — shown briefly, then the live History row takes over */}
       {scanPopup &&
-      <div onClick={() => { setScanPopup(false); scrollToHistory(); }} style={{ position: "fixed", inset: 0, zIndex: 100, background: "rgba(8,6,20,0.6)", backdropFilter: "blur(2px)", display: "grid", placeItems: "center", padding: 20 }}>
-        <div onClick={(e) => e.stopPropagation()} style={{ width: 280, background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 14, padding: 26, textAlign: "center" }}>
-          <svg width="44" height="44" viewBox="0 0 56 56" style={{ marginBottom: 12 }}>
+      <div onClick={() => { setScanPopup(false); scrollToHistory(); }} className="cb-scan-popup-overlay">
+        <div onClick={(e) => e.stopPropagation()} className="cb-scan-popup-card">
+          <svg width="44" height="44" viewBox="0 0 56 56" className="cb-scan-popup-svg">
             <circle cx="28" cy="14" r="4" fill="#7C5CFC"><animate attributeName="opacity" values="1;.3;1" dur="1s" begin="0s" repeatCount="indefinite" /></circle>
             <circle cx="40" cy="28" r="4" fill="#8E72FF"><animate attributeName="opacity" values="1;.3;1" dur="1s" begin="0.2s" repeatCount="indefinite" /></circle>
             <circle cx="28" cy="42" r="4" fill="#A78BFA"><animate attributeName="opacity" values="1;.3;1" dur="1s" begin="0.4s" repeatCount="indefinite" /></circle>
             <circle cx="16" cy="28" r="4" fill="#7C5CFC"><animate attributeName="opacity" values="1;.3;1" dur="1s" begin="0.6s" repeatCount="indefinite" /></circle>
           </svg>
-          <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 4 }}>Scanning…</div>
-          <div style={{ color: "var(--text-muted)", fontSize: 11.5 }}>Your site is scanning</div>
+          <div className="cb-scan-popup-title">Scanning…</div>
+          <div className="cb-scan-popup-sub">Your site is scanning</div>
         </div>
       </div>
       }

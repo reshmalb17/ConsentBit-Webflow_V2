@@ -1,0 +1,70 @@
+.cb-edcolors-wrap {
+  position: relative;
+}
+
+.cb-edcolors-field {
+  display: flex;
+  align-items: center;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  overflow: hidden;
+  background: var(--bg-2);
+}
+
+.cb-edcolors-swatch {
+  width: 26px;
+  height: 24px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.cb-edcolors-hex {
+  width: 72px;
+  font-size: 11px;
+  color: var(--text-muted);
+  padding: 0 10px;
+  background: transparent;
+  border: none;
+  outline: none;
+}
+
+.cb-edcolors-grid {
+  display: grid;
+  grid-template-columns: 300px 1fr;
+  gap: 18px;
+}
+
+.cb-edcolors-card {
+  padding: 14px;
+  margin-bottom: 12px;
+}
+
+.cb-edcolors-card-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.cb-edcolors-card-title {
+  font-weight: 600;
+  font-size: 12.5px;
+}
+
+.cb-edcolors-subhead {
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+}
+
+.cb-edcolors-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.cb-edcolors-row-label {
+  font-size: 12px;
+}

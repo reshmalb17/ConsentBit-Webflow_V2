@@ -1,6 +1,7 @@
 import React from "react";
 import { Icon } from "../lib/icons.jsx";
 import { useNav } from "../../nav.jsx";
+import "./WTopBar.css";
 
 const PLAN_LABELS = { free: "Free", basic: "Basic", essential: "Essential", growth: "Growth" };
 
@@ -13,7 +14,7 @@ function WTopBar({ minimal = false }) {
   const avatarInitials = (nav?.accountEmail || "").trim().slice(0, 2).toUpperCase() || "—";
   return (
     <div className="cb-topbar">
-      <div style={{ flex: 1 }} />
+      <div className="cb-topbar-spacer" />
       <div className="cb-topbar-right">
         {planLabel && <span className="cb-plan-pill">Plan <b>{planLabel}</b></span>}
         <button className="cb-icon-btn" onClick={nav ? () => nav.setNotifOpen(!nav.notifOpen) : undefined}><Icon.bell /></button>

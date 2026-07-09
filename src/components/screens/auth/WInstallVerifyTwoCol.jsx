@@ -18,7 +18,7 @@ function WInstallVerifyTwoCol() {
           {colHead(1, "Copy this banner installation code")}
           <div className="mono" style={{ background: "var(--bg-2)", border: "1px solid var(--border)", borderRadius: 8, padding: "8px 10px", fontSize: 10, lineHeight: 1.6, marginBottom: 10, whiteSpace: "nowrap", overflowX: "auto" }}>
             <span style={{ color: "#6E6890" }}>&lt;!-- Start ConsentBit banner --&gt;</span>{" "}
-            <span style={{ color: "#FF9F45" }}>&lt;script</span> <span style={{ color: "#5AE497" }}>id="consentbit" type="text/javascript" src="https://cdn.consentbit.com/client_data/040a441d4818e9d47ed2318bd7caaed6/script.js"</span><span style={{ color: "#FF9F45" }}>&gt;&lt;/script&gt;</span>{" "}
+            <span style={{ color: "#FF9F45" }}>&lt;script</span> <span style={{ color: "#5AE497" }}>id="consentbit" type="text/javascript" src="https://cdn.consentbit.com/client_data/YOUR_SITE_ID/script.js"</span><span style={{ color: "#FF9F45" }}>&gt;&lt;/script&gt;</span>{" "}
             <span style={{ color: "#6E6890" }}>&lt;!-- End ConsentBit banner --&gt;</span>
           </div>
           <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>

@@ -1,4 +1,6 @@
 import React from "react";
+import "./WUpgrade.css";
+import "../../kit/modal.css";
 import { WMainTabs } from "../../kit/WMainTabs.jsx";
 import { WPage } from "../../kit/WPage.jsx";
 import { WTopBar } from "../../kit/WTopBar.jsx";
@@ -215,8 +217,8 @@ function WUpgrade() {
   { label: "No of Page views", vals: [
     "PAID",
     "100,000 page views/m",
-    <><div>500,000 page views/m</div><div style={{ fontSize: 9, color: "var(--text-muted)", marginTop: 1 }}>+ $0.05 / additional 1000 page views</div></>,
-    <><div>2 Million page views/m</div><div style={{ fontSize: 9, color: "var(--text-muted)", marginTop: 1 }}>+ $0.05 / additional 1000 page views</div></>]
+    <><div>500,000 page views/m</div><div className="cb-upgrade-pageview-note">+ $0.05 / additional 1000 page views</div></>,
+    <><div>2 Million page views/m</div><div className="cb-upgrade-pageview-note">+ $0.05 / additional 1000 page views</div></>]
   },
   { label: "IAB / TCF", vals: ["NIL", "NIL", "Yes", "Yes"] },
   { label: "Compliance", vals: ["GDPR/CCPA", "GDPR/CCPA", "GDPR+CCPA", "GDPR+CCPA"] }];
@@ -230,12 +232,12 @@ function WUpgrade() {
       // offer an in-place switch instead of the static "Current plan" badge.
       const canSwitch = currentKey !== "free" && currentInterval && currentInterval !== billing;
       if (canSwitch) {
-        return <button className="btn btn-sm" disabled={switching} onClick={() => setConfirmSwitch(true)} style={{ width: "100%", justifyContent: "center", background: ACC, color: "#fff", fontWeight: 700, fontSize: 11, padding: "8px 10px" }}>
+        return <button className="btn btn-sm cb-upgrade-switch-btn" disabled={switching} onClick={() => setConfirmSwitch(true)} style={{ background: ACC }}>
           {switching ? (isCanceled ? "Opening…" : "Switching…") : isCanceled ? `Subscribe to ${billing === "yearly" ? "Yearly" : "Monthly"}` : `Switch to ${billing === "yearly" ? "Yearly" : "Monthly"}`}
         </button>;
       }
-      return <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 11, fontWeight: 600, color: "var(--text-muted)", border: "1px solid var(--border)", borderRadius: 999, padding: "6px 12px" }}>
-        <span style={{ width: 6, height: 6, borderRadius: 999, background: "#5AE497" }} />Current plan
+      return <span className="cb-upgrade-current-badge">
+        <span className="cb-upgrade-current-dot" />Current plan
       </span>;
     }
     // No button for a plan with no CTA — e.g. when a paid plan is active.
@@ -246,46 +248,46 @@ function WUpgrade() {
     // and shouldn't see a "downgrade to free" button.
     if (c.name === "Free") {
       if (hasPlan) return null;
-      return <button className="btn btn-sm" disabled={!!busyPlan || freeBlocked} onClick={handleContinueFree} style={{ width: "100%", justifyContent: "center", background: "var(--surface-3)", color: "var(--text)", border: "1px solid var(--border-2)", fontWeight: 600, fontSize: 12, padding: "9px 10px", opacity: busyPlan && busyPlan !== "Free" ? 0.6 : 1 }}>{label}</button>;
+      return <button className="btn btn-sm cb-upgrade-cta-secondary" disabled={!!busyPlan || freeBlocked} onClick={handleContinueFree} style={{ opacity: busyPlan && busyPlan !== "Free" ? 0.6 : 1 }}>{label}</button>;
     }
     if (c.ctaStyle === "accent") {
-      return <button className="btn btn-sm" disabled={!!busyPlan} onClick={() => handleUpgrade(c.name)} style={{ width: "100%", justifyContent: "center", background: ACC, color: "#fff", fontWeight: 700, fontSize: 12, padding: "9px 10px", boxShadow: "0 6px 16px rgba(7,118,230,0.45)", opacity: busyPlan && busyPlan !== c.name ? 0.6 : 1 }}>{label}</button>;
+      return <button className="btn btn-sm cb-upgrade-cta-accent" disabled={!!busyPlan} onClick={() => handleUpgrade(c.name)} style={{ background: ACC, opacity: busyPlan && busyPlan !== c.name ? 0.6 : 1 }}>{label}</button>;
     }
-    return <button className="btn btn-sm" disabled={!!busyPlan} onClick={() => handleUpgrade(c.name)} style={{ width: "100%", justifyContent: "center", background: "var(--surface-3)", color: "var(--text)", border: "1px solid var(--border-2)", fontWeight: 600, fontSize: 12, padding: "9px 10px", opacity: busyPlan && busyPlan !== c.name ? 0.6 : 1 }}>{label}</button>;
+    return <button className="btn btn-sm cb-upgrade-cta-secondary" disabled={!!busyPlan} onClick={() => handleUpgrade(c.name)} style={{ opacity: busyPlan && busyPlan !== c.name ? 0.6 : 1 }}>{label}</button>;
   };
 
   return (
-    <WPage scroll={false} className="cb-scroll-page" style={{ display: "flex", flexDirection: "column" }}>
+    <WPage scroll={false} className="cb-scroll-page cb-upgrade-page">
       <WToast message={error} type="error" onClose={() => setError("")} />
       <WToast message={switchMsg} type="success" onClose={() => setSwitchMsg("")} />
       {confirmSwitch &&
-      <div onClick={() => setConfirmSwitch(false)} style={{ position: "fixed", inset: 0, zIndex: 100, background: "rgba(8,6,20,0.65)", backdropFilter: "blur(2px)", display: "grid", placeItems: "center", padding: 20 }}>
-        <div onClick={(e) => e.stopPropagation()} className="card" style={{ width: 360, maxWidth: "100%", padding: 22, background: "var(--surface)", textAlign: "center", boxShadow: "0 24px 60px rgba(0,0,0,0.55)" }}>
-          <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 8 }}>
+      <div onClick={() => setConfirmSwitch(false)} className="cb-modal-overlay cb-modal-overlay--soft" style={{ position: "fixed" }}>
+        <div onClick={(e) => e.stopPropagation()} className="card cb-upgrade-switch-card">
+          <div className="cb-upgrade-switch-title">
             {isCanceled
               ? `Subscribe to ${currentLabel} (${billing === "yearly" ? "yearly" : "monthly"})?`
               : `Switch to ${billing === "yearly" ? "yearly" : "monthly"} billing?`}
           </div>
-          <div style={{ color: "var(--text-muted)", fontSize: 12.5, lineHeight: 1.55, marginBottom: 20 }}>
+          <div className="cb-upgrade-switch-text">
             {isCanceled
               ? `Your ${currentLabel} plan was canceled, so it can't be switched in place. Continue to checkout to subscribe with ${billing === "yearly" ? "yearly" : "monthly"} billing.`
               : `Your ${currentLabel} plan will move to ${billing === "yearly" ? "yearly" : "monthly"} billing. Stripe prorates the difference and charges your saved card — no re-entering card details.`}
           </div>
-          <div style={{ display: "flex", gap: 8 }}>
-            <button className="btn btn-secondary btn-sm" style={{ flex: 1, justifyContent: "center" }} onClick={() => setConfirmSwitch(false)}>Cancel</button>
-            <button className="btn btn-primary btn-sm" style={{ flex: 1, justifyContent: "center" }} disabled={switching} onClick={handleSwitchInterval}>{switching ? (isCanceled ? "Opening…" : "Switching…") : (isCanceled ? "Continue to checkout" : "Confirm")}</button>
+          <div className="cb-upgrade-switch-actions">
+            <button className="btn btn-secondary btn-sm cb-upgrade-modal-btn" onClick={() => setConfirmSwitch(false)}>Cancel</button>
+            <button className="btn btn-primary btn-sm cb-upgrade-modal-btn" disabled={switching} onClick={handleSwitchInterval}>{switching ? (isCanceled ? "Opening…" : "Switching…") : (isCanceled ? "Continue to checkout" : "Confirm")}</button>
           </div>
         </div>
       </div>
       }
       <WTopBar />
       <WMainTabs active="upgrade" left />
-      <div className="cb-page" style={{ flex: 1, minHeight: 0, overflowY: "auto", paddingTop: 16 }}>
+      <div className="cb-page cb-upgrade-body">
         {/* Tight headline block */}
-        <div className="card" style={{ position: "relative", background: "var(--surface)", padding: "14px 16px", marginBottom: 16 }}>
+        <div className="card cb-upgrade-headline">
           {/* Refresh the live billing/payment details */}
           <div
-            style={{ position: "absolute", top: 10, right: 12 }}
+            className="cb-upgrade-refresh-wrap"
             onMouseEnter={() => setRefreshTip(true)}
             onMouseLeave={() => setRefreshTip(false)}
           >
@@ -294,7 +296,8 @@ function WUpgrade() {
               onClick={refreshBilling}
               disabled={refreshing}
               aria-label="Refresh to get the latest payment details"
-              style={{ background: "none", border: "none", padding: 4, display: "inline-flex", alignItems: "center", color: "var(--text-muted)", cursor: refreshing ? "default" : "pointer", opacity: refreshing ? 0.6 : 1 }}
+              className="cb-upgrade-refresh-btn"
+              style={{ cursor: refreshing ? "default" : "pointer", opacity: refreshing ? 0.6 : 1 }}
             >
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <g>
@@ -306,11 +309,11 @@ function WUpgrade() {
               </svg>
             </button>
             {refreshTip &&
-              <span style={{ position: "absolute", top: "calc(100% + 6px)", right: 0, whiteSpace: "nowrap", background: "#0a0a14", color: "#fff", fontSize: 10.5, lineHeight: 1.4, padding: "5px 8px", borderRadius: 6, boxShadow: "0 8px 20px rgba(0,0,0,0.5)", zIndex: 10, pointerEvents: "none" }}>
+              <span className="cb-upgrade-refresh-tip">
                 Refresh to get the latest payment details
               </span>}
           </div>
-          <div style={{ fontSize: 14, fontWeight: 700, letterSpacing: "-0.01em", marginBottom: 4, paddingRight: 26 }}>
+          <div className="cb-upgrade-headline-title">
             {!currentKey
               ? "Unlock full compliance with Essential."
               : currentKey === "free"
@@ -319,7 +322,7 @@ function WUpgrade() {
                   ? "You're on the Growth plan — our top plan."
                   : `You're on ${currentLabel}. Manage or change your plan below.`}
           </div>
-          <div style={{ fontSize: 11.5, color: "var(--text-muted)", lineHeight: 1.5 }}>
+          <div className="cb-upgrade-headline-sub">
             {currentKey === "growth"
               ? "You have access to every feature — IAB/TCF, Google Consent Mode, and GDPR+CCPA."
               : currentKey === "essential"
@@ -329,43 +332,38 @@ function WUpgrade() {
         </div>
 
         {/* Billing toggle */}
-        <div style={{ display: "flex", alignItems: "center", marginBottom: 16 }}>
-          <div style={{ display: "flex", background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 999, padding: 3, alignItems: "center" }}>
+        <div className="cb-upgrade-billing-row">
+          <div className="cb-upgrade-billing-toggle">
             <button
-              className={"btn btn-sm " + (billing === "monthly" ? "btn-primary" : "btn-ghost")}
-              style={{ borderRadius: 999 }}
+              className={"btn btn-sm cb-upgrade-toggle-btn " + (billing === "monthly" ? "btn-primary" : "btn-ghost")}
               onClick={() => pickBilling("monthly")}
               aria-pressed={billing === "monthly"}
             >Monthly</button>
             <button
-              className={"btn btn-sm " + (billing === "yearly" ? "btn-primary" : "btn-ghost")}
-              style={{ borderRadius: 999, display: "flex", alignItems: "center", gap: 6 }}
+              className={"btn btn-sm cb-upgrade-toggle-btn-yearly " + (billing === "yearly" ? "btn-primary" : "btn-ghost")}
               onClick={() => pickBilling("yearly")}
               aria-pressed={billing === "yearly"}
             >
-              Yearly <span style={{ fontSize: 9.5, fontWeight: 700, color: "#5AE497", background: "var(--green-soft)", padding: "2px 7px", borderRadius: 999 }}>Save 20%</span>
+              Yearly <span className="cb-upgrade-save-badge">Save 20%</span>
             </button>
           </div>
         </div>
 
         {/* Pricing table */}
-        <div className="card" style={{ padding: 0, overflow: "visible", marginTop: 6, position: "relative" }}>
+        <div className="card cb-upgrade-table">
           {/* Free plan blocked — hover tip over the Free column (matches the plan page). */}
           {freeBlocked &&
-          <div className="cb-free-col-tip" style={{ position: "absolute", top: 0, bottom: 0, left: "120px", width: "calc((100% - 120px) / 4)", zIndex: 6, cursor: "not-allowed" }}>
-            <span style={{ position: "absolute", bottom: "calc(100% - 64px)", left: "50%", transform: "translateX(-50%)", width: 180, background: "#0a0a14", color: "#fff", fontSize: 11, lineHeight: 1.45, textAlign: "center", padding: "8px 10px", borderRadius: 8, boxShadow: "0 10px 24px rgba(0,0,0,0.55)", opacity: 0, pointerEvents: "none", transition: "opacity 0.15s", zIndex: 7 }}>You've already taken a free subscription for this account.
-              <span style={{ position: "absolute", top: "100%", left: "50%", transform: "translateX(-50%)", width: 0, height: 0, borderLeft: "6px solid transparent", borderRight: "6px solid transparent", borderTop: "6px solid #0a0a14" }} />
+          <div className="cb-free-col-tip cb-upgrade-free-tip">
+            <span className="cb-upgrade-free-tip-bubble">You've already taken a free subscription for this account.
+              <span className="cb-upgrade-free-tip-arrow" />
             </span>
           </div>
           }
           {/* Header row */}
-          <div style={{ display: "grid", gridTemplateColumns: "120px repeat(4, 1fr)", borderBottom: "1px solid var(--border)" }}>
+          <div className="cb-upgrade-grid-head">
             <div />
             {cols.map((c, i) =>
-            <div key={i} style={{
-              padding: "12px 10px 10px",
-              textAlign: "center",
-              position: "relative",
+            <div key={i} className="cb-upgrade-col-head" style={{
               opacity: freeBlocked && c.name === "Free" ? 0.45 : 1,
               filter: freeBlocked && c.name === "Free" ? "blur(2px)" : "none",
               pointerEvents: freeBlocked && c.name === "Free" ? "none" : "auto",
@@ -374,48 +372,33 @@ function WUpgrade() {
               border: c.best ? "2px solid " + ACC : undefined,
               borderRadius: c.best ? 14 : 0,
               boxShadow: c.best ? "0 12px 30px rgba(7,118,230,0.4)" : "none",
-              zIndex: c.best ? 3 : 1,
-              display: "flex", flexDirection: "column", alignItems: "center"
+              zIndex: c.best ? 3 : 1
             }}>
                 {c.best &&
-              <div style={{
-                position: "absolute", top: -12, left: "50%", transform: "translateX(-50%)",
-                background: ACC, color: "white",
-                fontSize: 10, fontWeight: 700,
-                padding: "4px 14px", borderRadius: 999, whiteSpace: "nowrap",
-                zIndex: 4,
-                boxShadow: "0 4px 12px rgba(7,118,230,0.5)"
-              }}>Recommended</div>
+              <div className="cb-upgrade-reco-badge" style={{ background: ACC }}>Recommended</div>
               }
-                <div style={{ fontSize: 12, color: c.best ? ACC : "var(--text)", marginBottom: 4, fontWeight: c.best ? 700 : 500 }}>{c.name}</div>
-                <div style={{ fontSize: 18, fontWeight: 700, lineHeight: 1, marginBottom: 8, color: "var(--text)" }}>
-                  {c[billing]}<span style={{ fontSize: 10, color: "var(--text-muted)", fontWeight: 400 }}>{priceSuffix}</span>
+                <div className="cb-upgrade-col-name" style={{ color: c.best ? ACC : "var(--text)", fontWeight: c.best ? 700 : 500 }}>{c.name}</div>
+                <div className="cb-upgrade-col-price">
+                  {c[billing]}<span className="cb-upgrade-price-suffix">{priceSuffix}</span>
                 </div>
-                <div style={{ marginTop: "auto", width: "100%", display: "flex", justifyContent: "center" }}>{renderCta(c)}</div>
+                <div className="cb-upgrade-cta-wrap">{renderCta(c)}</div>
               </div>
             )}
           </div>
           {/* Feature rows */}
           {rows.map((r, i) =>
-          <div key={i} style={{
-            display: "grid",
-            gridTemplateColumns: "120px repeat(4, 1fr)",
+          <div key={i} className="cb-upgrade-grid-row" style={{
             borderBottom: i < rows.length - 1 ? "1px solid var(--border)" : "none"
           }}>
-              <div style={{ padding: "7px 12px", fontSize: 11, color: "var(--text)", fontWeight: 500, display: "flex", alignItems: "center" }}>{r.label}</div>
+              <div className="cb-upgrade-row-label">{r.label}</div>
               {r.vals.map((v, j) =>
-            <div key={j} style={{
-              padding: "7px 10px",
-              fontSize: 11,
-              textAlign: "center",
-              color: "var(--text)",
+            <div key={j} className="cb-upgrade-cell" style={{
               opacity: freeBlocked && cols[j].name === "Free" ? 0.45 : 1,
               filter: freeBlocked && cols[j].name === "Free" ? "blur(2px)" : "none",
               borderLeft: cols[j].best ? "2px solid " + ACC : "1px solid var(--border)",
               borderRight: cols[j].best ? "2px solid " + ACC : "none",
               fontWeight: cols[j].best ? 600 : 400,
-              background: cols[j].best ? accentTintLite : "transparent",
-              display: "flex", flexDirection: "column", justifyContent: "center"
+              background: cols[j].best ? accentTintLite : "transparent"
             }}>{v}</div>
             )}
             </div>
@@ -423,7 +406,7 @@ function WUpgrade() {
         </div>
 
         {/* Trust line */}
-        <div style={{ textAlign: "center", fontSize: 11, color: "var(--text-muted)", marginTop: 14 }}>
+        <div className="cb-upgrade-trust">
           Trusted by 4,200+ websites · 30-day money-back guarantee
         </div>
       </div>

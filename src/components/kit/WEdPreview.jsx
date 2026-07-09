@@ -1,4 +1,5 @@
 import React from "react";
+import "./WEdPreview.css";
 import { useNav } from "../../nav.jsx";
 import { WIabBanner } from "./WIabBanner.jsx";
 import { simpleBanner, preferenceBanner, ccpaBanner, localization, prefCategories as DEFAULT_CATS } from "../../lib/bannerContent.js";
@@ -149,12 +150,12 @@ function WEdPreview({ variant = "default" }) {
     </>;
 
   return (
-    <div style={{ width: "450px", paddingRight: 12, position: "sticky", top: 0, alignSelf: "start" }}>
+    <div className="cb-edprev-wrap">
       {/* Header: Preview label + region tabs */}
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
-        <div style={{ fontSize: 12, color: "var(--text-muted)" }}>Preview</div>
+      <div className="cb-edprev-head">
+        <div className="cb-edprev-label">Preview</div>
         {!iab &&
-        <div style={{ display: "flex", gap: 6 }}>
+        <div className="cb-edprev-regions">
           {regions.map((l) =>
           <button key={l} onClick={() => setRegion(l)} className={"w-nav-btn " + (region === l ? "active" : "")}>{l}</button>
           )}

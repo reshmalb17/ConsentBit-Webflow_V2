@@ -1,0 +1,20 @@
+/* Static styles for WLanding. Dynamic values (none currently) stay inline. */
+
+.cb-landing-page { display: flex; flex-direction: column; }
+.cb-landing-center { padding: 30px; }
+.cb-landing-inner { width: 100%; max-width: 460px; text-align: center; }
+.cb-landing-logo {
+  width: 60px;
+  height: 60px;
+  border-radius: 16px;
+  background: var(--purple-soft);
+  display: grid;
+  place-items: center;
+  margin: 0 auto 22px;
+}
+.cb-landing-logo-img { width: 32px; height: 32px; }
+.cb-landing-title { font-size: 22px; font-weight: 700; margin-bottom: 10px; letter-spacing: -0.01em; }
+.cb-landing-desc { color: var(--text-muted); font-size: 13px; line-height: 1.6; margin-bottom: 24px; }
+.cb-landing-btn { justify-content: center; padding: 12px 24px; }
+.cb-landing-btn-icon { margin-right: 4px; }
+.cb-landing-note { color: var(--text-faint); font-size: 11px; margin-top: 16px; }

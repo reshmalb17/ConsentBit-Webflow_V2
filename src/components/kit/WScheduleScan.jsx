@@ -1,6 +1,8 @@
 import React from "react";
 import { createScheduledScan } from "../../lib/api.js";
 import { WToast } from "./WToast.jsx";
+import "./modal.css";
+import "./WScheduleScan.css";
 
 const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 
@@ -82,54 +84,55 @@ function WScheduleScan({ siteId, onClose, onConfirm }) {
   const summaryBtn = (active) => ({ flex: 1, padding: "11px 14px", borderRadius: 9, fontSize: 13, fontWeight: 600, cursor: "pointer", background: "var(--bg-2)", color: "var(--text)", border: "1px solid " + (active ? "var(--purple)" : "var(--border)") });
 
   return (
-    <div onClick={onClose} style={{ position: "fixed", inset: 0, zIndex: 100, background: "rgba(8,6,20,0.65)", backdropFilter: "blur(2px)", display: "grid", placeItems: "center", padding: 20 }}>
-      <div onClick={(e) => e.stopPropagation()} style={{ width: 420, maxWidth: "100%", maxHeight: "92%", overflowY: "auto", background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 14, padding: 22, boxShadow: "0 24px 60px rgba(0,0,0,0.55)" }}>
-        <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 6 }}>Schedule scan</div>
-        <div style={{ fontSize: 12, color: "var(--text-muted)", lineHeight: 1.55, marginBottom: 16 }}>
-          Set the date and time for your next automated cookie scan. Use <b style={{ color: "var(--text)" }}>How often</b> for a one-off run or to repeat daily, weekly, or monthly from that moment.
+    <div onClick={onClose} className="cb-modal-overlay cb-modal-overlay--soft cb-sched-overlay">
+      <div onClick={(e) => e.stopPropagation()} className="cb-sched-card">
+        <div className="cb-sched-title">Schedule scan</div>
+        <div className="cb-sched-intro">
+          Set the date and time for your next automated cookie scan. Use <b className="cb-sched-strong">How often</b> for a one-off run or to repeat daily, weekly, or monthly from that moment.
         </div>
 
         {/* Summary chips */}
-        <div style={{ display: "flex", gap: 10, marginBottom: 16 }}>
+        <div className="cb-sched-chips">
           <div style={summaryBtn(true)}>{dateLabel}</div>
           <div style={summaryBtn(true)}>{time}</div>
         </div>
 
-        <div style={{ display: "flex", gap: 12, border: "1px solid var(--border)", borderRadius: 10, overflow: "hidden" }}>
+        <div className="cb-sched-picker">
           {/* Calendar */}
-          <div style={{ flex: 1, padding: 10 }}>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
-              <button onClick={prevMonth} style={{ background: "none", border: "none", color: "var(--text-muted)", cursor: "pointer", fontSize: 16, padding: "0 6px" }}>‹</button>
-              <div style={{ fontSize: 12.5, fontWeight: 600 }}>{MONTHS[view.m]} {view.y}</div>
-              <button onClick={nextMonth} style={{ background: "none", border: "none", color: "var(--text-muted)", cursor: "pointer", fontSize: 16, padding: "0 6px" }}>›</button>
+          <div className="cb-sched-cal">
+            <div className="cb-sched-cal-head">
+              <button onClick={prevMonth} className="cb-sched-navbtn">‹</button>
+              <div className="cb-sched-cal-month">{MONTHS[view.m]} {view.y}</div>
+              <button onClick={nextMonth} className="cb-sched-navbtn">›</button>
             </div>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 2 }}>
-              {DOW.map((d) => <div key={d} style={{ textAlign: "center", fontSize: 10.5, color: "var(--text-muted)", padding: "4px 0" }}>{d}</div>)}
+            <div className="cb-sched-grid">
+              {DOW.map((d) => <div key={d} className="cb-sched-dow">{d}</div>)}
               {cells.map((c, i) => {
                 const selected = c.cur && c.day === selDay && view.y === selMonth.y && view.m === selMonth.m;
                 return (
                 <div key={i}
                   onClick={() => { if (c.cur) { setSelDay(c.day); setSelMonth({ y: view.y, m: view.m }); } }}
-                  style={{ textAlign: "center", fontSize: 11.5, padding: "6px 0", borderRadius: 7, cursor: c.cur ? "pointer" : "default", color: c.cur ? (selected ? "#fff" : "var(--text)") : "var(--text-faint)", background: selected ? "var(--purple)" : "transparent", fontWeight: selected ? 700 : 400 }}>
+                  className="cb-sched-day"
+                  style={{ cursor: c.cur ? "pointer" : "default", color: c.cur ? (selected ? "#fff" : "var(--text)") : "var(--text-faint)", background: selected ? "var(--purple)" : "transparent", fontWeight: selected ? 700 : 400 }}>
                   {c.day}
                 </div>);
               })}
             </div>
           </div>
           {/* Time list */}
-          <div style={{ width: 92, borderLeft: "1px solid var(--border)", display: "flex", flexDirection: "column" }}>
-            <div style={{ fontSize: 12.5, fontWeight: 700, textAlign: "center", padding: "8px 0", borderBottom: "1px solid var(--border)" }}>Time</div>
-            <div style={{ overflowY: "auto", maxHeight: 200 }}>
+          <div className="cb-sched-times">
+            <div className="cb-sched-times-head">Time</div>
+            <div className="cb-sched-times-list">
               {TIMES.map((t) =>
-              <div key={t} onClick={() => setTime(t)} style={{ padding: "7px 10px", fontSize: 11.5, cursor: "pointer", textAlign: "center", color: t === time ? "#fff" : "var(--text-muted)", background: t === time ? "var(--purple)" : "transparent" }}>{t}</div>
+              <div key={t} onClick={() => setTime(t)} className="cb-sched-time" style={{ color: t === time ? "#fff" : "var(--text-muted)", background: t === time ? "var(--purple)" : "transparent" }}>{t}</div>
               )}
             </div>
           </div>
         </div>
 
         {/* How often */}
-        <div style={{ marginTop: 16 }}>
-          <div className="field-label" style={{ marginBottom: 6 }}>How often</div>
+        <div className="cb-sched-freq">
+          <div className="field-label cb-sched-freq-label">How often</div>
           <select className="select" value={freq} onChange={(e) => setFreq(e.target.value)}>
             <option>One time only</option>
             <option>Daily</option>
@@ -141,8 +144,8 @@ function WScheduleScan({ siteId, onClose, onConfirm }) {
         <WToast message={error} type="error" onClose={() => setError("")} />
 
         {/* Footer */}
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 18 }}>
-          <button onClick={onClose} style={{ background: "none", border: "none", color: "var(--text-muted)", fontSize: 13, cursor: "pointer" }}>Cancel</button>
+        <div className="cb-sched-footer">
+          <button onClick={onClose} className="cb-sched-cancel">Cancel</button>
           <button className="btn btn-primary btn-sm" disabled={busy} onClick={submit}>{busy ? "Scheduling…" : "Schedule scan"}</button>
         </div>
       </div>

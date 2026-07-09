@@ -1,0 +1,25 @@
+.cb-edshell-page {
+  display: flex;
+  flex-direction: column;
+}
+
+.cb-edshell-secondary {
+  height: 38px;
+}
+
+.cb-edshell-primary {
+  height: 38px;
+  min-width: 122px;
+}
+
+.cb-edshell-tabs {
+  padding: 0 32px;
+  margin: 14px 0 14px;
+}
+
+.cb-edshell-content {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 0 32px 18px;
+}

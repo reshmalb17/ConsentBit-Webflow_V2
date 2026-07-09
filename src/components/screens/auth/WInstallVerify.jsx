@@ -1,4 +1,5 @@
 import React from "react";
+import "./WInstallVerify.css";
 import { WAuthShell } from "../../kit/WAuthShell.jsx";
 import { Icon } from "../../lib/icons.jsx";
 import { WVerifyModal } from "../../kit/WVerifyModal.jsx";
@@ -90,18 +91,7 @@ function WInstallVerify() {
   const copyCode = async () => {
     if (!installCode) return; // script URL not loaded yet
     try {
-      if (navigator.clipboard && navigator.clipboard.writeText) {
-        await navigator.clipboard.writeText(installCode);
-      } else {
-        const ta = document.createElement("textarea");
-        ta.value = installCode;
-        ta.style.position = "fixed";
-        ta.style.opacity = "0";
-        document.body.appendChild(ta);
-        ta.select();
-        document.execCommand("copy");
-        document.body.removeChild(ta);
-      }
+      await navigator.clipboard.writeText(installCode);
       setCopied(true);
       setTimeout(() => setCopied(false), 1200);
     } catch {
@@ -167,12 +157,12 @@ function WInstallVerify() {
 
   return (
     <WAuthShell step={4} topAlign title="Install & verify" subtitle="Add the banner to your site, then confirm it's live.">
-      <div style={{ maxWidth: 620, margin: "0 auto", paddingBottom: 24 }}>
+      <div className="cb-install-wrap">
         {/* Back to customization — only when this page was opened from the editor. */}
         {nav && nav.installVerifyFromApp && nav.goToApp &&
           <button
             onClick={() => nav.goToApp()}
-            style={{ display: "inline-flex", alignItems: "center", gap: 5, background: "none", border: "none", color: "var(--text-muted)", fontSize: 12, cursor: "pointer", padding: 0, marginBottom: 10 }}
+            className="cb-install-back-btn"
           >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 12H5M12 19l-7-7 7-7" /></svg>
             Back to customization
@@ -182,59 +172,58 @@ function WInstallVerify() {
             first step of Publish (see ensureLegacyRemoved in handlePublish) — no
             heads-up is shown. If a hard failure occurs, surface just the error. */}
         {legacy.error &&
-          <div className="card" style={{ padding: 12, marginBottom: 12, border: "1px solid #E0623E", background: "rgba(224,98,62,0.08)" }}>
-            <div style={{ color: "#E0623E", fontSize: 11.5, fontWeight: 600 }}>{legacy.error}</div>
+          <div className="card cb-install-error-card">
+            <div className="cb-install-error-text">{legacy.error}</div>
           </div>
         }
-        <div className="card" style={{ padding: "14px 14px 24px" }}>
+        <div className="card cb-install-main-card">
           {/* Heading + Copy button */}
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
-            <div style={{ fontWeight: 600, fontSize: 13 }}>Copy this banner installation code</div>
-            <button className="btn btn-secondary btn-sm" onClick={copyCode} style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+          <div className="cb-install-head-row">
+            <div className="cb-install-head-title">Copy this banner installation code</div>
+            <button className="btn btn-secondary btn-sm cb-install-copy-btn" onClick={copyCode}>
               <Icon.copy />{copied ? "Copied ✓" : "Copy"}
             </button>
           </div>
 
           {/* Code block — line breaks match the design: opening tag, indented src
               (closing with >), then </script> on its own line. */}
-          <div className="mono" style={{ background: "var(--bg-2)", border: "1px solid var(--border)", borderRadius: 8, padding: 10, fontSize: 9.5, lineHeight: 1.5, wordBreak: "break-all" }}>
-            <div style={{ color: "#6E6890" }}>&lt;!-- Start ConsentBit banner --&gt;</div>
+          <div className="mono cb-install-code-block">
+            <div className="cb-install-code-comment">&lt;!-- Start ConsentBit banner --&gt;</div>
             <div>
-              <span style={{ color: "#FF9F45" }}>&lt;script </span>
-              <span style={{ color: "#5AE497" }}>id="consentbit" type="text/javascript"</span>
+              <span className="cb-install-code-tag">&lt;script </span>
+              <span className="cb-install-code-attr">id="consentbit" type="text/javascript"</span>
             </div>
             <div>
-              <span style={{ color: "#5AE497" }}>{`  src="${scriptUrl || "loading…"}"`}</span>
-              <span style={{ color: "#FF9F45" }}>&gt;</span>
+              <span className="cb-install-code-attr">{`  src="${scriptUrl || "loading…"}"`}</span>
+              <span className="cb-install-code-tag">&gt;</span>
             </div>
-            <div style={{ color: "#FF9F45" }}>&lt;/script&gt;</div>
-            <div style={{ color: "#6E6890" }}>&lt;!-- End ConsentBit banner --&gt;</div>
+            <div className="cb-install-code-tag">&lt;/script&gt;</div>
+            <div className="cb-install-code-comment">&lt;!-- End ConsentBit banner --&gt;</div>
           </div>
 
           {/* Add-to-Webflow row: action + instructions on the left, screenshot on the right */}
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginTop: 12, alignItems: "center" }}>
+          <div className="cb-install-row">
             <div>
-              <a href={customCodeUrl} target="_blank" rel="noopener noreferrer" className="btn btn-secondary btn-sm" style={{ textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 5 }}>
+              <a href={customCodeUrl} target="_blank" rel="noopener noreferrer" className="btn btn-secondary btn-sm cb-install-open-link">
                 Open Webflow custom code
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" style={{ flexShrink: 0 }}><path d="M7 17L17 7M17 7H8M17 7V16" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" className="cb-install-ext-icon"><path d="M7 17L17 7M17 7H8M17 7V16" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" /></svg>
               </a>
-              <div style={{ color: "var(--text-muted)", fontSize: 11, lineHeight: 1.5, marginTop: 10 }}>
-                Paste it right after the opening <code className="mono" style={{ background: "var(--purple-soft)", padding: "1px 5px", borderRadius: 4, color: "var(--purple-hi)" }}>&lt;head&gt;</code> tag in your site's source code. Refer to our <a href="https://help.webflow.com/hc/en-us/articles/33961356296723-Custom-code-in-head-and-body-tags" target="_blank" rel="noopener noreferrer" style={{ color: "var(--purple-hi)", textDecoration: "none" }}>platform-wise guides</a> for instructions.
+              <div className="cb-install-paste-note">
+                Paste it right after the opening <code className="mono cb-install-code-inline">&lt;head&gt;</code> tag in your site's source code. Refer to our <a href="https://help.webflow.com/hc/en-us/articles/33961356296723-Custom-code-in-head-and-body-tags" target="_blank" rel="noopener noreferrer" className="cb-install-link">platform-wise guides</a> for instructions.
               </div>
               <button
-                className="btn btn-primary"
-                style={{ width: "100%", justifyContent: "center", marginTop: 14, padding: "10px", height: "auto", fontSize: 13, fontWeight: 600 }}
+                className="btn btn-primary cb-install-publish-btn"
                 disabled={publishing}
                 onClick={handlePublish}
               >
                 {legacy.removing ? "Removing old code…" : publishing ? "Publishing…" : "Publish"}
               </button>
             </div>
-            <div style={{ height: 140, overflow: "hidden", borderRadius: 8, border: "1px solid var(--border)", boxShadow: "0 8px 18px rgba(0,0,0,0.3)" }}>
+            <div className="cb-install-shot">
               <img
                 src={window.__resources && window.__resources.webflowHeadcode || "assets/webflow-headcode.png"}
                 alt="Webflow head code panel"
-                style={{ display: "block", height: "100%", width: "auto", minWidth: "100%", objectFit: "cover", objectPosition: "left top" }}
+                className="cb-install-shot-img"
               />
             </div>
           </div>
@@ -246,30 +235,30 @@ function WInstallVerify() {
 
       {/* Domain selection — only when the site has custom domain(s) as well as staging. */}
       {domainChoice &&
-      <div onClick={() => setDomainChoice(null)} style={{ position: "fixed", inset: 0, zIndex: 100, background: "rgba(8,6,20,0.65)", backdropFilter: "blur(2px)", display: "grid", placeItems: "center", padding: 20 }}>
-        <div onClick={(e) => e.stopPropagation()} style={{ width: 380, maxWidth: "100%", background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 14, padding: 22, boxShadow: "0 24px 60px rgba(0,0,0,0.55)" }}>
-          <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 6 }}>Where do you want to publish?</div>
-          <div style={{ fontSize: 12, color: "var(--text-muted)", lineHeight: 1.5, marginBottom: 16 }}>Select the domains to publish your site to.</div>
+      <div onClick={() => setDomainChoice(null)} className="cb-install-domain-overlay">
+        <div onClick={(e) => e.stopPropagation()} className="cb-install-domain-card">
+          <div className="cb-install-domain-title">Where do you want to publish?</div>
+          <div className="cb-install-domain-sub">Select the domains to publish your site to.</div>
 
-          <label style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", borderRadius: 9, border: "1px solid " + (selSub ? "var(--purple)" : "var(--border)"), marginBottom: 8, cursor: "pointer" }}>
+          <label className="cb-install-domain-option" style={{ border: "1px solid " + (selSub ? "var(--purple)" : "var(--border)") }}>
             <input type="checkbox" checked={selSub} onChange={() => setSelSub((v) => !v)} />
             <div>
-              <div style={{ fontSize: 12.5, fontWeight: 600 }}>Webflow staging</div>
-              <div style={{ fontSize: 11, color: "var(--text-muted)", wordBreak: "break-all" }}>{domainChoice.subdomain || "*.webflow.io"}</div>
+              <div className="cb-install-domain-opt-title">Webflow staging</div>
+              <div className="cb-install-domain-opt-sub">{domainChoice.subdomain || "*.webflow.io"}</div>
             </div>
           </label>
 
           {domainChoice.customDomains.map((d) => (
-            <label key={d.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", borderRadius: 9, border: "1px solid " + (selIds.includes(d.id) ? "var(--purple)" : "var(--border)"), marginBottom: 8, cursor: "pointer" }}>
+            <label key={d.id} className="cb-install-domain-option" style={{ border: "1px solid " + (selIds.includes(d.id) ? "var(--purple)" : "var(--border)") }}>
               <input type="checkbox" checked={selIds.includes(d.id)} onChange={() => toggleId(d.id)} />
               <div>
-                <div style={{ fontSize: 12.5, fontWeight: 600 }}>Custom domain</div>
-                <div style={{ fontSize: 11, color: "var(--text-muted)", wordBreak: "break-all" }}>{d.url || d.name || d.id}</div>
+                <div className="cb-install-domain-opt-title">Custom domain</div>
+                <div className="cb-install-domain-opt-sub">{d.url || d.name || d.id}</div>
               </div>
             </label>
           ))}
 
-          <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 14 }}>
+          <div className="cb-install-domain-actions">
             <button className="btn btn-secondary btn-sm" onClick={() => setDomainChoice(null)}>Cancel</button>
             <button className="btn btn-primary btn-sm" disabled={publishing || nothingSelected} onClick={() => doPublishAndVerify({ publishToWebflowSubdomain: selSub, customDomains: selIds })}>
               {publishing ? "Publishing…" : "Publish"}

@@ -1,4 +1,5 @@
 import React from "react";
+import "./WNotificationsPanel.css";
 import { getWebflowSiteContext, getWebflowBilling } from "../../lib/api.js";
 import { buildNotifications } from "../../lib/notifications.js";
 
@@ -28,31 +29,27 @@ function WNotificationsPanel() {
   const { loading, items } = state;
 
   return (
-    <div style={{
-      width: 320,
-      background: "var(--surface)", border: "1px solid var(--border)",
-      borderRadius: 10, padding: 8, boxShadow: "0 18px 36px rgba(0,0,0,0.5)"
-    }}>
-      <div style={{ padding: "4px 8px 8px", borderBottom: "1px solid var(--border)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <div style={{ fontWeight: 600, fontSize: 12.5 }}>Notifications</div>
-        {items.length > 0 && <span style={{ color: "var(--text-faint)", fontSize: 11 }}>{items.length}</span>}
+    <div className="cb-notif">
+      <div className="cb-notif-head">
+        <div className="cb-notif-title">Notifications</div>
+        {items.length > 0 && <span className="cb-notif-count">{items.length}</span>}
       </div>
 
       {loading &&
-        <div style={{ padding: 16, textAlign: "center", fontSize: 11, color: "var(--text-muted)" }}>Loading…</div>}
+        <div className="cb-notif-loading">Loading…</div>}
 
       {!loading && items.length === 0 &&
-        <div style={{ padding: 18, textAlign: "center" }}>
-          <div style={{ fontSize: 11.5, fontWeight: 600, marginBottom: 2 }}>You're all caught up</div>
-          <div style={{ fontSize: 10.5, color: "var(--text-muted)" }}>No new notifications.</div>
+        <div className="cb-notif-empty">
+          <div className="cb-notif-empty-t">You're all caught up</div>
+          <div className="cb-notif-empty-s">No new notifications.</div>
         </div>}
 
-      {!loading && items.map((n, i) =>
-        <div key={n.id} style={{ display: "flex", gap: 8, padding: 9, borderBottom: i < items.length - 1 ? "1px solid var(--border)" : "none" }}>
-          <span style={{ width: 6, height: 6, borderRadius: 999, background: DOT[n.kind] || "var(--purple)", marginTop: 6, flexShrink: 0 }} />
-          <div style={{ flex: 1 }}>
-            <div style={{ fontSize: 11.5, fontWeight: 600, marginBottom: 2 }}>{n.title}</div>
-            <div style={{ fontSize: 10.5, color: "var(--text-muted)", lineHeight: 1.4 }}>{n.body}</div>
+      {!loading && items.map((n) =>
+        <div key={n.id} className="cb-notif-item">
+          <span className="cb-notif-dot" style={{ background: DOT[n.kind] || "var(--purple)" }} />
+          <div className="cb-notif-body">
+            <div className="cb-notif-item-t">{n.title}</div>
+            <div className="cb-notif-item-s">{n.body}</div>
           </div>
         </div>
       )}

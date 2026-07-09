@@ -1,0 +1,80 @@
+.cb-edgeneral-grid {
+  display: grid;
+  grid-template-columns: 300px 1fr;
+  gap: 18px;
+}
+
+.cb-edgeneral-card {
+  padding: 14px;
+  margin-bottom: 12px;
+}
+
+.cb-edgeneral-title {
+  font-weight: 600;
+  font-size: 12.5px;
+  margin-bottom: 10px;
+}
+
+.cb-edgeneral-hint {
+  font-size: 11px;
+  color: var(--text-muted);
+  line-height: 1.55;
+  margin-top: 10px;
+}
+
+.cb-edgeneral-card-rel {
+  padding: 14px;
+  position: relative;
+}
+
+.cb-edgeneral-toggle-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: 12px;
+}
+
+.cb-edgeneral-label {
+  font-weight: 600;
+  font-size: 12.5px;
+}
+
+.cb-edgeneral-gac-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 0;
+  border-top: 1px solid var(--border);
+}
+
+.cb-edgeneral-gac-label {
+  font-size: 11.5px;
+  color: var(--text-muted);
+}
+
+.cb-edgeneral-upsell {
+  margin-top: 12px;
+  background: var(--purple-soft);
+  border: 1px solid var(--purple);
+  border-radius: 8px;
+  padding: 12px;
+}
+
+.cb-edgeneral-upsell-title {
+  font-size: 12.5px;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.cb-edgeneral-upsell-text {
+  font-size: 10.5px;
+  color: var(--text-muted);
+  line-height: 1.5;
+  margin-bottom: 10px;
+}
+
+.cb-edgeneral-upsell-btn {
+  width: 100%;
+  justify-content: center;
+}

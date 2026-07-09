@@ -1,0 +1,105 @@
+/* Static styles for WSelectPlan. Dynamic values (best-column accent, freeDisabled
+   dimming, busyPlan opacity, ctaStyle background) stay inline on the elements. */
+
+.cb-selplan-pageview-note { font-size: 9.5px; color: var(--text-muted); margin-top: 2px; }
+
+.cb-selplan-toolbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
+.cb-selplan-billing-toggle {
+  display: flex;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 3px;
+}
+.cb-selplan-toggle-btn { border-radius: 999px; }
+.cb-selplan-toggle-btn-yearly { border-radius: 999px; display: flex; align-items: center; gap: 6px; }
+.cb-selplan-save-badge {
+  font-size: 9.5px;
+  font-weight: 700;
+  color: #5AE497;
+  background: var(--green-soft);
+  padding: 2px 7px;
+  border-radius: 999px;
+}
+.cb-selplan-skip { color: var(--text-muted); font-size: 12px; display: inline-flex; align-items: center; gap: 5px; }
+.cb-selplan-skip-icon { flex-shrink: 0; }
+
+.cb-selplan-table { padding: 0; overflow: visible; margin-top: 10px; position: relative; }
+
+.cb-selplan-free-tip {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 120px;
+  width: calc((100% - 120px) / 4);
+  z-index: 6;
+  cursor: not-allowed;
+}
+.cb-selplan-free-tip-bubble {
+  position: absolute;
+  bottom: calc(100% - 64px);
+  left: 50%;
+  transform: translateX(-50%);
+  width: 180px;
+  background: #0a0a14;
+  color: #fff;
+  font-size: 11px;
+  line-height: 1.45;
+  text-align: center;
+  padding: 8px 10px;
+  border-radius: 8px;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.55);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s;
+  z-index: 7;
+}
+.cb-selplan-free-tip-arrow {
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 0;
+  height: 0;
+  border-left: 6px solid transparent;
+  border-right: 6px solid transparent;
+  border-top: 6px solid #0a0a14;
+}
+
+.cb-selplan-grid-head {
+  display: grid;
+  grid-template-columns: 120px repeat(4, 1fr);
+  border-bottom: 1px solid var(--border);
+}
+.cb-selplan-col-head { padding: 14px 10px 10px; text-align: center; position: relative; }
+.cb-selplan-reco-badge {
+  position: absolute;
+  top: -12px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--purple);
+  color: white;
+  font-size: 10px;
+  font-weight: 500;
+  padding: 4px 12px;
+  border-radius: 999px;
+  white-space: nowrap;
+  z-index: 2;
+  box-shadow: 0 4px 12px rgba(124, 92, 252, 0.4);
+}
+.cb-selplan-col-name { font-size: 12px; color: var(--text-muted); margin-bottom: 4px; font-weight: 500; }
+.cb-selplan-col-price { font-size: 19px; font-weight: 700; line-height: 1; margin-bottom: 8px; }
+.cb-selplan-price-suffix { font-size: 10px; color: var(--text-muted); font-weight: 400; }
+.cb-selplan-cta { width: 100%; justify-content: center; }
+
+.cb-selplan-grid-row { display: grid; grid-template-columns: 120px repeat(4, 1fr); }
+.cb-selplan-row-label { padding: 7px 12px; font-size: 11.5px; color: var(--text-muted); display: flex; align-items: center; }
+.cb-selplan-cell {
+  padding: 7px 10px;
+  font-size: 11.5px;
+  text-align: center;
+  border-left: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}

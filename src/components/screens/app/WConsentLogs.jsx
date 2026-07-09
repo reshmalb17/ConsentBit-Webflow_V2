@@ -1,4 +1,5 @@
 import React from "react";
+import "./WConsentLogs.css";
 import { WMainTabs } from "../../kit/WMainTabs.jsx";
 import { WPage } from "../../kit/WPage.jsx";
 import { WTopBar } from "../../kit/WTopBar.jsx";
@@ -146,15 +147,15 @@ function WConsentLogs() {
       <WToast message={error} type="error" onClose={() => setError("")} />
       <WTopBar />
       <WMainTabs active="logs" left />
-      <div className="cb-page" style={{ width: "698px" }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-          <div style={{ fontSize: 16, fontWeight: 600 }}>Consent Logs</div>
-          <div style={{ display: "flex", gap: 8 }}>
-            <select className="select cb-dd" style={{ width: "auto" }} value={year} onChange={(e) => onYear(e.target.value)}>
+      <div className="cb-page cb-logs-page">
+        <div className="cb-logs-head">
+          <div className="cb-logs-title">Consent Logs</div>
+          <div className="cb-logs-toolbar">
+            <select className="select cb-dd cb-logs-select" value={year} onChange={(e) => onYear(e.target.value)}>
               <option value="">All years</option>
               {YEARS.map((y) => <option key={y} value={y}>{y}</option>)}
             </select>
-            <select className="select cb-dd" style={{ width: "auto" }} value={month} onChange={(e) => onMonth(e.target.value)}>
+            <select className="select cb-dd cb-logs-select" value={month} onChange={(e) => onMonth(e.target.value)}>
               <option value="">All months</option>
               {MONTHS.map((m, i) => <option key={m} value={String(i + 1).padStart(2, "0")}>{m}</option>)}
             </select>
@@ -164,7 +165,7 @@ function WConsentLogs() {
             <button className="btn btn-secondary btn-sm" disabled={csvBusy || !consents.length} onClick={exportCsv}>{csvBusy ? "Exporting…" : "Export CSV"}</button>
           </div>
         </div>
-        <div className="card" style={{ overflow: "hidden", width: "662px" }}>
+        <div className="card cb-logs-table-card">
           <table className="tbl cb-logs-tbl">
             <thead>
               <tr>
@@ -177,17 +178,17 @@ function WConsentLogs() {
             </thead>
             <tbody>
               {loading && visibleConsents.length === 0 ?
-              <tr><td colSpan={5} style={{ textAlign: "center", color: "var(--text-muted)", padding: "22px 12px" }}>Loading…</td></tr> :
+              <tr><td colSpan={5} className="cb-logs-empty-cell">Loading…</td></tr> :
               visibleConsents.length === 0 ?
-              <tr><td colSpan={5} style={{ textAlign: "center", color: "var(--text-muted)", padding: "22px 12px" }}>No consent logs yet.</td></tr> :
+              <tr><td colSpan={5} className="cb-logs-empty-cell">No consent logs yet.</td></tr> :
               visibleConsents.map((r) =>
               <tr key={r.id}>
-                  <td className="mono" style={{ color: "var(--purple-hi)" }}>{String(r.id).slice(0, 12)}</td>
-                  <td style={{ fontWeight: 500 }}>{fmtTime(r.createdAt)}</td>
+                  <td className="mono cb-logs-id">{String(r.id).slice(0, 12)}</td>
+                  <td className="cb-logs-td-medium">{fmtTime(r.createdAt)}</td>
                   <td>{displayStatus(r.status)}</td>
                   <td><span className="badge badge-grey">{bannerTypeOf(r)}</span></td>
                   <td>
-                    <button className="btn btn-secondary btn-sm" title="Download PDF" aria-label="Download PDF" disabled={pdfBusyId === r.id} style={{ padding: "6px 8px" }} onClick={() => exportPdf(r.id)}>
+                    <button className="btn btn-secondary btn-sm cb-logs-dl-btn" title="Download PDF" aria-label="Download PDF" disabled={pdfBusyId === r.id} onClick={() => exportPdf(r.id)}>
                       {pdfBusyId === r.id ? "…" : <Icon.download />}
                     </button>
                   </td>
@@ -198,11 +199,11 @@ function WConsentLogs() {
         </div>
 
         {/* Pagination */}
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 12 }}>
-          <div style={{ fontSize: 11.5, color: "var(--text-muted)" }}>
+        <div className="cb-logs-pagination">
+          <div className="cb-logs-page-info">
             Showing {total === 0 ? 0 : start + 1}–{Math.min(start + PER_PAGE, total)} of {total}
           </div>
-          <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+          <div className="cb-logs-page-btns">
             <button className="btn btn-secondary btn-sm" disabled={page === 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>Prev</button>
             {Array.from({ length: pageCount }, (_, i) => i + 1).slice(Math.max(0, page - 3), Math.max(0, page - 3) + 5).map((n) =>
             <button key={n} className={"btn btn-sm " + (n === page ? "btn-primary" : "btn-secondary")} onClick={() => setPage(n)}>{n}</button>

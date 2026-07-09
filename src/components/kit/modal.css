@@ -1,0 +1,45 @@
+/* Shared modal/dialog chrome for kit components (overlay, card, icon, title, text,
+   full-width actions). Static styles only — dynamic values (e.g. the `position`
+   prop, live-computed colors) stay as inline styles on the element. */
+
+.cb-modal-overlay {
+  inset: 0;
+  z-index: 50;
+  background: rgba(8, 6, 20, 0.72);
+  backdrop-filter: blur(2px);
+  display: grid;
+  place-items: center;
+  padding: 20px;
+}
+/* Some overlays use a slightly lighter scrim + higher z-index. */
+.cb-modal-overlay--soft { background: rgba(8, 6, 20, 0.65); z-index: 100; }
+
+.cb-modal-card {
+  width: 360px;
+  max-width: 100%;
+  padding: 24px;
+  text-align: center;
+  background: var(--surface);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.55);
+}
+
+.cb-modal-icon {
+  width: 56px;
+  height: 56px;
+  border-radius: 999px;
+  margin: 0 auto 16px;
+  display: grid;
+  place-items: center;
+}
+.cb-modal-icon--info { background: rgba(124, 92, 252, 0.14); color: var(--purple-hi); }
+.cb-modal-icon--error { background: rgba(244, 159, 69, 0.14); color: #F49F45; }
+.cb-modal-icon--success { background: var(--green-soft); color: #5AE497; }
+
+.cb-modal-title { font-size: 16px; font-weight: 700; margin-bottom: 8px; }
+.cb-modal-text { color: var(--text-muted); font-size: 12.5px; line-height: 1.55; margin-bottom: 22px; }
+
+/* Full-width stacked action buttons/links inside a modal card. */
+.cb-modal-btn { width: 100%; justify-content: center; }
+.cb-modal-btn--stacked { width: 100%; justify-content: center; margin-bottom: 12px; }
+.cb-modal-link { width: 100%; justify-content: center; margin-bottom: 12px; text-decoration: none; }
+.cb-modal-link-ic { margin-left: 5px; flex-shrink: 0; }

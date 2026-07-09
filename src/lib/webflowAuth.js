@@ -121,9 +121,9 @@ export async function startCheckout({ plan, interval = "monthly", email, dest } 
   const wfSiteId = info?.siteId || info?.id || null;
   const domain = await currentSiteDomain(info);
 
-  // The checkout context is sent as a request BODY throughout — never in the URL
-  // (Webflow app review disallows tokens/params in the checkout URL). It goes to
-  // the token endpoint as a body, then to /checkoutplan as a POST-form body.
+  // The checkout context (site + email) is POSTed as a request BODY to mint a
+  // short-lived OPAQUE token. Only that token is later placed in the checkout URL —
+  // no PII, Stripe data, or params ever travel in a URL.
   const payload = {
     platform: "webflow",
     version: "v2",
@@ -149,34 +149,21 @@ export async function startCheckout({ plan, interval = "monthly", email, dest } 
     const data = await res.json().catch(() => null);
     token = data?.token || null;
   } catch {
-    /* fall back to posting the raw context below */
+    /* handled below */
   }
 
-  // Open the checkout page by POSTing the context in the request BODY via an
-  // auto-submitting form in a new top-level tab. The /api/checkout-open route
-  // stashes it in a short-lived cookie and redirects to a clean checkout URL —
-  // so nothing (token or PII) ever appears in the URL. `dest` selects which
-  // checkout page to land on (install/plan → /checkoutplan, upgrade → /checkout-plan).
-  const action = `${CHECKOUT_BASE_URL}/api/checkout-open`;
-  const fields = token ? { t: token } : { ...payload };
-  if (dest) fields.dest = dest;
-  const form = document.createElement("form");
-  form.method = "POST";
-  form.action = action;
-  form.target = "_blank";
-  form.style.display = "none";
-  for (const [k, v] of Object.entries(fields)) {
-    if (v === undefined || v === null || v === "") continue;
-    const input = document.createElement("input");
-    input.type = "hidden";
-    input.name = k;
-    input.value = String(v);
-    form.appendChild(input);
-  }
-  document.body.appendChild(form);
-  form.submit();
-  form.remove();
-  return action;
+  if (!token) throw new Error("Couldn't start checkout. Please try again.");
+
+  // Open the hosted checkout in a new top-level tab with a plain navigation — no
+  // hidden form or DOM injection. Only the SHORT-LIVED OPAQUE token travels in the
+  // URL (never PII or Stripe data). /api/checkout-open exchanges it into a
+  // same-origin cookie and redirects to the clean checkout page. `dest` picks the
+  // page: install/plan → /checkoutplan, upgrade → /checkout-plan.
+  const params = new URLSearchParams({ t: token });
+  if (dest) params.set("dest", dest);
+  const href = `${CHECKOUT_BASE_URL}/api/checkout-open?${params.toString()}`;
+  window.open(href, "_blank", "noopener,noreferrer");
+  return href;
 }
 
 /**
