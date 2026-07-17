@@ -7,6 +7,8 @@
 //
 // Configure the Worker base URL via VITE_WORKER_BASE_URL in `.env`.
 
+import { authedFetch, wfUrl } from "./wfClient.js";
+
 const WORKER_BASE_URL =
   import.meta.env.VITE_WORKER_BASE_URL ||
   "https://manager.consentbit.com";
@@ -141,7 +143,7 @@ export async function startCheckout({ plan, interval = "monthly", email, dest } 
   // (This worker holds the Stripe keys for the later charge.)
   let token = null;
   try {
-    const res = await fetch(`${CHECKOUT_API_BASE}/api/v2/webflow-checkout-token`, {
+    const res = await authedFetch(wfUrl(CHECKOUT_API_BASE, "webflow-checkout-token"), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
@@ -180,8 +182,8 @@ export async function listSiteDomains() {
     throw new Error("No site id — run inside the Webflow Designer.");
   }
 
-  const res = await fetch(
-    `${WORKER_BASE_URL}/api/webflow/domains?siteId=${encodeURIComponent(siteId)}`,
+  const res = await authedFetch(
+    `${wfUrl(WORKER_BASE_URL, "domains")}?siteId=${encodeURIComponent(siteId)}`,
     { headers: { Accept: "application/json" } }
   );
   const data = await res.json().catch(() => null);
@@ -206,7 +208,7 @@ export async function publishSite({ publishToWebflowSubdomain = false, customDom
     throw new Error("Pick at least one target (staging or a custom domain).");
   }
 
-  const res = await fetch(`${WORKER_BASE_URL}/api/webflow/publish`, {
+  const res = await authedFetch(wfUrl(WORKER_BASE_URL, "publish"), {
     method: "POST",
     headers: { "Content-Type": "application/json", "X-Requested-With": "XMLHttpRequest" },
     body: JSON.stringify({ siteId, publishToWebflowSubdomain, customDomains }),
@@ -228,4 +230,4 @@ export async function publishSite({ publishToWebflowSubdomain = false, customDom
   return data;
 }
 
-export { WORKER_BASE_URL, CHECKOUT_API_BASE };
+export { WORKER_BASE_URL, CHECKOUT_API_BASE, CHECKOUT_BASE_URL };

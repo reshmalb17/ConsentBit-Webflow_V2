@@ -5,9 +5,7 @@
   "apiVersion": "2",
   "dataConnections": [
     { "url": "https://manager.consentbit.com" },
-    { "url": "https://accounts.consentbit.com" },
-    { "url": "https://cdn.consentbit.com" },
-    { "url": "https://us.i.posthog.com" }
+    { "url": "https://accounts.consentbit.com" }
   ],
   "telemetry": {
     "global": {

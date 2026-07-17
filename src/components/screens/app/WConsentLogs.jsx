@@ -16,7 +16,14 @@ import {
 const PER_PAGE = 6; // rows per page
 
 const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
-const YEARS = ["2026", "2025", "2024"];
+const START_YEAR = 2024;
+const currentYear = new Date().getFullYear();
+const maxYear = currentYear + 1;
+
+const YEARS = Array.from(
+  { length: maxYear - START_YEAR + 1 },
+  (_, i) => String(maxYear - i)
+);
 
 // status string → display label (same mapping as consentbitwebapp).
 function displayStatus(status) {
@@ -42,8 +49,12 @@ function fmtTime(iso) {
 function WConsentLogs() {
   const [siteId, setSiteId] = React.useState(null);
   const [page, setPage] = React.useState(1);
-  const [year, setYear] = React.useState("");   // "" = all
-  const [month, setMonth] = React.useState("");  // "" = all (value is "01".."12")
+ const now = new Date();
+const currentYear = String(now.getFullYear());
+const currentMonth = String(now.getMonth() + 1).padStart(2, "0");
+
+const [year, setYear] = React.useState(currentYear);
+const [month, setMonth] = React.useState(currentMonth);
   const [consents, setConsents] = React.useState([]);
   const [total, setTotal] = React.useState(0);
   const [loading, setLoading] = React.useState(false);
@@ -152,16 +163,24 @@ function WConsentLogs() {
           <div className="cb-logs-title">Consent Logs</div>
           <div className="cb-logs-toolbar">
             <select className="select cb-dd cb-logs-select" value={year} onChange={(e) => onYear(e.target.value)}>
-              <option value="">All years</option>
+              {/* <option value="">All years</option> */}
               {YEARS.map((y) => <option key={y} value={y}>{y}</option>)}
             </select>
             <select className="select cb-dd cb-logs-select" value={month} onChange={(e) => onMonth(e.target.value)}>
-              <option value="">All months</option>
+             
               {MONTHS.map((m, i) => <option key={m} value={String(i + 1).padStart(2, "0")}>{m}</option>)}
             </select>
-            <button className="btn btn-secondary btn-sm" title="Refresh" aria-label="Refresh consent logs" disabled={!siteId || loading} onClick={refresh}>
-              {loading ? "…" : <Icon.refresh />}
-            </button>
+           <button
+  className="btn btn-secondary btn-sm"
+  title="Refresh"
+  aria-label="Refresh consent logs"
+  disabled={!siteId || loading}
+  onClick={refresh}
+>
+  {loading ? "Loading" : <>
+    <Icon.refresh /> Refresh
+  </>}
+</button>
             <button className="btn btn-secondary btn-sm" disabled={csvBusy || !consents.length} onClick={exportCsv}>{csvBusy ? "Exporting…" : "Export CSV"}</button>
           </div>
         </div>

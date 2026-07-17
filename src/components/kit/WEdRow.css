@@ -4,7 +4,7 @@
   align-items: center;
   padding: 10px 0;
   border-top: 1px solid var(--border);
-  width: 270px;
+  width: 100%; /* full-width so the toggle sits at the right edge, matching the Floating button row */
 }
 
 .cb-edrow-label {

@@ -32,6 +32,18 @@
   display: grid;
   grid-template-columns: 300px 1fr;
   gap: 18px;
+  height: 100%;
+  min-height: 0;
+}
+
+/* Scroll only the left editor column, within the fixed panel height — the tabs
+   and preview stay put. */
+.cb-edcolors-grid > div:first-child {
+  min-height: 0;
+  max-height: 100%;
+  overflow-y: auto;
+  padding-right: 10px;
+  padding-bottom: 20px; /* breathing room below the last card when scrolled */
 }
 
 .cb-edcolors-card {

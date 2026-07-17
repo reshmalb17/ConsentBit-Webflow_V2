@@ -72,6 +72,14 @@ export function mapCustomizationToState(c) {
   if (en.isIab !== undefined || en.iab_enabled !== undefined) out.iab = truthy(en.isIab) || truthy(en.iab_enabled);
   if (en.isGoogleAc !== undefined || en.googleAdditionalConsent !== undefined) out.gac = truthy(en.isGoogleAc) || truthy(en.googleAdditionalConsent);
 
+  // ── Language ────────────────────────────────────────────────────────────
+  // languageSelected is a lowercase ISO code (see buildCustomizationPayload);
+  // map it back to the display name the Content dropdown uses so a saved
+  // non-English banner reopens on the right language instead of "English".
+  const CODE_TO_LANG = { en: "English", es: "Spanish", fr: "French", de: "German", nl: "Dutch" };
+  const langCode = String(en.languageSelected || "").toLowerCase();
+  if (CODE_TO_LANG[langCode]) out.language = CODE_TO_LANG[langCode];
+
   // ── Template (from compliance) ──────────────────────────────────────────
   const comp = String(en.compliance || c.compliance || "").toUpperCase();
   if (comp === "BOTH") out.template = "CCPA+GDPR";

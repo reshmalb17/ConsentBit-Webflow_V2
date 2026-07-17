@@ -1,79 +1,69 @@
 # ConsentBit — Webflow App Submission Notes (for reviewer)
 
-## Changes made in response to the previous review
+ConsentBit adds a GDPR/CCPA cookie-consent banner to a Webflow site and lets the user
+customize it, scan cookies, view consent logs, and manage their plan — all inside the
+Designer panel. Below is how each item from the previous review was resolved.
 
-- **PII in analytics (fixed):** Removed the `posthog-js` library entirely. Analytics
-  now uses a single first-party `fetch()` to the capture endpoint. The account email
-  is **SHA-256 hashed** and used only as an opaque `distinct_id` — no raw email/name
-  is ever sent. `app_opened` is **deferred to the first explicit user interaction**,
-  never fired on load. Removing the library also dropped all autocapture / session-
-  recording / heatmap / device-metadata / external-loading code (bundle 586 kB → 369 kB).
-- **Google Fonts (fixed):** No external fonts are loaded. UI text uses the system font
-  stack; the ~30 UI icons are now **inline SVGs** (previously the Material Symbols web
-  font). No `fonts.googleapis.com` / `fonts.gstatic.com` origins, no SRI concern.
-- **Checkout DOM manipulation (fixed):** The hidden auto-submitting form is gone.
-  Checkout now opens with a plain click-gated navigation carrying only a **short-lived
-  opaque token** (`?t=`); the server exchanges it into a same-origin cookie and
-  redirects to a clean checkout URL. No PII/params in the URL, no DOM injection.
-- **Hardcoded client ID / competitor snippet (fixed):** Those strings lived in a
-  dev-only design gallery that is now **excluded from the production bundle** (verified
-  absent). The install screen generates the CDN script URL **per site** from the API.
-- **PostHog public key:** confirmed publishable; nothing secret depends on it.
+## Fixes since last review
 
+1. **Raw email in PostHog `identify` → removed.** No analytics library is bundled at all.
+   Events are a single first-party `fetch()` to the capture endpoint. The account email is
+   **SHA-256 hashed** and used only as an opaque `distinct_id`; email/name are never sent.
+   ([src/lib/analytics.js](src/lib/analytics.js))
 
-## What the app does
-ConsentBit adds a **GDPR / CCPA cookie-consent banner** to a Webflow site and lets the
-user customize it, scan the site's cookies, view consent logs, and manage their plan —
-all inside the Designer panel.
+2. **Google Fonts (googleapis/gstatic, no SRI, undeclared) → removed.** No external fonts
+   load. UI text uses the system font stack; all icons are **inline SVGs**. No font origins
+   remain in `index.html` or `webflow.json`.
+
+3. **Inline styles / strict CSP → moved to static CSS.** UI styling lives in static CSS
+   classes ([src/styles/](src/styles/) + per-component `.css`). The only remaining inline
+   styles are **dynamic runtime values** (the user's chosen banner colors/fonts rendered in
+   the live preview), which cannot be static classes.
+
+4. **Auto `app_opened` telemetry on load → deferred.** `app_opened` fires only on the
+   **first explicit user interaction** (pointer/key), never automatically on load.
+
+5. **Checkout hidden-form DOM injection → removed.** No hidden form / `document.body`
+   append. Checkout opens on a click-gated navigation carrying a **short-lived opaque
+   token** (`?t=`); the server exchanges it into a same-origin cookie and redirects to a
+   clean URL. No PII or params in any URL.
+
+6. **Heavy PostHog modules (autocapture/session-recording/heatmaps) → gone.** Removing the
+   library dropped all of that code from the bundle (bundle size reduced accordingly).
+
+7. **Hardcoded client-ID install snippet → per-site + placeholder.** The production install
+   screen generates the script URL **per site** from the API
+   (`https://manager.consentbit.com/consentbit/<siteId>/script.js`). No real tenant ID is
+   hardcoded; any illustrative snippet uses a non-functional `YOUR_SITE_ID` placeholder.
+
+8. **Competitor `cdn-cookieyes` demo snippet → removed.** No third-party provider strings
+   remain anywhere in the source.
+
+9. **PostHog public key → treated as public.** It is a publishable project key; nothing
+   secret depends on it.
 
 ## How the banner is installed (no API script injection)
-The app does **not** auto-inject scripts via the Registered Scripts API. The user
-**manually copies a single `<script>` tag** into their site's **Custom Code → `<head>`**
-and publishes. The app then verifies the tag is live by fetching the published page.
-No `document.createElement('script')` runtime injection anywhere in the extension.
-
-## OAuth scopes (and why)
-- `sites:read` — read the site's domains / publish state to guide install & verify.
-- `sites:write` — **publish** the site on the user's behalf from the "Publish" button.
-- `authorized_user:read` — read the authorizing user's email to label the account.
-
-The OAuth token is exchanged and stored **server-side** (our worker); it is **never**
-exposed to the client or persisted in web storage.
+The app does **not** auto-inject scripts. The user **manually copies one `<script>` tag**
+into their site's Custom Code → `<head>` and publishes; the app then verifies it is live by
+fetching the published page. No `document.createElement('script')` runtime injection.
 
 ## Outbound origins (declared in `webflow.json` → `dataConnections`)
 | Origin | Purpose |
 |---|---|
-| `https://manager.consentbit.com` | Backend API (Cloudflare Worker): auth status, billing, scans, banner config, publish, verify. Holds all secrets. |
+| `https://manager.consentbit.com` | Backend API (Cloudflare Worker): auth, billing, scans, banner config, publish, verify. Also serves the per-site banner script the user installs (`/consentbit/<siteId>/script.js`, loaded on the user's own site, not the panel). Holds all secrets. |
 | `https://accounts.consentbit.com` | Hosted checkout page (paid plans). |
-| `https://cdn.consentbit.com` | The consent banner script the user installs (shown for copy; loaded on the user's own site, not the panel). |
-| `https://us.i.posthog.com` | Product analytics (see below). |
+| `https://us.i.posthog.com` | Product analytics (privacy-hardened, see item 1/4/6/9). |
 
-## Data handling / security
-- **Checkout carries only a short-lived opaque token.** A click opens checkout with
-  `?t=<token>`; the server exchanges it into a short-lived, same-origin cookie and
-  redirects to a clean checkout URL. No PII or Stripe data ever appears in a URL, and
-  there is no hidden-form/DOM injection.
-- **No bearer tokens in `localStorage`/`sessionStorage`.** Auth is server-side only.
-- **Clipboard** uses `navigator.clipboard`; **downloads** use a `Blob` + object URL.
-- All `target="_blank"` links use `rel="noopener noreferrer"`; the single `window.open`
-  uses `"noopener,noreferrer"`.
+## OAuth scopes
+- `sites:read` — read domains / publish state to guide install & verify.
+- `sites:write` — publish the site from the "Publish" button.
+- `authorized_user:read` — read the authorizing user's email to label the account.
 
-## Product analytics — privacy-hardened, no library
-We count a few explicit product events only (app opened, banner customized, banner
-published). There is **no analytics library** in the bundle — each event is a single
-first-party `fetch()` POST to `us.i.posthog.com` (declared above):
-- **No PII:** the account email is **SHA-256 hashed** and used only as an opaque
-  `distinct_id`; email/name are never sent as properties.
-- **No implicit collection:** no autocapture, no pageviews, no session recording, no
-  heatmaps, no device metadata — only the named events above.
-- **No storage / no external scripts:** nothing is written to localStorage and no
-  third-party script is loaded.
-- **Deferred:** `app_opened` fires on the **first explicit user interaction**, never
-  automatically on load.
+The OAuth token is exchanged and stored **server-side** (our worker); it is never exposed
+to the client or persisted in web storage.
 
-## Test credentials / how to review
-- Open the app in the Designer on any test site and **Authorize**.
-- Choose the **Free** plan (or start a paid 14-day trial) to reach the editor.
-- Customize the banner, copy the install snippet into `<head>`, **Publish**, then **Verify**.
+## How to review
+Open the app in the Designer on a test site → **Authorize** → choose **Free** (or start a
+paid trial) → customize the banner → copy the snippet into `<head>` → **Publish** → **Verify**.
 
 Contact: web@consentbit.com

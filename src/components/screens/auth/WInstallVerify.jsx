@@ -3,10 +3,10 @@ import "./WInstallVerify.css";
 import { WAuthShell } from "../../kit/WAuthShell.jsx";
 import { Icon } from "../../lib/icons.jsx";
 import { WVerifyModal } from "../../kit/WVerifyModal.jsx";
-import { verifyInstallation, getWebflowSiteContext, getWebflowSiteStatus, getLegacyScriptStatus, removeLegacyScripts } from "../../../lib/api.js";
+import { verifyInstallation, getWebflowSiteContext, getWebflowSiteStatus, getLegacyScriptStatus, removeLegacyScripts, trackWebflowEvent } from "../../../lib/api.js";
+import { isTrustedScriptUrl } from "../../../lib/scriptUrl.js";
 import { publishSite, listSiteDomains } from "../../../lib/webflowAuth.js";
 import { useNav } from "../../../nav.jsx";
-import { analytics } from "../../../lib/analytics.js";
 
 function WInstallVerify() {
   const nav = useNav();
@@ -41,7 +41,9 @@ function WInstallVerify() {
         if (!cancelled && domain) setSiteUrl(`https://${String(domain).replace(/^https?:\/\//, "").replace(/\/$/, "")}`);
         if (wfSiteId) {
           const status = await getWebflowSiteStatus(wfSiteId);
-          if (!cancelled && status?.scriptUrl) setScriptUrl(status.scriptUrl);
+          // Only trust a script URL on a ConsentBit-controlled host — never place an
+          // unexpected backend-provided URL into the install snippet (integrity guard).
+          if (!cancelled && isTrustedScriptUrl(status?.scriptUrl)) setScriptUrl(status.scriptUrl);
           const ls = await getLegacyScriptStatus(wfSiteId);
           // Already upgraded — the current-version script is in the head. During
           // onboarding there's nothing to install, so skip this screen and go to
@@ -94,6 +96,10 @@ function WInstallVerify() {
       await navigator.clipboard.writeText(installCode);
       setCopied(true);
       setTimeout(() => setCopied(false), 1200);
+      // installation_code_copied — funnel step 4. Sent via the first-party /track endpoint
+      // (the worker emits it to PostHog server-side). script_id is parsed from the URL.
+      const scriptId = (String(scriptUrl || "").match(/\/(?:consentbit|client_data)\/([^/]+)\/script\.js/) || [])[1] || null;
+      trackWebflowEvent("installation_code_copied", { script_id: scriptId });
     } catch {
       /* clipboard blocked — leave the button label unchanged */
     }
@@ -105,14 +111,8 @@ function WInstallVerify() {
     setPublishing(true);
     try {
       await publishSite({ publishToWebflowSubdomain, customDomains });
-      // Track the publish — staging vs custom-domain is inferred from the domain inside
-      // analytics.bannerPublished(). email is auto-attached once the account is identified.
-      const publishedDomain = String(siteUrl || "").replace(/^https?:\/\//, "").replace(/\/.*$/, "");
-      analytics.bannerPublished(publishedDomain, {
-        site_id: wfSiteId || null,
-        plan_tier: nav?.plan || null,
-        is_subscribed: !!(nav?.plan && String(nav.plan).toLowerCase() !== "free"),
-      });
+      // The publish is tracked server-side (banner_changes_published in the publish
+      // handler) — no client analytics here.
       await new Promise((r) => setTimeout(r, 2500));
       const result = await verifyInstallation();
       if (!result.published) setVerifyMode("unpublished");
@@ -131,9 +131,7 @@ function WInstallVerify() {
   const handlePublish = async () => {
     if (publishing) return;
     setPublishing(true);
-    // Auto-remove any old API-injected ConsentBit code FIRST, so the banner isn't
-    // loaded twice and verify checks only the new manual install. Abort if the
-    // removal fails (the warning card surfaces the error).
+ 
     const clean = await ensureLegacyRemoved();
     if (!clean) { setPublishing(false); return; }
     let targets = null;

@@ -6,7 +6,6 @@ import { WTopBar } from "./WTopBar.jsx";
 import { WToast } from "./WToast.jsx";
 import { useNav } from "../../nav.jsx";
 import { saveBanner } from "../../lib/saveBanner.js";
-import { analytics } from "../../lib/analytics.js";
 
 function WEdShell({ active = "general", children, showAdvanced = true, cta = "Create Component" }) {
   const nav = useNav();
@@ -29,7 +28,8 @@ function WEdShell({ active = "general", children, showAdvanced = true, cta = "Cr
       const res = await saveBanner(nav);
       if (res?.success) {
         nav.setBannerCreated && nav.setBannerCreated(true); // CTA → "Update Banner"
-        analytics.bannerCustomized(); // debounced — one event per edit session
+        // banner_settings_updated is tracked server-side in the banner-customization
+        // handler — no client tracking here.
         setToast({ message: "Banner saved.", type: "success" });
       } else setToast({ message: res?.error || "Couldn't save the banner. Please try again.", type: "error" });
     } catch (e) {

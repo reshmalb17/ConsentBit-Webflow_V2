@@ -19,7 +19,7 @@ function WInstallCode() {
           <div style={{ padding: 14 }}>
             <div style={{ fontWeight: 600, marginBottom: 8, fontSize: 12.5 }}>Step 1: Copy installation code</div>
             <div style={{ background: "var(--bg-2)", border: "1px solid var(--border)", borderRadius: 8, padding: 10, fontFamily: "monospace", fontSize: 10.5, lineHeight: 1.5, marginBottom: 10, wordBreak: "break-all" }}>
-              <span style={{ color: "#6E6890" }}>&lt;!-- ConsentBit --&gt;</span> <span style={{ color: "#FF9F45" }}>&lt;script</span> <span style={{ color: "#5AE497" }}>id="consentbit" src="https://cdn.consentbit.com/client_data/YOUR_SITE_ID/script.js"</span><span style={{ color: "#FF9F45" }}>&gt;&lt;/script&gt;</span>
+              <span style={{ color: "#6E6890" }}>&lt;!-- ConsentBit --&gt;</span> <span style={{ color: "#FF9F45" }}>&lt;script</span> <span style={{ color: "#5AE497" }}>id="consentbit" src="https://manager.consentbit.com/consentbit/YOUR_SITE_ID/script.js"</span><span style={{ color: "#FF9F45" }}>&gt;&lt;/script&gt;</span>
             </div>
             <div style={{ display: "flex", gap: 8, marginBottom: 14 }}>
               <button className="btn btn-secondary btn-sm">Copy code</button>

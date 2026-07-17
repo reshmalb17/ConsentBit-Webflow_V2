@@ -14,7 +14,7 @@ function WEdContent() {
   const nav = useNav();
   const [tab, setTab] = React.useState("default");
   // Floating button/logo — shared via nav so the preview can render the logo.
-  const floating = nav ? nav.floating : false;
+  const floating = nav ? nav.floating : true;
   const setFloating = (v) => nav && nav.setFloating(v);
   const floatPos = nav ? nav.floatPos : "left";
   const setFloatPos = (v) => nav && nav.setFloatPos(v);
@@ -30,17 +30,21 @@ function WEdContent() {
   const [policyUrl, setPolicyUrl] = React.useState(nav?.bannerContent?.policyUrl ?? editorDefaults.default.policyUrl);
   // Preference Banner content (shared with the preview's preference modal).
   const prefContent = nav ? nav.prefContent : { title: preferenceBanner.title, overview: preferenceBanner.overview, save: preferenceBanner.buttons.save };
-  const setPref = (patch) => nav && nav.setPrefContent((c) => ({ ...c, ...patch }));
-  const setCat = (i, patch) => nav && nav.setPrefContent((c) => ({ ...c, cats: c.cats.map((cat, j) => j === i ? { ...cat, ...patch } : cat) }));
+  const setPref = (patch) => { if (nav) nav.setPrefContent((c) => ({ ...c, ...patch })); markEditedKeys(patch, "pref_"); };
+  const setCat = (i, patch) => { if (nav) nav.setPrefContent((c) => ({ ...c, cats: c.cats.map((cat, j) => j === i ? { ...cat, ...patch } : cat) })); markEditedKeys(patch, `cat${i}_`); };
   // Active region: CCPA shows CCPA-specific content in this editor.
   const isCCPA = nav ? nav.activeRegion === "CCPA" : false;
   const ccpaContent = nav ? nav.ccpaContent : { doNotShare: "", optOutTitle: "", optOutBody: "", cancel: "", save: "" };
-  const setCcpa = (patch) => nav && nav.setCcpaContent((c) => ({ ...c, ...patch }));
+  const setCcpa = (patch) => { if (nav) nav.setCcpaContent((c) => ({ ...c, ...patch })); markEditedKeys(patch, "ccpa_"); };
 
   // Per-language banner copy + ISO codes come from the shared content source.
   const langs = Object.keys(T);
 
-  const [lang, setLang] = React.useState("English");
+  // Selected language is stored in NavContext (not local state) so it survives
+  // tab switches — otherwise this component remounts and the dropdown snaps back
+  // to English while the already-committed content stays in the chosen language.
+  const lang = nav?.language ?? "English";
+  const setLang = nav?.setLanguage ?? (() => {});
   const [fields, setFields] = React.useState(() => ({
     title: nav?.bannerContent?.title ?? T.English.title,
     message: nav?.bannerContent?.message ?? T.English.message,
@@ -77,7 +81,7 @@ function WEdContent() {
       title: p.title, overview: p.overview, save: p.save, alwaysActive: p.alwaysActive,
       cats: cl.map((cat, i) => ({ name: cat.name, desc: cat.desc, always: !!prefCategories[i].always })),
     }));
-    nav.setCcpaContent((c) => ({ ...c, optOutTitle: cc.optOutTitle, optOutBody: cc.optOutBody, doNotShare: cc.doNotShare, cancel: cc.cancel, save: cc.save }));
+    nav.setCcpaContent((c) => ({ ...c, ...(cc.message ? { message: cc.message } : {}), optOutTitle: cc.optOutTitle, optOutBody: cc.optOutBody, doNotShare: cc.doNotShare, cancel: cc.cancel, save: cc.save }));
   };
 
   // Apply a language's button labels (reject/customize) — these live in their own
@@ -137,9 +141,23 @@ function WEdContent() {
 
   const editField = (k, v) => {
     setFields((p) => ({ ...p, [k]: v }));
-    // Mark the field as edited (any language, including English) so the
-    // "Edited" chip shows next to it.
+    markEdited(k);
+  };
+
+  // Mark a field key as manually edited for the current language, so the "Edited"
+  // chip only appears on ACTUAL edits — not when loaded/localized content happens to
+  // differ from the (possibly wrong-language) default.
+  const markEdited = (k) => {
     setEdited((p) => ({ ...p, [lang]: { ...(p[lang] || {}), [k]: true } }));
+  };
+  // Mark every key in a patch as edited, under a namespace prefix so pref/ccpa/cat
+  // keys (e.g. both have `save`) don't collide with each other or with `fields`.
+  const markEditedKeys = (patch, prefix) => {
+    setEdited((p) => {
+      const cur = { ...(p[lang] || {}) };
+      for (const k of Object.keys(patch || {})) cur[prefix + k] = true;
+      return { ...p, [lang]: cur };
+    });
   };
 
   // Reflect the edited content in the preview banner.
@@ -154,7 +172,7 @@ function WEdContent() {
     setTranslated({});
     setEdited({});
     setTab("default");
-    setFloating(false);
+    setFloating(true);   // matches the launch default (floating icon ON)
     setFloatPos("left");
     setRejectLabel(editorDefaults.default.rejectLabel);
     setCustomizeLabel(editorDefaults.default.customizeLabel);
@@ -164,7 +182,7 @@ function WEdContent() {
       nav.setCloseBtn(false);
       nav.setShowReject(true);
       nav.setShowCustomize(true);
-      nav.setShowPolicy(true);
+      nav.setShowPolicy(false);  // matches the launch default (policy link OFF)
       nav.setPrefContent({ title: preferenceBanner.title, overview: preferenceBanner.overview, save: preferenceBanner.buttons.save, alwaysActive: "Always Active", cats: prefCategories.map((c) => ({ name: c.l, desc: c.desc, always: !!c.always })) });
       nav.setCcpaContent({ doNotShare: ccpaBanner.doNotShare, optOutTitle: ccpaBanner.optOutTitle, optOutBody: ccpaBanner.optOutBody, cancel: ccpaBanner.buttons.cancel, save: ccpaBanner.buttons.save });
     }
@@ -239,12 +257,12 @@ function WEdContent() {
 
             {isCCPA ?
             <>
-            <Field label={<>{'"Do Not Share" link'} {diffChip(ccpaContent.doNotShare, CCcur.doNotShare)}</>} help={false}><input className="input" maxLength={50} value={ccpaContent.doNotShare} onChange={(e) => setCcpa({ doNotShare: e.target.value })} /></Field>
+            <Field label={<>{'"Do Not Share" link'} {editedChip("ccpa_doNotShare")}</>} help={false}><input className="input" maxLength={50} value={ccpaContent.doNotShare} onChange={(e) => setCcpa({ doNotShare: e.target.value })} /></Field>
 
-            <WEdRow label={<>{'"Cookie policy" Link'} {diffChip(policyLabel, editorDefaults.default.policyLinkLabel)}</>} checked={nav ? nav.showPolicy : false} onChange={(v) => nav && nav.setShowPolicy(v)} />
-            <input className="input cb-edcontent-mb12" maxLength={LIMITS.policyLabel} value={policyLabel} onChange={(e) => setPolicyLabel(e.target.value)} />
+            <WEdRow label={<>{'"Cookie policy" Link'} {editedChip("policy")}</>} checked={nav ? nav.showPolicy : false} onChange={(v) => nav && nav.setShowPolicy(v)} />
+            <input className="input cb-edcontent-mb12" maxLength={LIMITS.policyLabel} value={policyLabel} onChange={(e) => { setPolicyLabel(e.target.value); markEdited("policy"); }} />
 
-            <Field label={<>URL {diffChip(policyUrl, editorDefaults.default.policyUrl)}</>} help={false}><input className="input" value={policyUrl} onChange={(e) => setPolicyUrl(e.target.value)} /></Field>
+            <Field label={<>URL {editedChip("policyUrl")}</>} help={false}><input className="input" value={policyUrl} onChange={(e) => { setPolicyUrl(e.target.value); markEdited("policyUrl"); }} /></Field>
             </>
             : <>
             <div className="cb-edcontent-row-between-mb4">
@@ -253,16 +271,16 @@ function WEdContent() {
             </div>
             <input className="input cb-edcontent-mb12" maxLength={LIMITS.button} value={fields.accept} onChange={(e) => editField("accept", e.target.value)} />
 
-            <WEdRow label={<>{'"Reject All" button'} {diffChip(rejectLabel, rejectDefault)}</>} checked={nav ? nav.showReject : true} onChange={(v) => nav && nav.setShowReject(v)} />
-            <input className="input cb-edcontent-mb12" maxLength={LIMITS.button} value={rejectLabel} onChange={(e) => setRejectLabel(e.target.value)} />
+            <WEdRow label={<>{'"Reject All" button'} {editedChip("reject")}</>} checked={nav ? nav.showReject : true} onChange={(v) => nav && nav.setShowReject(v)} />
+            <input className="input cb-edcontent-mb12" maxLength={LIMITS.button} value={rejectLabel} onChange={(e) => { setRejectLabel(e.target.value); markEdited("reject"); }} />
 
-            <WEdRow label={<>{'"Customize" button'} {diffChip(customizeLabel, customizeDefault)}</>} checked={nav ? nav.showCustomize : true} onChange={(v) => nav && nav.setShowCustomize(v)} />
-            <input className="input cb-edcontent-mb12" maxLength={LIMITS.button} value={customizeLabel} onChange={(e) => setCustomizeLabel(e.target.value)} />
+            <WEdRow label={<>{'"Customize" button'} {editedChip("customize")}</>} checked={nav ? nav.showCustomize : true} onChange={(v) => nav && nav.setShowCustomize(v)} />
+            <input className="input cb-edcontent-mb12" maxLength={LIMITS.button} value={customizeLabel} onChange={(e) => { setCustomizeLabel(e.target.value); markEdited("customize"); }} />
 
-            <WEdRow label={<>{'"Cookie policy" Link'} {diffChip(policyLabel, editorDefaults.default.policyLinkLabel)}</>} checked={nav ? nav.showPolicy : false} onChange={(v) => nav && nav.setShowPolicy(v)} />
-            <input className="input cb-edcontent-mb12" maxLength={LIMITS.policyLabel} value={policyLabel} onChange={(e) => setPolicyLabel(e.target.value)} />
+            <WEdRow label={<>{'"Cookie policy" Link'} {editedChip("policy")}</>} checked={nav ? nav.showPolicy : false} onChange={(v) => nav && nav.setShowPolicy(v)} />
+            <input className="input cb-edcontent-mb12" maxLength={LIMITS.policyLabel} value={policyLabel} onChange={(e) => { setPolicyLabel(e.target.value); markEdited("policy"); }} />
 
-            <Field label={<>URL {diffChip(policyUrl, editorDefaults.default.policyUrl)}</>} help={false}><input className="input" value={policyUrl} onChange={(e) => setPolicyUrl(e.target.value)} /></Field>
+            <Field label={<>URL {editedChip("policyUrl")}</>} help={false}><input className="input" value={policyUrl} onChange={(e) => { setPolicyUrl(e.target.value); markEdited("policyUrl"); }} /></Field>
             </>
             }
           </div>
@@ -272,11 +290,11 @@ function WEdContent() {
           /* CCPA · Opt-out Preference editor */
           <div className="card cb-edcontent-card">
             <div className="cb-edcontent-heading-mb12">Opt-out Preference</div>
-            <Field label={<>Title {diffChip(ccpaContent.optOutTitle, CCcur.optOutTitle)}</>} help={false}><input className="input" maxLength={LIMITS.title} value={ccpaContent.optOutTitle} onChange={(e) => setCcpa({ optOutTitle: e.target.value })} /></Field>
-            <Field label={<>Description {diffChip(ccpaContent.optOutBody, CCcur.optOutBody)}</>} help={false}><textarea className="input" rows="4" maxLength={LIMITS.message} value={ccpaContent.optOutBody} onChange={(e) => setCcpa({ optOutBody: e.target.value })} /></Field>
-            <Field label={<>{'"Do Not Share" checkbox label'} {diffChip(ccpaContent.doNotShare, CCcur.doNotShare)}</>} help={false}><input className="input" maxLength={50} value={ccpaContent.doNotShare} onChange={(e) => setCcpa({ doNotShare: e.target.value })} /></Field>
-            <Field label={<>{'"Cancel" button'} {diffChip(ccpaContent.cancel, CCcur.cancel)}</>} help={false}><input className="input" maxLength={LIMITS.button} value={ccpaContent.cancel} onChange={(e) => setCcpa({ cancel: e.target.value })} /></Field>
-            <Field label={<>{'"Save my preferences" button'} {diffChip(ccpaContent.save, CCcur.save)}</>} help={false}><input className="input" maxLength={LIMITS.button} value={ccpaContent.save} onChange={(e) => setCcpa({ save: e.target.value })} /></Field>
+            <Field label={<>Title {editedChip("ccpa_optOutTitle")}</>} help={false}><input className="input" maxLength={LIMITS.title} value={ccpaContent.optOutTitle} onChange={(e) => setCcpa({ optOutTitle: e.target.value })} /></Field>
+            <Field label={<>Description {editedChip("ccpa_optOutBody")}</>} help={false}><textarea className="input" rows="4" maxLength={LIMITS.message} value={ccpaContent.optOutBody} onChange={(e) => setCcpa({ optOutBody: e.target.value })} /></Field>
+            <Field label={<>{'"Do Not Share" checkbox label'} {editedChip("ccpa_doNotShare")}</>} help={false}><input className="input" maxLength={50} value={ccpaContent.doNotShare} onChange={(e) => setCcpa({ doNotShare: e.target.value })} /></Field>
+            <Field label={<>{'"Cancel" button'} {editedChip("ccpa_cancel")}</>} help={false}><input className="input" maxLength={LIMITS.button} value={ccpaContent.cancel} onChange={(e) => setCcpa({ cancel: e.target.value })} /></Field>
+            <Field label={<>{'"Save my preferences" button'} {editedChip("ccpa_save")}</>} help={false}><input className="input" maxLength={LIMITS.button} value={ccpaContent.save} onChange={(e) => setCcpa({ save: e.target.value })} /></Field>
           </div>
           : <>
           {/* Preference Banner — expanded */}
@@ -284,12 +302,12 @@ function WEdContent() {
             <div className="cb-edcontent-row-between-mb12">
               <div className="cb-edcontent-heading">Preference Banner</div>
             </div>
-            <Field label={<>Title {diffChip(prefContent.title, PLcur.title)}</>} help={false}><input className="input" maxLength={LIMITS.title} value={prefContent.title} onChange={(e) => setPref({ title: e.target.value })} /></Field>
-            <Field label={<>Privacy overview {diffChip(prefContent.overview, PLcur.overview)}</>} help={false}>
+            <Field label={<>Title {editedChip("pref_title")}</>} help={false}><input className="input" maxLength={LIMITS.title} value={prefContent.title} onChange={(e) => setPref({ title: e.target.value })} /></Field>
+            <Field label={<>Privacy overview {editedChip("pref_overview")}</>} help={false}>
               <textarea className="input" rows="4" maxLength={LIMITS.message} value={prefContent.overview} onChange={(e) => setPref({ overview: e.target.value })} />
             </Field>
-            <Field label={<>{'"Save My Preferences" button'} {diffChip(prefContent.save, PLcur.save)}</>} help={false}><input className="input" maxLength={LIMITS.button} value={prefContent.save} onChange={(e) => setPref({ save: e.target.value })} /></Field>
-            <Field label={<>{'"Always Active" label'} {diffChip(prefContent.alwaysActive, PLcur.alwaysActive)}</>} help={false}><input className="input" maxLength={LIMITS.label} value={prefContent.alwaysActive} onChange={(e) => setPref({ alwaysActive: e.target.value })} /></Field>
+            <Field label={<>{'"Save My Preferences" button'} {editedChip("pref_save")}</>} help={false}><input className="input" maxLength={LIMITS.button} value={prefContent.save} onChange={(e) => setPref({ save: e.target.value })} /></Field>
+            <Field label={<>{'"Always Active" label'} {editedChip("pref_alwaysActive")}</>} help={false}><input className="input" maxLength={LIMITS.label} value={prefContent.alwaysActive} onChange={(e) => setPref({ alwaysActive: e.target.value })} /></Field>
           </div>
 
           {/* Cookie List — accordion with editable category name + description */}
@@ -303,8 +321,8 @@ function WEdContent() {
               {prefContent.cats.map((c, i) =>
               <div key={i} className="cb-edcontent-cat-row" style={{ marginTop: i ? 10 : 0 }}>
                 <div className="cb-edcontent-cat-label">{prefCategories[i].l}</div>
-                <Field label={<>Name {diffChip(c.name, CLcur[i] ? CLcur[i].name : prefCategories[i].l)}</>} help={false}><input className="input" maxLength={LIMITS.name} value={c.name} onChange={(e) => setCat(i, { name: e.target.value })} /></Field>
-                <Field label={<>Description {diffChip(c.desc, CLcur[i] ? CLcur[i].desc : prefCategories[i].desc)}</>} help={false}><textarea className="input" rows="3" maxLength={LIMITS.desc} value={c.desc} onChange={(e) => setCat(i, { desc: e.target.value })} /></Field>
+                <Field label={<>Name {editedChip(`cat${i}_name`)}</>} help={false}><input className="input" maxLength={LIMITS.name} value={c.name} onChange={(e) => setCat(i, { name: e.target.value })} /></Field>
+                <Field label={<>Description {editedChip(`cat${i}_desc`)}</>} help={false}><textarea className="input" rows="3" maxLength={LIMITS.desc} value={c.desc} onChange={(e) => setCat(i, { desc: e.target.value })} /></Field>
               </div>
               )}
             </div>

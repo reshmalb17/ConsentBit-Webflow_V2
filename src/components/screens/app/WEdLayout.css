@@ -2,6 +2,18 @@
   display: grid;
   grid-template-columns: 300px 1fr;
   gap: 18px;
+  height: 100%;
+  min-height: 0;
+}
+
+/* Scroll only the left editor column, within the fixed panel height — the tabs
+   and preview stay put. */
+.cb-edlayout-grid > div:first-child {
+  min-height: 0;
+  max-height: 100%;
+  overflow-y: auto;
+  padding-right: 10px;
+  padding-bottom: 20px; /* breathing room below the last card when scrolled */
 }
 
 .cb-edlayout-pos-head {
@@ -131,9 +143,16 @@
   cursor: pointer;
 }
 
+/* This button reuses .select for styling but draws its OWN SVG chevron, so
+   suppress the .select gradient caret to avoid a double (up+down) arrow. */
+.cb-edlayout-select-btn.select { background-image: none; }
+
 .cb-edlayout-caret {
-  font-size: 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   opacity: 0.7;
+  transition: transform 0.15s;
 }
 
 .cb-edlayout-overlay {

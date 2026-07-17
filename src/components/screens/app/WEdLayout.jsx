@@ -107,7 +107,9 @@ function WEdLayout() {
             <div className="cb-edlayout-rel">
               <button type="button" className="select cb-edlayout-select-btn" onClick={() => setAnimOpen((o) => !o)}>
                 {animLabels[anim]}
-                <span className="cb-edlayout-caret" style={{ transform: animOpen ? "rotate(180deg)" : "none" }}>▾</span>
+                <span className="cb-edlayout-caret" style={{ transform: animOpen ? "rotate(180deg)" : "none" }}>
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6" /></svg>
+                </span>
               </button>
               {animOpen && <>
                 <div onClick={() => setAnimOpen(false)} className="cb-edlayout-overlay" />

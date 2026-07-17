@@ -11,8 +11,11 @@
   border-radius: 999px;
   padding: 3px;
 }
-.cb-selplan-toggle-btn { border-radius: 999px; }
-.cb-selplan-toggle-btn-yearly { border-radius: 999px; display: flex; align-items: center; gap: 6px; }
+.cb-selplan-toggle-btn-yearly { display: flex; align-items: center; gap: 6px; }
+/* Beat the base `.cb-widget-wrap .btn { border-radius: 7px }` (specificity 0,0,2,0)
+   so the toggle buttons get the intended corner radius inside the container. */
+.cb-widget-wrap .cb-selplan-billing-toggle .cb-selplan-toggle-btn,
+.cb-widget-wrap .cb-selplan-billing-toggle .cb-selplan-toggle-btn-yearly { border-radius: 13px; }
 .cb-selplan-save-badge {
   font-size: 9.5px;
   font-weight: 700;

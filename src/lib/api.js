@@ -5,7 +5,9 @@
 // OAuth record the install/authorize flow stored, so the client never holds or
 // sends a token or email.
 
-import { WORKER_BASE_URL, CHECKOUT_API_BASE } from "./webflowAuth.js";
+import { WORKER_BASE_URL, CHECKOUT_API_BASE, CHECKOUT_BASE_URL } from "./webflowAuth.js";
+import { authedFetch, wfUrl } from "./wfClient.js";
+import { isTrustedScriptUrl } from "./scriptUrl.js";
 
 /**
  * Some worker endpoints wrap their JSON in a security envelope: { d: "<base64 JSON>" }.
@@ -33,6 +35,25 @@ async function parseJson(res) {
   } catch {
     return {};
   }
+}
+
+/**
+ * First-party Webflow telemetry. POST /api/wf/track { event, wfSiteId, properties }.
+ * The worker resolves the account owner (distinct_id) from the authenticated identity
+ * and emits the event to PostHog SERVER-SIDE — no analytics library ships in the bundle
+ * and the extension never calls a third-party analytics host. Best-effort; never throws.
+ * Only UI-only events with no other backend call are accepted (e.g. profile_settings_viewed).
+ */
+export async function trackWebflowEvent(event, properties = {}) {
+  try {
+    let wfSiteId = "";
+    try { ({ wfSiteId } = await getWebflowSiteContext()); } catch { /* not in Designer */ }
+    await authedFetch(wfUrl(WORKER_BASE_URL, "track"), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ event, wfSiteId, properties }),
+    });
+  } catch { /* analytics is best-effort */ }
 }
 
 /**
@@ -84,11 +105,13 @@ export async function getWebflowSiteContext() {
  */
 export async function getWebflowSiteStatus(wfSiteId) {
   if (!wfSiteId) return { authorized: false, registered: false, plan: null, version: null };
-  const url = new URL(`${WORKER_BASE_URL}/api/webflow/oauth/status`);
+  const url = new URL(wfUrl(WORKER_BASE_URL, "oauth/status"));
   url.searchParams.set("siteId", wfSiteId);
   url.searchParams.set("verify", "false");
 
-  const res = await fetch(url.toString(), { method: "GET" });
+  // no-store: after an ownership transfer the owner email changes server-side; we
+  // must never serve a stale cached status when the app re-checks.
+  const res = await authedFetch(url.toString(), { method: "GET", cache: "no-store" });
   let data = {};
   try {
     data = await parseJson(res);
@@ -126,9 +149,9 @@ export async function getPaymentSubscription(wfSiteId) {
   try {
     // Payment status must come from the payment worker (consent-webapp-manager) —
     // it holds the Stripe/checkout code; the -test worker is for status/scan only.
-    const url = new URL(`${CHECKOUT_API_BASE}/api/payment/subscription`);
+    const url = new URL(wfUrl(CHECKOUT_API_BASE, "payment/subscription"));
     url.searchParams.set("siteId", wfSiteId);
-    res = await fetch(url.toString(), { method: "GET" });
+    res = await authedFetch(url.toString(), { method: "GET" });
   } catch (e) {
     return { isSubscribed: false, plan: null, updatedAt: null, error: e?.message || "network" };
   }
@@ -151,9 +174,9 @@ export async function getWebflowBilling(wfSiteId) {
   if (!wfSiteId) return { success: false, plan: "free", invoices: [] };
   let res;
   try {
-    const url = new URL(`${CHECKOUT_API_BASE}/api/webflow/billing`);
+    const url = new URL(wfUrl(CHECKOUT_API_BASE, "billing"));
     url.searchParams.set("siteId", wfSiteId);
-    res = await fetch(url.toString(), { method: "GET" });
+    res = await authedFetch(url.toString(), { method: "GET" });
   } catch (e) {
     return { success: false, plan: "free", invoices: [], error: e?.message || "network" };
   }
@@ -166,7 +189,7 @@ export async function getWebflowBilling(wfSiteId) {
  *   → { success, interval, nextBillingDate }
  */
 export async function switchWebflowInterval(wfSiteId, targetInterval) {
-  const res = await fetch(`${CHECKOUT_API_BASE}/api/webflow/switch-interval`, {
+  const res = await authedFetch(wfUrl(CHECKOUT_API_BASE, "switch-interval"), {
     method: "POST",
     headers: { "Content-Type": "application/json", "X-Requested-With": "XMLHttpRequest" },
     body: JSON.stringify({ siteId: wfSiteId, targetInterval }),
@@ -179,7 +202,7 @@ export async function switchWebflowInterval(wfSiteId, targetInterval) {
  *   POST /api/webflow/cancel-subscription  body { siteId } → { success, cancelAtPeriodEnd }
  */
 export async function cancelWebflowSubscription(wfSiteId) {
-  const res = await fetch(`${CHECKOUT_API_BASE}/api/webflow/cancel-subscription`, {
+  const res = await authedFetch(wfUrl(CHECKOUT_API_BASE, "cancel-subscription"), {
     method: "POST",
     headers: { "Content-Type": "application/json", "X-Requested-With": "XMLHttpRequest" },
     body: JSON.stringify({ siteId: wfSiteId }),
@@ -228,7 +251,7 @@ export async function verifyScript({ publicUrl, scriptUrl, siteId } = {}) {
   const timeoutId = setTimeout(() => controller.abort(), 15000);
   let res;
   try {
-    res = await fetch(`${WORKER_BASE_URL}/api/verify-script`, {
+    res = await authedFetch(wfUrl(WORKER_BASE_URL, "verify-script"), {
       method: "POST",
       headers: { "Content-Type": "application/json", "X-Requested-With": "XMLHttpRequest" },
       body: JSON.stringify({ publicUrl, scriptUrl, siteId }),
@@ -270,6 +293,11 @@ export async function verifyInstallation() {
   if (!status.scriptUrl) {
     return { published: true, found: false, error: "This site isn't registered yet. Select a plan first." };
   }
+  // Integrity guard: never verify against (or trust) a script URL that isn't on a
+  // ConsentBit-controlled host, even if the backend returned one.
+  if (!isTrustedScriptUrl(status.scriptUrl)) {
+    return { published: true, found: false, error: "Unexpected script URL — please contact support." };
+  }
 
   // Webflow's publish propagates across its CDN asynchronously, so the script
   // can be missing from the very first fetch even when it's correctly in the
@@ -308,9 +336,9 @@ export async function verifyInstallation() {
 export async function getLegacyScriptStatus(wfSiteId) {
   if (!wfSiteId) return { hasLegacy: false, legacyCount: 0, legacyScripts: [], hasCurrent: false };
   try {
-    const url = new URL(`${WORKER_BASE_URL}/api/webflow/script-cleanup`);
+    const url = new URL(wfUrl(WORKER_BASE_URL, "script-cleanup"));
     url.searchParams.set("siteId", wfSiteId);
-    const res = await fetch(url.toString(), { method: "GET" });
+    const res = await authedFetch(url.toString(), { method: "GET" });
     const data = await parseJson(res);
     return {
       hasLegacy: !!data.hasLegacy,
@@ -332,7 +360,7 @@ export async function getLegacyScriptStatus(wfSiteId) {
 export async function removeLegacyScripts(wfSiteId) {
   if (!wfSiteId) return { success: false, removedCount: 0, error: "Missing site id" };
   try {
-    const res = await fetch(`${WORKER_BASE_URL}/api/webflow/script-cleanup`, {
+    const res = await authedFetch(wfUrl(WORKER_BASE_URL, "script-cleanup"), {
       method: "POST",
       headers: { "Content-Type": "application/json", "X-Requested-With": "XMLHttpRequest" },
       body: JSON.stringify({ siteId: wfSiteId }),
@@ -370,7 +398,7 @@ export async function getBannerCustomization(wfSiteId, webappSiteId) {
     : wfSiteId ? `wfSiteId=${encodeURIComponent(wfSiteId)}` : null;
   if (!query) return null;
   try {
-    const res = await fetch(`${WORKER_BASE_URL}/api/banner-customization?${query}`);
+    const res = await authedFetch(`${wfUrl(WORKER_BASE_URL, "banner-customization")}?${query}`);
     const data = await parseJson(res);
     return data?.customization ?? null;
   } catch {
@@ -379,7 +407,7 @@ export async function getBannerCustomization(wfSiteId, webappSiteId) {
 }
 
 export async function saveWebappBannerCustomization(wfSiteId, customization, extra = {}) {
-  const res = await fetch(`${WORKER_BASE_URL}/api/banner-customization`, {
+  const res = await authedFetch(wfUrl(WORKER_BASE_URL, "banner-customization"), {
     method: "POST",
     headers: { "Content-Type": "application/json", "X-Requested-With": "XMLHttpRequest" },
     // manualInstall: the updated app installs by manual copy-paste — the worker
@@ -409,7 +437,7 @@ export async function saveWebappBannerCustomization(wfSiteId, customization, ext
  *   or { success:false, error }
  */
 export async function registerWebflowFree({ wfSiteId, domain, email, initialCustomization } = {}) {
-  const res = await fetch(`${WORKER_BASE_URL}/api/v2/webflow-free-register`, {
+  const res = await authedFetch(wfUrl(WORKER_BASE_URL, "webflow-free-register"), {
     method: "POST",
     headers: { "Content-Type": "application/json", "X-Requested-With": "XMLHttpRequest" },
     body: JSON.stringify({
@@ -453,7 +481,7 @@ export async function scanSiteNow(siteId) {
     // Consented scan: accepts the ConsentBit banner during the scan so consent-gated
     // tags fire and their post-consent cookies are captured. Same response shape as
     // /api/scan-site, so the existing polling flow is unchanged.
-    res = await fetch(`${WORKER_BASE_URL}/api/scan-site-consented`, {
+    res = await authedFetch(wfUrl(WORKER_BASE_URL, "scan-site-consented"), {
       method: "POST",
       headers: { "Content-Type": "application/json", "X-Requested-With": "XMLHttpRequest" },
       body: JSON.stringify({ siteId }),
@@ -474,7 +502,7 @@ export async function scanSiteNow(siteId) {
 
 /** GET /api/scan-history?siteId= → { success, scans: ScanHistoryRow[] }. */
 export async function getScanHistory(siteId) {
-  const res = await fetch(`${WORKER_BASE_URL}/api/scan-history?siteId=${encodeURIComponent(siteId)}`);
+  const res = await authedFetch(`${wfUrl(WORKER_BASE_URL, "scan-history")}?siteId=${encodeURIComponent(siteId)}`);
   let data = {};
   try { data = await parseJson(res); } catch { data = { success: false, scans: [] }; }
   return data;
@@ -482,7 +510,7 @@ export async function getScanHistory(siteId) {
 
 /** GET /api/cookies?siteId= → { success, cookies, cookiesByCategory }. */
 export async function getSiteCookies(siteId) {
-  const res = await fetch(`${WORKER_BASE_URL}/api/cookies?siteId=${encodeURIComponent(siteId)}`);
+  const res = await authedFetch(`${wfUrl(WORKER_BASE_URL, "cookies")}?siteId=${encodeURIComponent(siteId)}`);
   let data = {};
   try { data = await parseJson(res); } catch { data = { success: false, cookies: [], cookiesByCategory: {} }; }
   return data;
@@ -492,7 +520,7 @@ export async function getSiteCookies(siteId) {
 
 /** GET /api/scheduled-scan?siteId= → { success, scheduledScans: ScheduledScan[] }. */
 export async function getScheduledScans(siteId) {
-  const res = await fetch(`${WORKER_BASE_URL}/api/scheduled-scan?siteId=${encodeURIComponent(siteId)}`);
+  const res = await authedFetch(`${wfUrl(WORKER_BASE_URL, "scheduled-scan")}?siteId=${encodeURIComponent(siteId)}`);
   let data = {};
   try { data = await parseJson(res); } catch { data = { success: false, scheduledScans: [] }; }
   return data;
@@ -505,7 +533,7 @@ export async function getScheduledScans(siteId) {
  * Returns { success, scheduledScanId } or { success:false, code:'SCAN_LIMIT_REACHED', ... }.
  */
 export async function createScheduledScan(siteId, scheduledAt, frequency = "once") {
-  const res = await fetch(`${WORKER_BASE_URL}/api/scheduled-scan`, {
+  const res = await authedFetch(wfUrl(WORKER_BASE_URL, "scheduled-scan"), {
     method: "POST",
     headers: { "Content-Type": "application/json", "X-Requested-With": "XMLHttpRequest" },
     body: JSON.stringify({ siteId, scheduledAt, frequency }),
@@ -515,9 +543,12 @@ export async function createScheduledScan(siteId, scheduledAt, frequency = "once
   return data;
 }
 
-/** DELETE /api/scheduled-scan?id= → { success }. */
-export async function deleteScheduledScan(id) {
-  const res = await fetch(`${WORKER_BASE_URL}/api/scheduled-scan?id=${encodeURIComponent(id)}`, { method: "DELETE", headers: { "X-Requested-With": "XMLHttpRequest" } });
+/**
+ * DELETE /api/wf/scheduled-scan?id=&siteId= → { success }.
+ * siteId is required so the backend can authorize the caller for this site.
+ */
+export async function deleteScheduledScan(siteId, id) {
+  const res = await authedFetch(`${wfUrl(WORKER_BASE_URL, "scheduled-scan")}?id=${encodeURIComponent(id)}&siteId=${encodeURIComponent(siteId)}`, { method: "DELETE", headers: { "X-Requested-With": "XMLHttpRequest" } });
   let data = {};
   try { data = await parseJson(res); } catch { data = { success: false }; }
   return data;
@@ -527,7 +558,7 @@ export async function deleteScheduledScan(id) {
 
 /** GET /api/custom-cookie-rules?siteId= → { success, rules[] }. */
 export async function getCustomCookieRules(siteId) {
-  const res = await fetch(`${WORKER_BASE_URL}/api/custom-cookie-rules?siteId=${encodeURIComponent(siteId)}`);
+  const res = await authedFetch(`${wfUrl(WORKER_BASE_URL, "custom-cookie-rules")}?siteId=${encodeURIComponent(siteId)}`);
   let data = {};
   try { data = await parseJson(res); } catch { data = { success: false, rules: [] }; }
   return data;
@@ -540,7 +571,7 @@ export async function getCustomCookieRules(siteId) {
  * Returns { success, id }.
  */
 export async function addCustomCookieRule(payload) {
-  const res = await fetch(`${WORKER_BASE_URL}/api/custom-cookie-rules`, {
+  const res = await authedFetch(wfUrl(WORKER_BASE_URL, "custom-cookie-rules"), {
     method: "POST",
     headers: { "Content-Type": "application/json", "X-Requested-With": "XMLHttpRequest" },
     body: JSON.stringify(payload),
@@ -550,9 +581,12 @@ export async function addCustomCookieRule(payload) {
   return data;
 }
 
-/** DELETE /api/custom-cookie-rules?id= → { success }. */
-export async function deleteCustomCookieRule(id) {
-  const res = await fetch(`${WORKER_BASE_URL}/api/custom-cookie-rules?id=${encodeURIComponent(id)}`, { method: "DELETE", headers: { "X-Requested-With": "XMLHttpRequest" } });
+/**
+ * DELETE /api/wf/custom-cookie-rules?id=&siteId= → { success }.
+ * siteId is required so the backend can authorize the caller for this site.
+ */
+export async function deleteCustomCookieRule(siteId, id) {
+  const res = await authedFetch(`${wfUrl(WORKER_BASE_URL, "custom-cookie-rules")}?id=${encodeURIComponent(id)}&siteId=${encodeURIComponent(siteId)}`, { method: "DELETE", headers: { "X-Requested-With": "XMLHttpRequest" } });
   let data = {};
   try { data = await parseJson(res); } catch { data = { success: false }; }
   return data;
@@ -560,7 +594,7 @@ export async function deleteCustomCookieRule(id) {
 
 /** Publish all draft rules for a site. POST { action:'publish', siteId } → { success }. */
 export async function publishCustomCookieRules(siteId) {
-  const res = await fetch(`${WORKER_BASE_URL}/api/custom-cookie-rules`, {
+  const res = await authedFetch(wfUrl(WORKER_BASE_URL, "custom-cookie-rules"), {
     method: "POST",
     headers: { "Content-Type": "application/json", "X-Requested-With": "XMLHttpRequest" },
     body: JSON.stringify({ action: "publish", siteId }),
@@ -580,7 +614,7 @@ export async function publishCustomCookieRules(siteId) {
 export async function getConsentHistory(siteId, { limit = 100, offset = 0, year, month } = {}) {
   const params = new URLSearchParams({ siteId, limit: String(limit), offset: String(offset) });
   if (year && month) { params.set("year", year); params.set("month", month); }
-  const res = await fetch(`${WORKER_BASE_URL}/api/consent-logs?${params.toString()}`);
+  const res = await authedFetch(`${wfUrl(WORKER_BASE_URL, "consent-logs")}?${params.toString()}`);
   let data = {};
   try { data = await parseJson(res); } catch { data = { success: false, consents: [], total: 0 }; }
   return data;
@@ -589,7 +623,7 @@ export async function getConsentHistory(siteId, { limit = 100, offset = 0, year,
 // Fetch a file from the worker and trigger a browser download (Blob + object URL;
 // no document.body mutation). Returns nothing; throws on a non-OK response.
 async function downloadBlob(url, fallbackName) {
-  const res = await fetch(url);
+  const res = await authedFetch(url);
   if (!res.ok) throw new Error(`Download failed (HTTP ${res.status})`);
   const blob = await res.blob();
   const cd = res.headers.get("Content-Disposition") || "";
@@ -613,13 +647,60 @@ async function downloadBlob(url, fallbackName) {
 export async function downloadConsentCsv(siteId, { year, month } = {}) {
   const params = new URLSearchParams({ siteId });
   if (year && month) { params.set("year", year); params.set("month", month); }
-  await downloadBlob(`${WORKER_BASE_URL}/api/consent-csv?${params.toString()}`, `consent-logs-${year || "all"}-${month || "all"}.xls`);
+  await downloadBlob(`${wfUrl(WORKER_BASE_URL, "consent-csv")}?${params.toString()}`, `consent-logs-${year || "all"}-${month || "all"}.xls`);
 }
 
 /** Download a single consent record as PDF. GET /api/consent-pdf?siteId=&consentId=. */
 export async function downloadConsentPdf(siteId, consentId) {
   const params = new URLSearchParams({ siteId, consentId });
-  await downloadBlob(`${WORKER_BASE_URL}/api/consent-pdf?${params.toString()}`, `consent_${String(consentId).slice(0, 8)}.pdf`);
+  await downloadBlob(`${wfUrl(WORKER_BASE_URL, "consent-pdf")}?${params.toString()}`, `consent_${String(consentId).slice(0, 8)}.pdf`);
+}
+
+// ── Account ownership transfer ───────────────────────────────────────────────
+
+/**
+ * Request an account ownership transfer. The backend resolves the current account
+ * owner from THIS Webflow site's organization and emails an authorization link to
+ * that owner's email — nothing changes until they click it. Authenticated by the
+ * Webflow ID token (authedFetch); no email/session is sent from the client.
+ *   POST /api/wf/transfer-ownership/request  body { newEmail, newName, appOrigin }
+ *   → { success, sentTo?, authorizeLink? (dev only), expiresAt? }
+ * The authorize link is built against the webapp frontend (CHECKOUT_BASE_URL),
+ * which hosts the /transfer-ownership/authorize page — the Designer iframe cannot.
+ */
+export async function requestOwnershipTransfer({ newEmail, newName } = {}) {
+  const res = await authedFetch(wfUrl(WORKER_BASE_URL, "transfer-ownership/request"), {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "X-Requested-With": "XMLHttpRequest" },
+    body: JSON.stringify({
+      newEmail: String(newEmail || "").trim().toLowerCase(),
+      newName: String(newName || "").trim(),
+      appOrigin: CHECKOUT_BASE_URL,
+    }),
+  });
+  let data = {};
+  try { data = await parseJson(res); } catch { data = { success: false, error: `Unexpected response (HTTP ${res.status})` }; }
+  if (!res.ok && data.success === undefined) data.success = false;
+  return data;
+}
+
+/**
+ * Update the account owner's profile (billing email). Mirrors the webapp's
+ * updateProfile — the backend resolves the current owner from THIS Webflow site's
+ * organization and persists the billing email. Authenticated by the Webflow ID
+ * token (authedFetch).
+ *   POST /api/wf/profile  body { billingEmail }  → { success, user }
+ */
+export async function updateOwnerProfile({ billingEmail } = {}) {
+  const res = await authedFetch(wfUrl(WORKER_BASE_URL, "profile"), {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "X-Requested-With": "XMLHttpRequest" },
+    body: JSON.stringify({ ...(billingEmail !== undefined ? { billingEmail } : {}) }),
+  });
+  let data = {};
+  try { data = await parseJson(res); } catch { data = { success: false, error: `Unexpected response (HTTP ${res.status})` }; }
+  if (!res.ok && data.success === undefined) data.success = false;
+  return data;
 }
 
 // Paid-plan checkout lives in webflowAuth.js (startCheckout) — it uses the same

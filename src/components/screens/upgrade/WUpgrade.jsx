@@ -343,9 +343,7 @@ function WUpgrade() {
               className={"btn btn-sm cb-upgrade-toggle-btn-yearly " + (billing === "yearly" ? "btn-primary" : "btn-ghost")}
               onClick={() => pickBilling("yearly")}
               aria-pressed={billing === "yearly"}
-            >
-              Yearly <span className="cb-upgrade-save-badge">Save 20%</span>
-            </button>
+            >Yearly</button>
           </div>
         </div>
 

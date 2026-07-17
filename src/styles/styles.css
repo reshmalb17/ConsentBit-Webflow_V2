@@ -347,14 +347,15 @@ textarea.input { resize: none; }
   border-radius: 999px;
   font-size: 12px;
   font-weight: 500;
+  line-height: 1;
 }
-.badge-green { background: var(--green-soft); color: #5AE497; }
+.badge-green { background: var(--green-soft); color: #5AE497; padding: 3px 7px; }
 .badge-red { background: var(--red-soft); color: #FF8888; }
 .badge-yellow { background: var(--yellow-soft); color: var(--yellow); }
 .badge-blue { background: var(--blue-soft); color: var(--blue); }
 .badge-purple { background: var(--purple-soft); color: var(--purple-hi); }
 .badge-grey { background: var(--surface-3); color: var(--text-muted); }
-.badge-dot { width: 6px; height: 6px; border-radius: 999px; background: currentColor; }
+.badge-dot { width: 6px; height: 6px; border-radius: 999px; background: currentColor; flex-shrink: 0; margin-top: 2px; }
 
 /* Section tabs (e.g. General Setting / Customization / Script) */
 .cb-section-tabs {

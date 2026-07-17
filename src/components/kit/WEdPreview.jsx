@@ -70,7 +70,7 @@ function WEdPreview({ variant = "default" }) {
 
   // Floating reopen button/logo — shown in the preview corner (left/right) when
   // the Content tab's "Floating button" is enabled. Mirrors the live app.
-  const floating = nav ? nav.floating : false;
+  const floating = nav ? nav.floating : true;
   const floatPos = nav ? nav.floatPos : "left";
   const logoSize = device === "Phone" ? 22 : 28;
   const logoIconSrc = consentLogo;
@@ -89,6 +89,15 @@ function WEdPreview({ variant = "default" }) {
   const bannerRadius = nav ? nav.bannerRadius : 12;
   const bannerAnim = nav ? nav.bannerAnim : "fade-in";
   const centerPopup = bannerPos === "popup";
+  // Floating icon visibility: hide it when it would sit on the SAME side as the
+  // banner (they'd overlap). A full-width "banner" occupies both corners; a centered
+  // "popup" occupies neither; a "box" occupies its aligned side. Always show the icon
+  // once the preference banner is open (the default box banner is gone → no overlap).
+  const bannerOccupiesFloatSide =
+    bannerPos === "banner" ? true :
+    bannerPos === "popup" ? false :
+    bannerAlign === floatPos;
+  const showFloat = floating && (isPref || !bannerOccupiesFloatSide);
   const animName = ({
     "fade-in": "cbAnimFadeIn",
     "slide-up": centerPopup ? "cbAnimSlideUpCenter" : "cbAnimSlideUp",
@@ -168,9 +177,10 @@ function WEdPreview({ variant = "default" }) {
         <div className="preview-titlebar"><span className="dot" /><span className="dot" /><span className="dot" /></div>
 
         {/* Floating reopen button/logo — positioned by the Floating button setting.
-            Rendered before the banner so the banner overlaps it (matches the live app). */}
-        {floating &&
-        <div style={{ position: "absolute", bottom: 12, left: floatPos === "left" ? 12 : "auto", right: floatPos === "right" ? 12 : "auto", width: logoSize, height: logoSize, borderRadius: 999, background: "#fff", boxShadow: "0 4px 12px rgba(0,0,0,0.35)", display: "grid", placeItems: "center" }}>
+            Drawn ABOVE the banner (zIndex) so it's visible in the preview; on the live
+            site it appears once the banner is dismissed. */}
+        {showFloat &&
+        <div style={{ position: "absolute", bottom: 12, left: floatPos === "left" ? 12 : "auto", right: floatPos === "right" ? 12 : "auto", width: logoSize, height: logoSize, borderRadius: 999, background: "#fff", boxShadow: "0 4px 12px rgba(0,0,0,0.35)", display: "grid", placeItems: "center", zIndex: 40 }}>
           <img src={logoIconSrc} alt="ConsentBit" style={{ width: Math.round(logoSize * 0.62), height: Math.round(logoSize * 0.62), display: "block" }} />
         </div>
         }
@@ -242,7 +252,7 @@ function WEdPreview({ variant = "default" }) {
                   const expanded = catMore === i;
                   const shown = expanded || !long ? c.desc : c.desc.slice(0, defLen).trimEnd() + "… ";
                   return (
-                  <div style={{ fontSize: 8.5, fontWeight: bannerWeight, color: "#777", lineHeight: 1.45, padding: "0 10px 8px 33px", textAlign: bannerTextAlign, overflowWrap: "break-word", wordBreak: "break-word" }}>
+                  <div style={{ fontSize: 8.5, fontWeight: bannerWeight, color: colors.textColor, lineHeight: 1.45, padding: "0 10px 8px 33px", textAlign: bannerTextAlign, overflowWrap: "break-word", wordBreak: "break-word" }}>
                     {shown}
                     {long &&
                     <span onClick={() => setCatMore(expanded ? null : i)} style={{ color: colors.btnBg, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap", fontSize: "inherit" }}>{expanded ? " Show less" : " Show more"}</span>

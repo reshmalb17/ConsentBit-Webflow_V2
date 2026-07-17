@@ -23,7 +23,6 @@ import { WLoading } from "./components/screens/modals/WLoading.jsx";
 import { WPaymentProcessing } from "./components/screens/modals/WPaymentProcessing.jsx";
 import { getWebflowSiteContext, getWebflowSiteStatus, getPaymentSubscription, getBannerCustomization } from "./lib/api.js";
 import { mapCustomizationToState } from "./lib/loadCustomization.js";
-import { analytics } from "./lib/analytics.js";
 
 // What the Webflow Designer Extension panel renders: the main app, opening on
 // the Cookie Banner editor (General tab). The top tab bar (WMainTabs) and the
@@ -60,6 +59,7 @@ export default function AppExtension() {
     cats: prefCategories.map((c) => ({ name: c.l, desc: c.desc, always: !!c.always })),
   });
   const [closeBtn, setCloseBtn] = React.useState(false);         // Content: show the close (X) icon
+  const [language, setLanguage] = React.useState("English");     // Content: selected banner language — lifted to NavContext so it survives tab switches (WEdContent remounts)
   const [activeRegion, setActiveRegion] = React.useState("GDPR"); // preview region (GDPR | CCPA) — drives the Content editor too
   const [ccpaContent, setCcpaContent] = React.useState({         // CCPA-specific editable content
     message: ccpaBanner.message,
@@ -72,7 +72,7 @@ export default function AppExtension() {
   const [showReject, setShowReject] = React.useState(true);      // Content: show the Reject button
   const [showCustomize, setShowCustomize] = React.useState(true); // Content: show the Customize/Preference button
   const [showPolicy, setShowPolicy] = React.useState(false);     // Content: show the Cookie policy link (off by default)
-  const [floating, setFloating] = React.useState(false);         // Content: floating reopen button/logo enabled
+  const [floating, setFloating] = React.useState(true);          // Content: floating reopen button/logo enabled (default ON)
   const [floatPos, setFloatPos] = React.useState("left");        // Content: floating button position (left | right)
   const [bannerWeight, setBannerWeight] = React.useState("700");  // Type: font weight (heading + text)
   const [bannerTextAlign, setBannerTextAlign] = React.useState("left"); // Type: left | center | right
@@ -106,7 +106,6 @@ export default function AppExtension() {
   // registered + plan together — no extra round-trips.
   React.useEffect(() => {
     let cancelled = false;
-    analytics.init(); // PostHog (privacy-hardened, platform: "webflow")
     (async () => {
       try {
         const { wfSiteId } = await getWebflowSiteContext();
@@ -116,9 +115,8 @@ export default function AppExtension() {
         }
         const status = await getWebflowSiteStatus(wfSiteId);
         if (cancelled) return;
-        // Launch analytics — identify the account and record the Webflow app open.
-        analytics.appOpened(wfSiteId, status.email);
-        if (status.email) analytics.identify(status.email, "");
+        // webflow_app_opened is tracked SERVER-SIDE in the status handler (the
+        // getWebflowSiteStatus call just above) — no client tracking here.
         setBannerCreated(!!status.bannerCreated);
         // Only show a plan once one is actually taken — no hardcoded "Free" for
         // unregistered/skipped users (keeps the top-bar plan pill blank).
@@ -136,10 +134,8 @@ export default function AppExtension() {
         // fields keep their default.
         try {
           const saved = await getBannerCustomization(wfSiteId, status.webappSiteId);
-          console.log("[BannerLoad] wfSiteId=", wfSiteId, "| webappSiteId=", status.webappSiteId, "| saved?", !!saved, "| title=", saved?.translations?.en?.title, "| bg=", saved?.backgroundColor);
           if (!cancelled && saved) {
             const m = mapCustomizationToState(saved);
-            console.log("[BannerLoad] mapped:", { bannerContent: m.bannerContent, bannerColors: m.bannerColors, template: m.template, pos: m.bannerPos });
             if (m.bannerColors) setBannerColors((p) => ({ ...p, ...m.bannerColors }));
             if (m.bannerContent) setBannerContent((p) => ({ ...p, ...m.bannerContent }));
             if (m.prefContent) setPrefContent((p) => ({
@@ -160,6 +156,7 @@ export default function AppExtension() {
             if (m.showPolicy !== undefined) setShowPolicy(m.showPolicy);
             if (m.floating !== undefined) setFloating(m.floating);
             if (m.floatPos) setFloatPos(m.floatPos);
+            if (m.language) setLanguage(m.language);
             if (m.template) setTemplate(m.template);
             if (m.iab !== undefined) setIab(m.iab);
             if (m.gac !== undefined) setGac(m.gac);
@@ -284,8 +281,44 @@ export default function AppExtension() {
     }
   }, []);
 
+  // Re-fetch the launch status and refresh the account-level fields (owner email,
+  // plan, registration). Used after an ownership transfer authorizes so the app
+  // reflects the new owner without a full reload.
+  const refreshAccount = React.useCallback(async () => {
+    try {
+      const { wfSiteId } = await getWebflowSiteContext();
+      if (!wfSiteId) return;
+      const status = await getWebflowSiteStatus(wfSiteId);
+      setBannerCreated(!!status.bannerCreated);
+      setPlan(status.registered ? (status.plan ?? "Free") : null);
+      setRegistered(!!status.registered);
+      setAccountEmail(status.email ?? "");
+      if (status.freeUsed) setFreeUsed(true);
+    } catch { /* ignore — keep current values */ }
+  }, []);
+
+  // The ownership transfer authorizes OUT OF BAND (the owner clicks the emailed
+  // link, often in another tab). When the user returns to the Designer, refresh
+  // the account so the new owner email reflects without a manual relaunch.
+  React.useEffect(() => {
+    let last = 0;
+    const onVisible = () => {
+      if (typeof document !== "undefined" && document.visibilityState !== "visible") return;
+      const now = Date.now();
+      if (now - last < 4000) return; // throttle repeated focus events
+      last = now;
+      refreshAccount();
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    window.addEventListener("focus", onVisible);
+    return () => {
+      document.removeEventListener("visibilitychange", onVisible);
+      window.removeEventListener("focus", onVisible);
+    };
+  }, [refreshAccount]);
+
   const app = (
-    <NavContext.Provider value={{ mainTab, setMainTab, subTab, setSubTab, profileOpen, setProfileOpen, notifOpen, setNotifOpen, template, setTemplate, iab, setIab, gac, setGac, bannerPos, setBannerPos, bannerAlign, setBannerAlign, bannerRadius, setBannerRadius, bannerAnim, setBannerAnim, bannerBtnRadius, setBannerBtnRadius, bannerColors, setBannerColors, bannerWeight, setBannerWeight, bannerTextAlign, setBannerTextAlign, bannerContent, setBannerContent, prefContent, setPrefContent, closeBtn, setCloseBtn, showReject, setShowReject, showCustomize, setShowCustomize, showPolicy, setShowPolicy, floating, setFloating, floatPos, setFloatPos, activeRegion, setActiveRegion, ccpaContent, setCcpaContent, bannerCreated, setBannerCreated, plan, setPlan, registered, setRegistered, startPaymentFlow, accountEmail, goToInstallVerify, goToApp, installVerifyFromApp }}>
+    <NavContext.Provider value={{ mainTab, setMainTab, subTab, setSubTab, profileOpen, setProfileOpen, notifOpen, setNotifOpen, template, setTemplate, iab, setIab, gac, setGac, bannerPos, setBannerPos, bannerAlign, setBannerAlign, bannerRadius, setBannerRadius, bannerAnim, setBannerAnim, bannerBtnRadius, setBannerBtnRadius, bannerColors, setBannerColors, bannerWeight, setBannerWeight, bannerTextAlign, setBannerTextAlign, bannerContent, setBannerContent, prefContent, setPrefContent, closeBtn, setCloseBtn, language, setLanguage, showReject, setShowReject, showCustomize, setShowCustomize, showPolicy, setShowPolicy, floating, setFloating, floatPos, setFloatPos, activeRegion, setActiveRegion, ccpaContent, setCcpaContent, bannerCreated, setBannerCreated, plan, setPlan, registered, setRegistered, startPaymentFlow, accountEmail, refreshAccount, goToInstallVerify, goToApp, installVerifyFromApp }}>
       <div style={{ position: "relative", height: "100%" }}>
         {current}
         {paymentFlow.open &&

@@ -3,7 +3,7 @@ import "./WSelectPlan.css";
 import { WAuthShell } from "../../kit/WAuthShell.jsx";
 import { Page } from "../../primitives/Page.jsx";
 import { WToast } from "../../kit/WToast.jsx";
-import { getWebflowSiteContext, getWebflowSiteStatus, registerWebflowFree } from "../../../lib/api.js";
+import { getWebflowSiteContext, getWebflowSiteStatus, registerWebflowFree, trackWebflowEvent } from "../../../lib/api.js";
 import { startCheckout } from "../../../lib/webflowAuth.js";
 import { useNav } from "../../../nav.jsx";
 
@@ -115,7 +115,13 @@ function WSelectPlan({ freeDisabled = false, onSelectPlan, onFreeRegistered, onF
         </div>
         <a
           href="#"
-          onClick={(e) => { e.preventDefault(); if (onSkip) onSkip(); }}
+          onClick={(e) => {
+            e.preventDefault();
+            // plan_selected (Option B — Skip clicked): funnel step 3. Sent via the
+            // first-party /track endpoint; the worker emits it to PostHog server-side.
+            trackWebflowEvent("plan_selected", { plan_tier: "skipped", billing_cycle: null, plan_price: 0 });
+            if (onSkip) onSkip();
+          }}
           className="cb-selplan-skip"
         >Skip for now<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="cb-selplan-skip-icon"><path d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3" /></svg></a>
       </div>

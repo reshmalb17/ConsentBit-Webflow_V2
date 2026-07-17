@@ -28,14 +28,30 @@
   position: relative;
 }
 
+/* Only the TOP-LEVEL content wrapper (direct child of the shell) fills the panel
+   height so its left column can scroll — NOT the nested language-select wrapper. */
+.cb-edshell-content > .cb-edcontent-relative {
+  height: 100%;
+  min-height: 0;
+}
+
 .cb-edcontent-grid-2 {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 14px;
+  height: 100%;
+  min-height: 0;
 }
 
 .cb-edcontent-col {
   width: 300px;
+  /* Scroll ONLY this left editor section, within the fixed panel height — the
+     tabs and the preview column stay put. */
+  min-height: 0;
+  max-height: 100%;
+  overflow-y: auto;
+  padding-right: 10px; /* keeps the scrollbar off the fields */
+  padding-bottom: 20px; /* breathing room below the last field when scrolled */
 }
 
 .cb-edcontent-mb6 {

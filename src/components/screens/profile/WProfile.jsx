@@ -5,7 +5,7 @@ import { WPage } from "../../kit/WPage.jsx";
 import { WTopBar } from "../../kit/WTopBar.jsx";
 import { Page } from "../../primitives/Page.jsx";
 import { useNav } from "../../../nav.jsx";
-import { getWebflowSiteContext, getWebflowBilling, cancelWebflowSubscription } from "../../../lib/api.js";
+import { getWebflowSiteContext, getWebflowSiteStatus, getWebflowBilling, cancelWebflowSubscription, requestOwnershipTransfer, updateOwnerProfile, trackWebflowEvent } from "../../../lib/api.js";
 
 // Per-tier plan facts (limits shown on the "Your Current plan" card) keyed by
 // the live plan from status. Not per-account live data — these are the product's
@@ -70,6 +70,17 @@ function WProfile() {
     return () => { cancelled = true; };
   }, [loadBilling]);
 
+  // Refresh the account owner on profile open so the card + transfer intro always
+  // show the CURRENT owner (not a value cached from app launch — which can be stale
+  // if a transfer was authorized in another session).
+  React.useEffect(() => {
+    nav?.refreshAccount?.();
+    // profile_settings_viewed — funnel step 11. Fired once on open via the first-party
+    // /api/wf/track endpoint; the worker emits it to PostHog server-side (no client key).
+    trackWebflowEvent("profile_settings_viewed");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const invoices = Array.isArray(billing?.invoices) ? billing.invoices : [];
   const cancelAtPeriodEnd = !!billing?.cancelAtPeriodEnd;
   // When cancelled, the plan stays active until the end of the current billing period.
@@ -95,6 +106,94 @@ function WProfile() {
     finally { setCancelling(false); }
   };
 
+  // ── Transfer ownership ─────────────────────────────────────────────────────
+  // Moves the whole account (sites, subscription, consent data) to a new owner.
+  // We email an authorization link to the CURRENT owner; nothing changes until
+  // they click it. The backend resolves the current owner from this site's org.
+  const [transferOpen, setTransferOpen] = React.useState(false);
+  const [tNewEmail, setTNewEmail] = React.useState("");
+  const [tNewName, setTNewName] = React.useState("");
+  const [tConfirm, setTConfirm] = React.useState(false);
+  const [tSaving, setTSaving] = React.useState(false);
+  const [tError, setTError] = React.useState("");        // general/API error
+  const [tNameErr, setTNameErr] = React.useState("");    // per-field errors
+  const [tEmailErr, setTEmailErr] = React.useState("");
+  const [tConfirmErr, setTConfirmErr] = React.useState("");
+  const [tSentTo, setTSentTo] = React.useState("");
+  const [tDevLink, setTDevLink] = React.useState("");
+
+  const tEmailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(tNewEmail.trim());
+  const tIsSameEmail = tEmailValid && tNewEmail.trim().toLowerCase() === accountEmail.toLowerCase();
+  const canSubmitTransfer = tEmailValid && !tIsSameEmail && tNewName.trim().length > 0 && tConfirm && !tSaving;
+
+  const resetTransfer = () => {
+    setTransferOpen(false); setTNewEmail(""); setTNewName(""); setTConfirm(false);
+    setTError(""); setTNameErr(""); setTEmailErr(""); setTConfirmErr(""); setTSentTo(""); setTDevLink("");
+  };
+
+  const handleSubmitTransfer = async () => {
+    if (tSaving) return;
+    // Per-field validation — surface each error next to its own field.
+    let ok = true;
+    setTError(""); setTNameErr(""); setTEmailErr(""); setTConfirmErr("");
+    if (!tNewName.trim()) { setTNameErr("Please enter the new owner's name."); ok = false; }
+    if (!tNewEmail.trim()) { setTEmailErr("Please enter the new owner's email."); ok = false; }
+    else if (!tEmailValid) { setTEmailErr("Enter a valid email address."); ok = false; }
+    else if (tIsSameEmail) { setTEmailErr("Must be different from the current owner."); ok = false; }
+    if (!tConfirm) { setTConfirmErr("Please tick the confirmation to continue."); ok = false; }
+    if (!ok) return;
+    setTSaving(true);
+    try {
+      const res = await requestOwnershipTransfer({ newEmail: tNewEmail.trim().toLowerCase(), newName: tNewName.trim() });
+      if (res?.success) { setTSentTo(res.sentTo || accountEmail); if (res.authorizeLink) setTDevLink(res.authorizeLink); }
+      else setTError(res?.error || "Failed to start ownership transfer.");
+    } catch (e) {
+      setTError(e?.message || "Failed to start ownership transfer.");
+    } finally {
+      setTSaving(false);
+    }
+  };
+
+  // ── Edit profile (billing email) ───────────────────────────────────────────
+  // Mirrors the webapp's Edit: the only persisted field is the billing email
+  // (the account/login email changes only via Transfer Ownership).
+  const [editOpen, setEditOpen] = React.useState(false);
+  const [eBilling, setEBilling] = React.useState("");
+  const [eSaving, setESaving] = React.useState(false);
+  const [eError, setEError] = React.useState("");
+  const [eSaved, setESaved] = React.useState(false);
+
+  const eBillingValid = eBilling.trim() === "" || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(eBilling.trim());
+
+  const openEdit = async () => {
+    setEBilling(billing?.billingEmail || "");
+    setEError(""); setESaved(false); setEditOpen(true);
+    // The billing response doesn't carry the billing email — resolve it from the
+    // status call (which returns it for the authenticated site) to pre-fill.
+    try {
+      const sid = wfSiteId || (await getWebflowSiteContext()).wfSiteId;
+      if (sid) {
+        const status = await getWebflowSiteStatus(sid);
+        if (status?.billingEmail) setEBilling(status.billingEmail);
+      }
+    } catch { /* leave whatever we have */ }
+  };
+  const closeEdit = () => { setEditOpen(false); setEError(""); setESaved(false); };
+
+  const handleSaveProfile = async () => {
+    if (!eBillingValid || eSaving) return;
+    setESaving(true); setEError(""); setESaved(false);
+    try {
+      const res = await updateOwnerProfile({ billingEmail: eBilling.trim().toLowerCase() });
+      if (res?.success) { setESaved(true); await loadBilling(wfSiteId); }
+      else setEError(res?.error || "Couldn't save your profile.");
+    } catch (e) {
+      setEError(e?.message || "Network error saving your profile.");
+    } finally {
+      setESaving(false);
+    }
+  };
+
   return (
     <WPage className="cb-profile-page">
       <WTopBar />
@@ -113,6 +212,11 @@ function WProfile() {
           <div>
             <div className="cb-profile-owner-label">Account Owner</div>
             <div className="cb-profile-owner-email">{accountEmail || "—"}</div>
+          </div>
+          <div className="cb-profile-header-actions">
+            {hasPlan &&
+              <button className="btn btn-primary btn-sm" onClick={() => { resetTransfer(); setTransferOpen(true); }}>Transfer Ownership</button>
+            }
           </div>
         </div>
 
@@ -193,7 +297,100 @@ function WProfile() {
           </div>
         </div>
         }
+
       </div>
+
+      {/* Transfer-ownership modal — opened by the Account Owner card button */}
+      {transferOpen &&
+      <div className="cb-profile-cancel-overlay" onClick={resetTransfer}>
+        <div className="card cb-profile-cancel-card cb-profile-transfer-modal" onClick={(e) => e.stopPropagation()}>
+          {tSentTo ? (
+            <>
+              <div className="cb-profile-cancel-heading">Authorization email sent</div>
+              <div className="cb-profile-cancel-text">
+                We sent an authorization link to <b className="cb-profile-strong">{tSentTo}</b>. Open that email and click “Authorize transfer” to complete the change. The link expires shortly for your security.
+              </div>
+              {tDevLink &&
+                <div className="cb-profile-transfer-devlink">
+                  Dev link: <a href={tDevLink} target="_blank" rel="noopener noreferrer">{tDevLink}</a>
+                </div>
+              }
+              <div className="cb-profile-cancel-buttons">
+                <button className="btn btn-primary btn-sm cb-profile-btn-flex" onClick={() => { resetTransfer(); nav?.refreshAccount?.(); }}>Done</button>
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="cb-profile-cancel-heading">Transfer ownership</div>
+              <div className="cb-profile-cancel-text">
+                Transfer complete ownership of this account, including all of its sites, subscription, and consent data, to a new owner. An authorization link will be sent to <b className="cb-profile-strong">{accountEmail || "the current owner"}</b> to confirm this change.
+              </div>
+              <div className="cb-profile-transfer-form">
+                <div>
+                  <label className="cb-profile-transfer-label">New owner name</label>
+                  <input type="text" value={tNewName} placeholder="Jane Doe"
+                    onChange={(e) => { setTNewName(e.target.value); setTNameErr(""); }}
+                    className="cb-profile-transfer-input" />
+                  {tNameErr && <div className="cb-profile-transfer-err">{tNameErr}</div>}
+                </div>
+                <div>
+                  <label className="cb-profile-transfer-label">New owner email</label>
+                  <input type="email" value={tNewEmail} placeholder="jane@example.com"
+                    onChange={(e) => { setTNewEmail(e.target.value); setTEmailErr(""); }}
+                    className="cb-profile-transfer-input" />
+                  {tEmailErr
+                    ? <div className="cb-profile-transfer-err">{tEmailErr}</div>
+                    : (tNewEmail.trim() && !tEmailValid && <div className="cb-profile-transfer-err">Enter a valid email address.</div>)}
+                </div>
+                <div>
+                  <label className="cb-profile-transfer-check">
+                    <input type="checkbox" checked={tConfirm} onChange={(e) => { setTConfirm(e.target.checked); setTConfirmErr(""); }} />
+                    <span>I understand this transfers the entire account to the new owner and I will lose access.</span>
+                  </label>
+                  {tConfirmErr && <div className="cb-profile-transfer-err">{tConfirmErr}</div>}
+                </div>
+                {tError && <div className="cb-profile-transfer-err">{tError}</div>}
+              </div>
+              <div className="cb-profile-cancel-buttons">
+                <button className="btn btn-secondary btn-sm cb-profile-btn-flex" style={{ padding: "10px 16px" }} disabled={tSaving} onClick={resetTransfer}>Cancel</button>
+                <button className="btn btn-primary btn-sm cb-profile-btn-flex" style={{ padding: "10px 16px" }} disabled={tSaving} onClick={handleSubmitTransfer}>{tSaving ? "Confirming…" : "Confirm"}</button>
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+      }
+
+      {/* Edit profile modal — opened by the Account Owner card Edit button */}
+      {editOpen &&
+      <div className="cb-profile-cancel-overlay" onClick={closeEdit}>
+        <div className="card cb-profile-cancel-card cb-profile-transfer-modal" onClick={(e) => e.stopPropagation()}>
+          <div className="cb-profile-cancel-heading">Edit profile</div>
+          <div className="cb-profile-cancel-text">
+            Update the billing email for this account. Your account (login) email is <b className="cb-profile-strong">{accountEmail || "—"}</b> — to change the owner, use Transfer Ownership.
+          </div>
+          <div className="cb-profile-transfer-form">
+            <div>
+              <label className="cb-profile-transfer-label">Account email (login)</label>
+              <input type="email" value={accountEmail} disabled className="cb-profile-transfer-input" />
+            </div>
+            <div>
+              <label className="cb-profile-transfer-label">Billing email</label>
+              <input type="email" value={eBilling} placeholder="billing@example.com"
+                onChange={(e) => { setEBilling(e.target.value); setEError(""); setESaved(false); }}
+                className="cb-profile-transfer-input" />
+              {!eBillingValid && <div className="cb-profile-transfer-err">Enter a valid email address.</div>}
+            </div>
+            {eError && <div className="cb-profile-transfer-err">{eError}</div>}
+            {eSaved && <div className="cb-profile-muted" style={{ fontSize: 11.5, color: "#4ade80" }}>Saved.</div>}
+          </div>
+          <div className="cb-profile-cancel-buttons">
+            <button className="btn btn-secondary btn-sm cb-profile-btn-flex" disabled={eSaving} onClick={closeEdit}>Close</button>
+            <button className="btn btn-primary btn-sm cb-profile-btn-flex" disabled={!eBillingValid || eSaving} onClick={handleSaveProfile}>{eSaving ? "Saving…" : "Save"}</button>
+          </div>
+        </div>
+      </div>
+      }
 
       {/* Cancel-subscription confirmation popup */}
       {confirmCancel &&

@@ -248,9 +248,12 @@
 .cb-widget-wrap .card { border-radius: 10px; }
 
 /* Toggle/Radio compact */
-.cb-widget-wrap .toggle { width: 30px; height: 17px; }
-.cb-widget-wrap .toggle::after { width: 11px; height: 11px; }
-.cb-widget-wrap .toggle.on::after { left: 16px; }
+.cb-widget-wrap .toggle { width: 30px; height: 18px; }
+/* Center the knob vertically with translateY so it can never sit off-center, and
+   inset it 3px from the left. */
+.cb-widget-wrap .toggle::after { width: 12px; height: 12px; top: 50%; left: 3px; transform: translateY(-50%); }
+/* On: 30 (track) − 12 (knob) − 3 (right inset) = 15 → knob stays fully inside. */
+.cb-widget-wrap .toggle.on::after { left: 15px; }
 .cb-widget-wrap .radio { width: 15px; height: 15px; }
 .cb-widget-wrap .radio.on::after { width: 8px; height: 8px; }
 .cb-widget-wrap .checkbox { width: 15px; height: 15px; }
