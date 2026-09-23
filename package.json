@@ -5,11 +5,14 @@
   "type": "module",
   "scripts": {
     "predev": "kill-port 1337",
-    "dev": "vite build && concurrently -k -n vite,webflow -c blue,magenta \"vite build --watch\" \"webflow extension serve\"",
+    "dev": "vite build && concurrently -k -n vite,webflow -c blue,magenta \"vite build --watch\" \"node scripts/serve.mjs\"",
+    "predev:test": "kill-port 1337 && node scripts/testOrigins.mjs add",
+    "dev:test": "vite build --mode test && concurrently -k -n vite,webflow -c blue,magenta \"vite build --watch --mode test\" \"node scripts/serve.mjs\"",
     "dev:vite": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "wf:bundle": "vite build && webflow extension bundle"
+    "wf:bundle": "node scripts/testOrigins.mjs remove && vite build && node scripts/bundle.mjs",
+    "wf:bundle:test": "node scripts/bundleTest.mjs"
   },
   "dependencies": {
     "@jaames/iro": "^5.5.2",

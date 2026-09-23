@@ -5,7 +5,8 @@ import { WPage } from "../../kit/WPage.jsx";
 import { WTopBar } from "../../kit/WTopBar.jsx";
 import { Page } from "../../primitives/Page.jsx";
 import { useNav } from "../../../nav.jsx";
-import { getWebflowSiteContext, getWebflowSiteStatus, getWebflowBilling, cancelWebflowSubscription, requestOwnershipTransfer, updateOwnerProfile, trackWebflowEvent } from "../../../lib/api.js";
+import { getWebflowSiteContext, getWebflowSiteStatus, getWebflowBilling, cancelWebflowSubscription, resumeWebflowSubscription, requestOwnershipTransfer, updateOwnerProfile } from "../../../lib/api.js";
+import { subscriptionHasEnded } from "../../../lib/subscriptionState.js";
 
 // Per-tier plan facts (limits shown on the "Your Current plan" card) keyed by
 // the live plan from status. Not per-account live data — these are the product's
@@ -49,6 +50,14 @@ function WProfile() {
   const [cancelling, setCancelling] = React.useState(false);
   const [cancelMsg, setCancelMsg] = React.useState("");
   const [confirmCancel, setConfirmCancel] = React.useState(false);
+  // Resume = undo a scheduled cancellation on the SAME subscription (no new checkout).
+  const [resuming, setResuming] = React.useState(false);
+  const [confirmResume, setConfirmResume] = React.useState(false);
+  const [resumeError, setResumeError] = React.useState("");
+  // Definite outcome of a failed resume, so the panel stops offering a button that just
+  // failed: 'ended' = Stripe confirms it's over (offer Subscribe now — no running plan left
+  // to double-charge); 'notFound' = billing can't find it (contact support, no buttons).
+  const [resumeOutcome, setResumeOutcome] = React.useState(null);
 
   const loadBilling = React.useCallback(async (sid) => {
     if (!sid) { setLoadingBilling(false); return; }
@@ -75,9 +84,6 @@ function WProfile() {
   // if a transfer was authorized in another session).
   React.useEffect(() => {
     nav?.refreshAccount?.();
-    // profile_settings_viewed — funnel step 11. Fired once on open via the first-party
-    // /api/wf/track endpoint; the worker emits it to PostHog server-side (no client key).
-    trackWebflowEvent("profile_settings_viewed");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -87,6 +93,22 @@ function WProfile() {
   const periodEndDate = billing?.currentPeriodEnd
     ? new Date(billing.currentPeriodEnd).toLocaleDateString("en-US", { month: "short", day: "2-digit", year: "numeric" })
     : null;
+  // `cancelAtPeriodEnd` alone can't answer "is it over?": the worker forces it true for
+  // 'canceled' (so it can't tell "ends on <date>" from "ended on <date>") and never sets
+  // it for 'deleted'. Use the shared rule instead (lib/subscriptionState.js): terminal
+  // status or scheduled cancellation AND a past period end — the same rule as the top bar.
+  // `|| resumeOutcome === "ended"`: Stripe can know the plan is over while our stored
+  // end date is still in the future (a subscription cancelled immediately keeps its old
+  // date). Once a Resume attempt gets that answer, treat the plan as ended everywhere on
+  // this card — otherwise it reads "ends <date>" and offers Upgrade next to an error
+  // saying it has already ended.
+  const periodHasEnded = subscriptionHasEnded(billing) || resumeOutcome === "ended";
+  // Whether this SITE actually has a subscription, from its own billing row. The cancelled
+  // notice, Resume and Cancel used to be gated on `isPaid` (derived from nav.plan), but
+  // nav.plan is the value the server can get wrong — it can report a cancelled row or a
+  // sibling site's plan, and "free" would have hidden the notice and the Resume button
+  // from a customer who really does have a cancelled subscription.
+  const hasSubscription = !!(billing && (billing.stripeSubscriptionId || billing.status));
 
   // Live usage (scans + page views completed this billing month) from the billing API.
   const fmtNum = (n) => (typeof n === "number" ? n.toLocaleString() : "—");
@@ -104,6 +126,36 @@ function WProfile() {
       else setCancelMsg(res?.error || "Couldn't cancel the subscription.");
     } catch (e) { setCancelMsg(e?.message || "Network error cancelling the subscription."); }
     finally { setCancelling(false); }
+  };
+
+  // Undo the scheduled cancellation. On success the cancelled notice disappears (billing
+  // reloads with cancelAtPeriodEnd=false) and the confirmation shows via cancelMsg, which
+  // renders only when !cancelAtPeriodEnd. Failures keep the notice, so they show inside it.
+  const handleResumeSubscription = async () => {
+    if (resuming || !wfSiteId) return;
+    setConfirmResume(false);
+    setResuming(true);
+    setResumeError("");
+    setCancelMsg("");
+    try {
+      const res = await resumeWebflowSubscription(wfSiteId);
+      if (res?.success) {
+        setCancelMsg("Your subscription is active again and will renew as normal.");
+        await loadBilling(wfSiteId);
+        nav?.refreshAccount?.();
+      } else {
+        setResumeError(res?.error || "Couldn't resume the subscription.");
+        // A definite answer hides the Resume button; anything else stays retryable.
+        if (res?.ended) {
+          setResumeOutcome("ended");
+          // The worker has just reconciled D1 with Stripe, so re-read it: the card then
+          // shows the real end date instead of the stale future one.
+          await loadBilling(wfSiteId);
+          nav?.refreshAccount?.();
+        } else if (res?.notFound) setResumeOutcome("notFound");
+      }
+    } catch (e) { setResumeError(e?.message || "Network error resuming the subscription."); }
+    finally { setResuming(false); }
   };
 
   // ── Transfer ownership ─────────────────────────────────────────────────────
@@ -145,7 +197,9 @@ function WProfile() {
     setTSaving(true);
     try {
       const res = await requestOwnershipTransfer({ newEmail: tNewEmail.trim().toLowerCase(), newName: tNewName.trim() });
-      if (res?.success) { setTSentTo(res.sentTo || accountEmail); if (res.authorizeLink) setTDevLink(res.authorizeLink); }
+      // The authorize link is delivered to the current owner by email; never surface it in
+      // the production UI (that would let the initiator self-authorize). Dev-only convenience.
+      if (res?.success) { setTSentTo(res.sentTo || accountEmail); if (import.meta.env.DEV && res.authorizeLink) setTDevLink(res.authorizeLink); }
       else setTError(res?.error || "Failed to start ownership transfer.");
     } catch (e) {
       setTError(e?.message || "Failed to start ownership transfer.");
@@ -201,7 +255,7 @@ function WProfile() {
       {/* <WMainTabs active="" left /> */}
       <div className="cb-profile-body">
         <div className="cb-profile-header">
-          <div className="cb-profile-title">Profile Settings</div>
+          <div className="cb-profile-title">Profile settings</div>
           <div className="cb-profile-header-actions">
             <button className="btn btn-dark btn-sm" onClick={nav ? () => nav.setProfileOpen(false) : undefined}>← Back</button>
           </div>
@@ -210,21 +264,36 @@ function WProfile() {
         {/* Account owner */}
         <div className="card cb-profile-owner-card">
           <div>
-            <div className="cb-profile-owner-label">Account Owner</div>
+            <div className="cb-profile-owner-label">Account owner</div>
             <div className="cb-profile-owner-email">{accountEmail || "—"}</div>
           </div>
           <div className="cb-profile-header-actions">
             {hasPlan &&
-              <button className="btn btn-primary btn-sm" onClick={() => { resetTransfer(); setTransferOpen(true); }}>Transfer Ownership</button>
+              <button className="btn btn-primary btn-sm" onClick={() => { resetTransfer(); setTransferOpen(true); }}>Transfer ownership</button>
             }
           </div>
         </div>
 
-        {/* Current plan — hidden until a plan is taken (no "Free" fallback card) */}
-        {hasPlan &&
+        {/* Current plan — hidden until a plan is taken (no "Free" fallback card), and
+            ALSO until billing has loaded. `billing` starts null, so `periodHasEnded`
+            reads false on the first paint: without this gate a lapsed site rendered the
+            full "Essential" card with its entitlements and then swapped to "No active
+            plan" a moment later. Check first, then render. */}
+        {hasPlan && !loadingBilling &&
         <div className="card cb-profile-plan-card">
+          {/* Once the paid period has lapsed there IS no current plan, so the tier name
+              and its entitlements are not shown. `nav.plan` still reports the old tier
+              (oauth/status falls back to a cancelled row, or to a sibling site's active
+              subscription), which is why this is gated on the period end rather than on
+              the plan value. The card itself stays so the ended notice and Resubscribe
+              button below remain reachable. */}
+          {periodHasEnded ?
           <div className="cb-profile-plan-head">
-            <div className="cb-profile-plan-title">Your Current plan</div>
+            <div className="cb-profile-plan-title">No active plan</div>
+          </div> :
+          <>
+          <div className="cb-profile-plan-head">
+            <div className="cb-profile-plan-title">Your current plan</div>
             <div className="cb-profile-plan-label">{feat.label}</div>
           </div>
           <div className="cb-profile-plan-grid">
@@ -241,18 +310,54 @@ function WProfile() {
               </div>
             )}
           </div>
+          </>
+          }
           <div className="cb-profile-plan-actions">
-            {nextPlan &&
+            {/* Once the paid period has lapsed there is nothing to upgrade FROM, so no
+                button here at all — the "Subscribe now" link in the cancelled notice
+                below is the single call to action. */}
+            {/* Hidden while a cancellation is pending: the only action on this card is then
+                Resume (below). Changing plan is still possible from the Upgrade tab, where it
+                also clears the cancellation — this card just doesn't offer two competing
+                actions for a plan that is on its way out. */}
+            {nextPlan && !periodHasEnded && !cancelAtPeriodEnd &&
               <button className="btn btn-primary btn-sm" onClick={nav ? () => { nav.setProfileOpen(false); nav.setMainTab("upgrade"); } : undefined}>Upgrade to {nextPlan}</button>
             }
-            {isPaid && !loadingBilling && !cancelAtPeriodEnd &&
-              <button className="btn btn-secondary btn-sm" disabled={cancelling} onClick={() => setConfirmCancel(true)}>{cancelling ? "Cancelling…" : "Cancel Subscription"}</button>
+            {/* Nothing to cancel once the subscription is over. */}
+            {hasSubscription && !loadingBilling && !cancelAtPeriodEnd && !periodHasEnded &&
+              <button className="btn btn-secondary btn-sm" disabled={cancelling} onClick={() => setConfirmCancel(true)}>{cancelling ? "Cancelling…" : "Cancel subscription"}</button>
             }
           </div>
-          {isPaid && cancelAtPeriodEnd &&
+          {/* `|| periodHasEnded`: a deleted plan never has cancelAtPeriodEnd set, so it
+              would otherwise get no notice and no Subscribe now link. */}
+          {hasSubscription && (cancelAtPeriodEnd || periodHasEnded) &&
             <div className="cb-profile-cancel-note">
-              <span className="cb-profile-muted">Your subscription is cancelled{periodEndDate ? ` and will end on ${periodEndDate}` : ""}. </span>
-              <a href="#" onClick={(e) => { e.preventDefault(); if (nav) { nav.setProfileOpen(false); nav.setMainTab("upgrade"); } }} className="cb-profile-link">Subscribe Now</a>
+              <span className="cb-profile-muted">
+                {periodHasEnded
+                  ? `Your subscription was cancelled and ended on ${periodEndDate}. `
+                  : `Your subscription is cancelled${periodEndDate ? ` and will end on ${periodEndDate}` : ""}. `}
+              </span>
+              {/* Only once the paid period is over. While it's still running (cancelled via
+                  cancel_at_period_end) the customer has already paid through the end date,
+                  and subscribing starts a SECOND subscription — the worker's double-billing
+                  guard only catches an active plan, not a 'canceled' one — so they'd be
+                  charged again for time they already have. Resume (below) is the way back. */}
+              {/* Also when Resume just confirmed with Stripe that it's over, even if our
+                  stored end date hasn't passed yet — there is no running plan to overlap. */}
+              {(periodHasEnded || resumeOutcome === "ended") &&
+                <a href="#" onClick={(e) => { e.preventDefault(); if (nav) { nav.setProfileOpen(false); nav.setMainTab("upgrade"); } }} className="cb-profile-link">Subscribe now</a>
+              }
+              {/* Still inside the paid period → undo the cancellation on the SAME subscription.
+                  Hidden once a resume attempt got a definite "no", so the panel doesn't
+                  offer an action that just failed next to its own error. */}
+              {!periodHasEnded && !loadingBilling && !resumeOutcome &&
+                <div className="cb-profile-resume-row">
+                  <button className="btn btn-primary btn-sm" disabled={resuming} onClick={() => { setResumeError(""); setConfirmResume(true); }}>
+                    {resuming ? "Resuming…" : "Resume subscription"}
+                  </button>
+                </div>
+              }
+              {resumeError && <div className="cb-profile-resume-error" role="alert">{resumeError}</div>}
             </div>
           }
           {cancelMsg && !cancelAtPeriodEnd &&
@@ -310,7 +415,7 @@ function WProfile() {
               <div className="cb-profile-cancel-text">
                 We sent an authorization link to <b className="cb-profile-strong">{tSentTo}</b>. Open that email and click “Authorize transfer” to complete the change. The link expires shortly for your security.
               </div>
-              {tDevLink &&
+              {import.meta.env.DEV && tDevLink &&
                 <div className="cb-profile-transfer-devlink">
                   Dev link: <a href={tDevLink} target="_blank" rel="noopener noreferrer">{tDevLink}</a>
                 </div>
@@ -335,7 +440,7 @@ function WProfile() {
                 </div>
                 <div>
                   <label className="cb-profile-transfer-label">New owner email</label>
-                  <input type="email" value={tNewEmail} placeholder="jane@example.com"
+                  <input type="email" value={tNewEmail} placeholder="name@yourcompany.com"
                     onChange={(e) => { setTNewEmail(e.target.value); setTEmailErr(""); }}
                     className="cb-profile-transfer-input" />
                   {tEmailErr
@@ -376,7 +481,7 @@ function WProfile() {
             </div>
             <div>
               <label className="cb-profile-transfer-label">Billing email</label>
-              <input type="email" value={eBilling} placeholder="billing@example.com"
+              <input type="email" value={eBilling} placeholder="billing@yourcompany.com"
                 onChange={(e) => { setEBilling(e.target.value); setEError(""); setESaved(false); }}
                 className="cb-profile-transfer-input" />
               {!eBillingValid && <div className="cb-profile-transfer-err">Enter a valid email address.</div>}
@@ -393,6 +498,23 @@ function WProfile() {
       }
 
       {/* Cancel-subscription confirmation popup */}
+      {confirmResume &&
+      <div className="cb-profile-cancel-overlay" onClick={() => setConfirmResume(false)}>
+        <div className="card cb-profile-cancel-card" onClick={(e) => e.stopPropagation()}>
+          <div className="cb-profile-cancel-heading">Resume subscription?</div>
+          <div className="cb-profile-cancel-text">
+            Your <b className="cb-profile-strong">{feat.label}</b> plan will keep renewing as normal
+            {periodEndDate ? <> — your saved card will be charged on <b className="cb-profile-strong">{periodEndDate}</b></> : null}.
+            No new checkout, and nothing is charged today.
+          </div>
+          <div className="cb-profile-cancel-buttons">
+            <button className="btn btn-secondary btn-sm cb-profile-btn-flex" onClick={() => setConfirmResume(false)}>Not now</button>
+            <button className="btn btn-primary btn-sm cb-profile-btn-flex" disabled={resuming} onClick={handleResumeSubscription}>{resuming ? "Resuming…" : "Yes, resume"}</button>
+          </div>
+        </div>
+      </div>
+      }
+
       {confirmCancel &&
       <div className="cb-profile-cancel-overlay" onClick={() => setConfirmCancel(false)}>
         <div className="card cb-profile-cancel-card" onClick={(e) => e.stopPropagation()}>

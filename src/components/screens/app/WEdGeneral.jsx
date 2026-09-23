@@ -1,8 +1,11 @@
 import React from "react";
 import { WEdPreview } from "../../kit/WEdPreview.jsx";
 import { WEdShell } from "../../kit/WEdShell.jsx";
+import { WTemplateSelect } from "../../kit/WTemplateSelect.jsx";
 import { Toggle } from "../../primitives/Toggle.jsx";
 import { useNav } from "../../../nav.jsx";
+import { BOTH_TEMPLATE, DEFAULT_TEMPLATE, TEMPLATE_OPTIONS, canUseBothRegions, canUseTcf as planCanUseTcf } from "../../../lib/planGate.js";
+import { IAB_LANGUAGE_OPTIONS } from "../../../lib/iabTranslations.js";
 import "./WEdGeneral.css";
 
 function WEdGeneral({ cta }) {
@@ -11,9 +14,11 @@ function WEdGeneral({ cta }) {
   const setIab = (fn) => nav && nav.setIab((v) => (typeof fn === "function" ? fn(v) : fn));
   // IAB TCF + Google Consent Mode are included on Essential/Growth — hide the
   // "Upgrade to Pro" upsell for those plans.
-  const planKey = String(nav?.plan || "free").toLowerCase();
-  const canUseTcf = planKey === "essential" || planKey === "growth";
+  const canUseTcf = planCanUseTcf(nav?.entitlementPlan ?? nav?.plan);
   const showProUpsell = !canUseTcf;
+  // CCPA+GDPR (both regimes on one site) is Essential/Growth only. WTemplateSelect
+  // shows the "Upgrade to Pro" popover on hover and refuses the pick.
+  const canUseBoth = canUseBothRegions(nav?.entitlementPlan ?? nav?.plan);
   return (
     <WEdShell active="general" cta={cta}>
       <div className="cb-edgeneral-grid">
@@ -22,11 +27,14 @@ function WEdGeneral({ cta }) {
             <div className="cb-edgeneral-title">
               Consent template
             </div>
-            <select className="select" disabled={iab} value={nav ? nav.template : "CCPA+GDPR"} onChange={(e) => nav && nav.setTemplate(e.target.value)}>
-              <option>CCPA (USA)</option>
-              <option>GDPR (EU)</option>
-              <option>CCPA+GDPR</option>
-            </select>
+            <WTemplateSelect
+              value={nav ? nav.template : DEFAULT_TEMPLATE}
+              onChange={(v) => nav && nav.setTemplate(v)}
+              options={TEMPLATE_OPTIONS}
+              disabled={iab}
+              gatedValue={BOTH_TEMPLATE}
+              gateAllowed={canUseBoth}
+            />
             <div className="cb-edgeneral-hint">
               The selected template (opt-out banner) supports CCA/CPRA
               (California), VCDPA (Virginia), CPA (Colorado), CTDPA
@@ -61,6 +69,28 @@ function WEdGeneral({ cta }) {
               />
             </div>
             </div>
+            {/* IAB banner language. It lives here rather than on the Content tab
+                because that tab is disabled while IAB is on — and because an IAB
+                banner has no editable copy, so the language is the only thing
+                there is to choose. Changing it never touches the GDPR/CCPA copy
+                (that has its own picker on the Content tab); it just selects the
+                string table and the GVL language the preview renders, and the
+                language the live banner is published in. */}
+            <div className="cb-edgeneral-lang" style={{ opacity: (canUseTcf && iab) ? 1 : 0.45, pointerEvents: (canUseTcf && iab) ? "auto" : "none" }} title={(canUseTcf && iab) ? undefined : "Enable IAB TCF v2.3 first"}>
+              <div className="cb-edgeneral-lang-label">
+                Banner language
+              </div>
+              <select
+                className="select"
+                disabled={!(canUseTcf && iab)}
+                value={nav ? nav.iabLang : "en"}
+                onChange={(e) => nav && nav.setIabLang(e.target.value)}
+              >
+                {IAB_LANGUAGE_OPTIONS.map((l) => (
+                  <option key={l.code} value={l.code}>{l.label}</option>
+                ))}
+              </select>
+            </div>
             {showProUpsell &&
             <div className="cb-edgeneral-upsell">
               <div className="cb-edgeneral-upsell-title">
@@ -73,7 +103,7 @@ function WEdGeneral({ cta }) {
                 className="btn btn-primary btn-sm cb-edgeneral-upsell-btn"
                 onClick={nav ? () => nav.setMainTab("upgrade") : undefined}
               >
-                Get Pro Plan
+                Get Pro plan
               </button>
             </div>
             }

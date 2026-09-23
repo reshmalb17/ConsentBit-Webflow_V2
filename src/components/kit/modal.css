@@ -43,3 +43,35 @@
 .cb-modal-btn--stacked { width: 100%; justify-content: center; margin-bottom: 12px; }
 .cb-modal-link { width: 100%; justify-content: center; margin-bottom: 12px; text-decoration: none; }
 .cb-modal-link-ic { margin-left: 5px; flex-shrink: 0; }
+
+/* Verified-domain label in the result modal — flags a *.webflow.io staging result
+   so it's never mistaken for a production verification. */
+.cb-modal-verified-on {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin: 2px 0 10px;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+.cb-modal-verified-on strong { color: var(--text); font-weight: 600; word-break: break-all; }
+.cb-modal-staging-tag {
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  background: #16A34A;
+  color: #FFFFFF;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+.cb-modal-staging-note {
+  margin: -2px 0 12px;
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--text-muted);
+}

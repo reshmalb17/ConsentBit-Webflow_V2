@@ -18,6 +18,7 @@ import {
   preferenceLocalization,
   languageCodes,
 } from "./bannerContent.js";
+import { resolveIabLang } from "./iabTranslations.js";
 
 // ── Helpers (ported verbatim from the reference) ─────────────────────────────
 const WEIGHT_LABEL_TO_NUM = {
@@ -36,6 +37,24 @@ function weightToNumeric(label) {
   const s = String(label).trim();
   if (/^\d+$/.test(s)) return s; // already numeric
   return WEIGHT_LABEL_TO_NUM[s] ?? "700";
+}
+
+// The privacy-policy URL is rendered as an <a href> on the customer's LIVE banner by
+// the runtime loader, so a script-bearing scheme is an injection vector: javascript:/
+// vbscript: execute, data: can smuggle markup, file: reads local paths. Detection
+// strips whitespace/control chars first so obfuscations like " javascript :" or
+// "java\tscript:" can't slip past. Shared so the editor (WEdContent) warns/blocks on
+// the same rule as the user types, and saveBanner refuses to persist a dangerous value.
+export function isDangerousUrl(raw) {
+  const bare = String(raw ?? "").replace(/[\x00-\x20\x7f-\xa0]/g, "").toLowerCase();
+  return /^(javascript|data|vbscript|file):/.test(bare);
+}
+
+// Last gate before the value is persisted as privacyPolicyUrl, cleaning it regardless
+// of source (typed, loaded from the webapp, migrated from the DB). Returns the ORIGINAL
+// string when it's safe, so legitimate URLs are untouched.
+export function sanitizePolicyUrl(raw) {
+  return isDangerousUrl(raw) ? "" : String(raw ?? "");
 }
 
 function positionToDb(selected) {
@@ -82,6 +101,7 @@ export function buildCustomizationPayload(ctx = {}) {
     bannerAnim = "fade-in",
     bannerWeight = "700",
     bannerTextAlign = "left",
+    bannerFontEnabled = false,
     closeBtn = false,
     showReject = true,
     showCustomize = true,
@@ -91,6 +111,7 @@ export function buildCustomizationPayload(ctx = {}) {
     language = "English",
     iab = false,
     gac = false,
+    iabLang = "en",
     template = "",
   } = ctx;
 
@@ -109,7 +130,7 @@ export function buildCustomizationPayload(ctx = {}) {
 
   // Effective privacy URL only when the policy link is shown (matches reference's
   // privacyUrl-presence checks).
-  const privacyUrl = showPolicy ? (bannerContent.policyUrl ?? "") : "";
+  const privacyUrl = showPolicy ? sanitizePolicyUrl(bannerContent.policyUrl) : "";
 
   // Preference-center categories, in this project's order:
   // 0 Strictly Necessary · 1 Marketing · 2 Analytics · 3 Preferences
@@ -168,7 +189,18 @@ export function buildCustomizationPayload(ctx = {}) {
       // config: language-independent layout + toggle settings
       config: {
         bannerLayoutVisual:      posToLayoutVisual(bannerPos),
+        // bannerFontFamily is left exactly as the live build has always sent it —
+        // the runtime feeds it into the preference modal, so it is not ours to
+        // repurpose. The Type tab's Font card writes the two additive keys below
+        // instead. Both are optional as far as the server is concerned: they ride
+        // inside the translations JSON blob, so no column or handler knows about
+        // them, and cdnM.js reads bannerFontMode with bannerFontEnabled as the
+        // fallback — a config missing both keeps today's behaviour.
+        // "default" = the banner injects its own font stack (what it does today),
+        // "inherit" = inject no font, so the host site's typography shows through.
         bannerFontFamily:        "Inter",
+        bannerFontEnabled:       bannerFontEnabled ? "1" : "0",
+        bannerFontMode:          bannerFontEnabled ? "default" : "inherit",
         bannerFontWeight:        weightToNumeric(bannerWeight),
         bannerFontSize:          16,
         bannerTextAlign:         bannerTextAlign ?? "left",
@@ -195,11 +227,30 @@ export function buildCustomizationPayload(ctx = {}) {
         isGoogleAc:                googleAc,
         googleAdditionalConsent:   googleAc,
 
-        languageSelected:          (languageCodes[language] ?? "EN").toLowerCase(),
+        // The banner's language, as a lowercase ISO code. The runtime reads it
+        // from here: cdnM.js picks its built-in section labels from it, and the
+        // TCF manager uses it for GVL.changeLanguage().
+        //
+        // With IAB on this is the IAB banner's own language (the General tab's
+        // "Banner language"), because that banner has no editable copy — the
+        // language IS the copy, and a language picked in the editor has to be
+        // written back here or the live banner stays English no matter what the
+        // preview shows. With IAB off it stays what it has always been: the
+        // Content tab's language, which travels with the copy that tab writes
+        // into the fields below.
+        languageSelected:          iabEnabled
+          ? resolveIabLang(iabLang)
+          : (languageCodes[language] ?? "EN").toLowerCase(),
         title:                     bannerContent.title    ?? locBanner.title,
         acceptAll:                 bannerContent.accept   ?? locBanner.accept,
         description:               bannerContent.message  ?? locBanner.message,
-        ccpaDescription:           ccpaContent.optOutBody ?? ccpaBanner.optOutBody,
+        // The CCPA *initial notice* body. This is NOT the opt-out panel's intro —
+        // that one is `ccpaOptOutPreferenceIntro` below. Mapping optOutBody here (the
+        // old behaviour) put the 481-595 char opt-out paragraph on the notice, where
+        // the runtime truncates it at 320 chars, and made the worker treat the row as
+        // the "Designer mis-map" and fall back to the GDPR `description` — a message
+        // that says 'By clicking "Accept"' on a banner with no Accept button.
+        ccpaDescription:           ccpaContent.message    ?? ccpaBanner.message,
         rejectAll:                 bannerContent.reject   ?? preferenceBanner.buttons.reject,
         customise:                 bannerContent.customize ?? simpleBanner.buttons.preference,
         doNotSell:                 ccpaContent.doNotShare ?? ccpaBanner.doNotShare,

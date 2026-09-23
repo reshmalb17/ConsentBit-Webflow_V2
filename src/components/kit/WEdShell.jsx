@@ -7,7 +7,7 @@ import { WToast } from "./WToast.jsx";
 import { useNav } from "../../nav.jsx";
 import { saveBanner } from "../../lib/saveBanner.js";
 
-function WEdShell({ active = "general", children, showAdvanced = true, cta = "Create Component" }) {
+function WEdShell({ active = "general", children, showAdvanced = true, cta = "Create component" }) {
   const nav = useNav();
   // Active section + click handling come from nav when inside the app; the
   // `active` prop is the fallback for standalone/gallery rendering.
@@ -20,8 +20,16 @@ function WEdShell({ active = "general", children, showAdvanced = true, cta = "Cr
   // (No site publish, no component creation — just persists the settings.)
   const [saving, setSaving] = React.useState(false);
   const [toast, setToast] = React.useState({ message: "", type: "error" });
+  // A site whose paid plan has ENDED cannot save. A free site still can — free is a
+  // plan; "cancelled and expired" is not. Decided 2026-09-23. The worker enforces the
+  // same rule, so this is the visible half, not the enforcement.
+  const planEnded = !!(nav && nav.subEnded);
+  // An ended plan can't save. Rather than a dead greyed-out button, point at the fix:
+  // the same popover the plan-gated template uses, opened on hover, focus or click.
+
   const handleSave = async () => {
     if (saving || !nav || !nav.registered) return; // no plan taken → no save
+    if (planEnded) return;                          // ended plan → read-only
     setToast({ message: "", type: "error" });
     setSaving(true);
     try {
@@ -61,11 +69,12 @@ function WEdShell({ active = "general", children, showAdvanced = true, cta = "Cr
           >Install &amp; verify</button>
           <button
             className="btn btn-primary btn-sm cb-edshell-primary"
-            style={hasPlan ? undefined : { opacity: 0.5, cursor: "not-allowed" }}
-            disabled={saving || !hasPlan}
-            title={hasPlan ? undefined : "Subscribe to a plan first to create your banner"}
+            style={(hasPlan && !planEnded) ? undefined : { opacity: 0.5, cursor: "not-allowed" }}
+            // Plan ended → the button is simply disabled (no message, no popover).
+            disabled={saving || !hasPlan || planEnded}
+            title={!hasPlan ? "Subscribe to a plan first to create your banner" : undefined}
             onClick={handleSave}
-          >{saving ? "Saving…" : (nav && nav.bannerCreated ? "Update Banner" : cta)}</button>
+          >{saving ? "Saving…" : (nav && nav.bannerCreated ? "Update banner" : cta)}</button>
         </>
       } />
       <div className="cb-section-tabs cb-edshell-tabs">

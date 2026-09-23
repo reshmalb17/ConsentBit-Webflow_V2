@@ -53,6 +53,19 @@
   color: var(--text-muted);
 }
 
+/* IAB banner language picker — sits under the Google Consent Mode row, sharing
+   its divider treatment. */
+.cb-edgeneral-lang {
+  border-top: 1px solid var(--border);
+  padding-top: 10px;
+}
+
+.cb-edgeneral-lang-label {
+  font-size: 11.5px;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+}
+
 .cb-edgeneral-upsell {
   margin-top: 12px;
   background: var(--purple-soft);

@@ -1,0 +1,53 @@
+/* Anchored "Upgrade to Pro" popover — sits to the RIGHT of the gated dropdown
+   rather than taking over the screen with a centered modal + scrim.
+   Portaled to document.body and positioned with position:fixed (see WProGate.jsx),
+   so no scrolling/clipping ancestor can cut it off.
+
+   Visuals intentionally mirror the in-card IAB upsell (.cb-edgeneral-upsell in
+   screens/app/WEdGeneral.css) so the two Pro prompts read as one component: same
+   purple-soft fill, purple border, 8px radius, 12px padding, and the same title/body
+   type scale. Values are duplicated rather than shared because that stylesheet is
+   scoped to the General screen and this popover is also used from the Content tab.
+   Keep the two in sync when either changes. */
+
+.cb-progate {
+  position: fixed;
+  z-index: 200;
+  width: 260px;
+  padding: 12px;
+  /* --purple-soft is a translucent tint (rgba(...,0.18) in the dark theme). The
+     in-card upsell can use it directly because it sits on an opaque card; this
+     popover floats over the preview, so the tint alone would let content bleed
+     through. Layer the tint over an opaque --surface base instead: identical result,
+     zero transparency, and still theme-driven rather than a hardcoded hex. */
+  background-color: var(--surface);
+  background-image: linear-gradient(var(--purple-soft), var(--purple-soft));
+  border: 1px solid var(--purple);
+  border-radius: 8px;
+  /* The only deliberate departure from the in-card upsell: this one floats over
+     other content, so it needs a shadow to separate from what's behind it. */
+  box-shadow: 0 12px 32px rgba(8, 6, 20, 0.45);
+  text-align: left;
+}
+
+.cb-progate-title {
+  font-size: 12.5px;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.cb-progate-text {
+  font-size: 10.5px;
+  color: var(--text-muted);
+  line-height: 1.5;
+  margin-bottom: 10px;
+}
+
+.cb-progate-btn {
+  width: 100%;
+  justify-content: center;
+}
+
+.cb-progate-arrow {
+  flex-shrink: 0;
+}

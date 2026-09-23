@@ -18,7 +18,7 @@ import "./WPaymentProcessing.css";
 //   • On success → onPaid({ plan }) (parent closes the popup + updates the UI).
 
 const POLL_INTERVAL_MS = 30000; // 30s between polls
-const MAX_POLLS = 4;            // TESTING: 4 × 30s = 2 minutes (set to 10 for the 5-minute production window)
+const MAX_POLLS = 10;           // 10 × 30s = 5-minute production window
 
 function isPaidPlan(plan) {
   const p = String(plan || "").toLowerCase();
@@ -105,19 +105,34 @@ export function WPaymentProcessing({ siteId, baseline, onPaid, onCancel }) {
     return () => { stoppedRef.current = true; clearTimer(); };
   }, [startCycle]);
 
-  // Cancel does a FINAL backend check before closing — silently, with no UI
-  // change: if the payment landed (e.g. the user paid after the timeout appeared)
-  // we update the plan instead of closing empty-handed. Only if nothing changed
-  // do we actually close.
-  const handleCancel = async () => {
-    clearTimer(); // stop any scheduled poll; keep stoppedRef false so the check runs
-    let paid = false;
-    if (siteId) {
-      try { paid = await checkBackendOnce(); } catch { /* fall through to close */ }
-    }
-    if (paid) return; // onPaid already fired → parent closes + updates the UI
+  // Cancel closes RIGHT AWAY — it must never depend on a network round-trip, or a
+  // slow/hanging worker call makes the button feel dead. Stop polling, mark stopped,
+  // and close synchronously.
+  //
+  // We still do a best-effort final reconcile so a payment that landed just before
+  // the user cancelled isn't lost — but it runs in the BACKGROUND (fire-and-forget)
+  // and is read off refs, so it can't block the close. It reports success straight
+  // to onPaid; the ongoing poll loop already covers the common late-payment case.
+  const handleCancel = () => {
+    clearTimer();
     stoppedRef.current = true;
-    onCancel?.();
+    onCancel?.(); // close immediately
+
+    if (siteId) {
+      getPaymentSubscription(siteId)
+        .then((result) => {
+          const base = baselineRef.current;
+          const changedFromBaseline =
+            !base ||
+            !base.isSubscribed ||
+            result?.plan !== base.plan ||
+            result?.updatedAt !== base.updatedAt;
+          if (result?.isSubscribed && isPaidPlan(result?.plan) && changedFromBaseline) {
+            onPaidRef.current?.({ plan: result.plan, isSubscribed: true });
+          }
+        })
+        .catch(() => { /* cancelled anyway — nothing to do */ });
+    }
   };
 
   const handleRetry = () => { startCycle(); };

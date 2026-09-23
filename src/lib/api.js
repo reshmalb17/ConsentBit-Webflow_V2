@@ -38,25 +38,6 @@ async function parseJson(res) {
 }
 
 /**
- * First-party Webflow telemetry. POST /api/wf/track { event, wfSiteId, properties }.
- * The worker resolves the account owner (distinct_id) from the authenticated identity
- * and emits the event to PostHog SERVER-SIDE — no analytics library ships in the bundle
- * and the extension never calls a third-party analytics host. Best-effort; never throws.
- * Only UI-only events with no other backend call are accepted (e.g. profile_settings_viewed).
- */
-export async function trackWebflowEvent(event, properties = {}) {
-  try {
-    let wfSiteId = "";
-    try { ({ wfSiteId } = await getWebflowSiteContext()); } catch { /* not in Designer */ }
-    await authedFetch(wfUrl(WORKER_BASE_URL, "track"), {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ event, wfSiteId, properties }),
-    });
-  } catch { /* analytics is best-effort */ }
-}
-
-/**
  * Read the Webflow site context from the Designer API: the Webflow site id and
  * the best domain to register. Mirrors the live app's resolution — prefer a
  * non-staging custom domain, fall back to the staging/`.webflow.io` domain.
@@ -166,15 +147,16 @@ export async function getPaymentSubscription(wfSiteId) {
 }
 
 /**
- * Billing for the current Webflow site (authless, siteId-keyed on the payment worker).
- *   GET /api/webflow/billing?siteId=<wfSiteId>
+ * Billing for the current Webflow site. Authenticated via the Webflow ID token
+ * (authedFetch); the backend authorizes the siteId against that token.
+ *   GET /api/wf/billings?siteId=<wfSiteId>
  *   → { success, plan, status, interval, currentPeriodEnd, cancelAtPeriodEnd, stripeSubscriptionId, invoices[] }
  */
 export async function getWebflowBilling(wfSiteId) {
   if (!wfSiteId) return { success: false, plan: "free", invoices: [] };
   let res;
   try {
-    const url = new URL(wfUrl(CHECKOUT_API_BASE, "billing"));
+    const url = new URL(wfUrl(CHECKOUT_API_BASE, "billings"));
     url.searchParams.set("siteId", wfSiteId);
     res = await authedFetch(url.toString(), { method: "GET" });
   } catch (e) {
@@ -185,11 +167,11 @@ export async function getWebflowBilling(wfSiteId) {
 
 /**
  * Switch the current site's subscription between monthly and yearly billing (in place,
- * no new checkout). POST /api/webflow/switch-interval  body { siteId, targetInterval }
+ * no new checkout). POST /api/wf/switch-intervals  body { siteId, targetInterval }
  *   → { success, interval, nextBillingDate }
  */
 export async function switchWebflowInterval(wfSiteId, targetInterval) {
-  const res = await authedFetch(wfUrl(CHECKOUT_API_BASE, "switch-interval"), {
+  const res = await authedFetch(wfUrl(CHECKOUT_API_BASE, "switch-intervals"), {
     method: "POST",
     headers: { "Content-Type": "application/json", "X-Requested-With": "XMLHttpRequest" },
     body: JSON.stringify({ siteId: wfSiteId, targetInterval }),
@@ -197,12 +179,73 @@ export async function switchWebflowInterval(wfSiteId, targetInterval) {
   return parseJson(res);
 }
 
+// ── In-app plan upgrade (tier change) ────────────────────────────────────────
+//
+// Two-step, so the user always sees what they'll be charged BEFORE anything moves:
+//   1. previewWebflowUpgrade() → the prorated amount, no change made.
+//   2. commitWebflowUpgrade()  → applies it and charges the card already on file.
+// Both are authenticated by the Webflow ID token (authedFetch); the worker resolves
+// the account from that token and authorizes the siteId against it.
+// Only for a site that ALREADY has a paid subscription — a free/unsubscribed site
+// has nothing to prorate and must go through the hosted checkout instead.
+
+/**
+ * Preview a tier change. POST /api/wf/upgrade/change-tier/preview
+ *   body { siteId, planId, interval, promotionCodeId? }
+ *   → { success, direction:'upgrade'|'downgrade', currentPlanId, currentInterval,
+ *       planId, interval, isTrialing, amountDueCents, newPlanAmountCents?, currency,
+ *       trialEnd, effectiveAt }
+ * `effectiveAt` is set for downgrades (they take effect at period end, no charge now).
+ */
+export async function previewWebflowUpgrade(wfSiteId, { planId, interval, promotionCodeId } = {}) {
+  const res = await authedFetch(wfUrl(CHECKOUT_API_BASE, "upgrade/change-tier/preview"), {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "X-Requested-With": "XMLHttpRequest" },
+    body: JSON.stringify({ siteId: wfSiteId, planId, interval, ...(promotionCodeId ? { promotionCodeId } : {}) }),
+  });
+  return parseJson(res);
+}
+
+/**
+ * Commit a tier change. POST /api/wf/upgrade/change-tier
+ *   body { siteId, planId, interval, promotionCodeId? }
+ *   → upgrade:   { success, direction:'upgrade', amountPaidCents, currency, invoiceUrl, nextBillingDate }
+ *     downgrade: { success, direction:'downgrade', scheduled:true, effectiveAt }
+ * No paymentMethodId is sent — the saved card is charged, so no card entry (and no
+ * 3-D Secure step) happens inside the Designer panel. If the card fails, the worker
+ * returns success:false with the Stripe message.
+ */
+export async function commitWebflowUpgrade(wfSiteId, { planId, interval, promotionCodeId } = {}) {
+  const res = await authedFetch(wfUrl(CHECKOUT_API_BASE, "upgrade/change-tier"), {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "X-Requested-With": "XMLHttpRequest" },
+    body: JSON.stringify({ siteId: wfSiteId, planId, interval, ...(promotionCodeId ? { promotionCodeId } : {}) }),
+  });
+  return parseJson(res);
+}
+
 /**
  * Cancel the current site's subscription at period end.
- *   POST /api/webflow/cancel-subscription  body { siteId } → { success, cancelAtPeriodEnd }
+ *   POST /api/wf/cancel-subscriptions  body { siteId } → { success, cancelAtPeriodEnd }
  */
 export async function cancelWebflowSubscription(wfSiteId) {
-  const res = await authedFetch(wfUrl(CHECKOUT_API_BASE, "cancel-subscription"), {
+  const res = await authedFetch(wfUrl(CHECKOUT_API_BASE, "cancel-subscriptions"), {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "X-Requested-With": "XMLHttpRequest" },
+    body: JSON.stringify({ siteId: wfSiteId }),
+  });
+  return parseJson(res);
+}
+
+/**
+ * Undo a scheduled cancellation — the same subscription keeps renewing (no new checkout,
+ * same billing date and saved card). POST /api/wf/resume-subscription  body { siteId }
+ *   → { success, cancelAtPeriodEnd:false, status, currentPeriodEnd }
+ *   → 409 { success:false, ended:true, error } when the period is already over (Stripe
+ *     has fully cancelled it), in which case only a new checkout can bring the plan back.
+ */
+export async function resumeWebflowSubscription(wfSiteId) {
+  const res = await authedFetch(wfUrl(CHECKOUT_API_BASE, "resume-subscription"), {
     method: "POST",
     headers: { "Content-Type": "application/json", "X-Requested-With": "XMLHttpRequest" },
     body: JSON.stringify({ siteId: wfSiteId }),
@@ -319,7 +362,10 @@ export async function verifyInstallation() {
     if (result.error && result.success === false) break;
     if (attempt < VERIFY_ATTEMPTS) await new Promise((r) => setTimeout(r, VERIFY_RETRY_MS));
   }
-  return { published: true, ...result };
+  // verifiedUrl is the exact page we checked (prefers the published custom domain,
+  // falling back to staging only when that's all that exists) — surfaced so the
+  // result can label the domain, and flag when it's a *.webflow.io staging URL.
+  return { published: true, verifiedUrl: publicUrl, ...result };
 }
 
 /**

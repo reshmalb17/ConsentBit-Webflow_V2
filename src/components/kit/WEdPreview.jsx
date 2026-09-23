@@ -4,11 +4,13 @@ import { useNav } from "../../nav.jsx";
 import { WIabBanner } from "./WIabBanner.jsx";
 import { simpleBanner, preferenceBanner, ccpaBanner, localization, prefCategories as DEFAULT_CATS } from "../../lib/bannerContent.js";
 import consentLogo from "../../assets/consent_logo.png";
+import { DEFAULT_TEMPLATE } from "../../lib/planGate.js";
+import { resolveFontFamily } from "../../lib/bannerFont.js";
 
 function WEdPreview({ variant = "default" }) {
   const nav = useNav();
   // Consent template decides which region tabs are available in the preview.
-  const template = nav ? nav.template : "CCPA+GDPR";
+  const template = nav ? nav.template : DEFAULT_TEMPLATE;
   const regions = template === "GDPR (EU)" ? ["GDPR"] : template === "CCPA (USA)" ? ["CCPA"] : ["GDPR", "CCPA"];
 
   // Active region is shared (so the Content editor can show CCPA vs GDPR fields).
@@ -30,6 +32,7 @@ function WEdPreview({ variant = "default" }) {
   const isPref = view === "pref";
   const isCCPA = region === "CCPA";
   const iab = nav ? nav.iab : false; // IAB TCF banner overrides GDPR/CCPA
+  const iabLang = (nav && nav.iabLang) || "en"; // IAB banner language (ISO code)
 
   const [openAcc, setOpenAcc] = React.useState(null); // expanded accordion (one at a time)
   const [catOn, setCatOn] = React.useState({});       // GDPR category toggles
@@ -122,8 +125,12 @@ function WEdPreview({ variant = "default" }) {
   // Type tab: font weight + text alignment.
   const bannerWeight = nav ? nav.bannerWeight : "400";
   const bannerTextAlign = nav ? nav.bannerTextAlign : "left";
+  // Type tab "Font" card. Off means the banner injects no font and inherits the
+  // host page's — in the preview that's this editor's own font, the closest
+  // stand-in we have.
+  const bannerFont = resolveFontFamily(nav ? nav.bannerFontEnabled : false);
 
-  const cardBase = { background: colors.bannerBg, borderRadius: 10, padding: 14, boxShadow: "0 14px 30px rgba(0,0,0,0.4)" };
+  const cardBase = { background: colors.bannerBg, borderRadius: 10, padding: 14, boxShadow: "0 14px 30px rgba(0,0,0,0.4)", fontFamily: bannerFont };
   // Reserve clearance on the right so a right-aligned heading doesn't run under
   // the close ✕ (pinned top-right at right:12).
   const titleStyle = { fontSize: 14, fontWeight: bannerWeight, marginBottom: 6, color: colors.headingColor, textAlign: bannerTextAlign, overflowWrap: "break-word", wordBreak: "break-word", paddingRight: bannerTextAlign === "right" ? 22 : 0 };
@@ -142,7 +149,7 @@ function WEdPreview({ variant = "default" }) {
   // Cookie policy link, appended inline to the message (matches the webapp).
   const policyHref = content.policyUrl && !/^https?:\/\//i.test(content.policyUrl) ? "https://" + content.policyUrl : content.policyUrl;
   const policyLink = showPolicy && content.policyUrl ?
-    <> <a href={policyHref} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} style={{ color: colors.btnBg, textDecoration: "underline", fontSize: "inherit", fontWeight: 600, overflowWrap: "anywhere", wordBreak: "break-word" }}>{content.policy || "Privacy Policy"}</a></> :
+    <> <a href={policyHref} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} style={{ color: colors.btnBg, textDecoration: "underline", fontSize: "inherit", fontWeight: 600, overflowWrap: "anywhere", wordBreak: "break-word" }}>{content.policy || "Privacy policy"}</a></> :
     null;
   // Show "Show more" only when the message is longer than the default copy;
   // truncate back to the default length when collapsed.
@@ -193,7 +200,11 @@ function WEdPreview({ variant = "default" }) {
            its zoomed max-height lets "Show more" grow it up over the titlebar and
            out of the frame. This sub-frame keeps it inside the visible area. */
         <div style={{ position: "absolute", top: 28, left: 0, right: 0, bottom: 0, overflow: "hidden" }}>
-          <WIabBanner key={animKey} device={device === "Phone" ? "mobile" : "desktop"} scale={iabZoom} prefScale={iabPrefZoom} alignment={bannerAlign === "right" ? "bottom-right" : "bottom-left"} config={{ isGAC: nav ? nav.gac : false, bannerType: bannerPos, borderRadius: bannerRadius, buttonBorderRadius: bannerBtnRadius, bannerEntranceAnimation: bannerAnim, bannerBg: colors.bannerBg, textColor: colors.textColor, headingColor: colors.headingColor, buttonColor: colors.btnBg, buttonTextColor: colors.btnText, SecButtonColor: colors.prefBtnBg, SecButtonTextColor: colors.prefBtnText, fontWeight: bannerWeight, textAlign: bannerTextAlign }} />
+          {/* `iabLang` is in the key so a language switch remounts the banner: the
+              accordions and the notice's expanded state hold their own state, and
+              leaving them open across a full copy swap shows the preview half in
+              the previous language. */}
+          <WIabBanner key={animKey + "-" + iabLang} lang={iabLang} device={device === "Phone" ? "mobile" : "desktop"} scale={iabZoom} prefScale={iabPrefZoom} alignment={bannerAlign === "right" ? "bottom-right" : "bottom-left"} config={{ isGAC: nav ? nav.gac : false, bannerType: bannerPos, borderRadius: bannerRadius, buttonBorderRadius: bannerBtnRadius, bannerEntranceAnimation: bannerAnim, bannerBg: colors.bannerBg, textColor: colors.textColor, headingColor: colors.headingColor, buttonColor: colors.btnBg, buttonTextColor: colors.btnText, SecButtonColor: colors.prefBtnBg, SecButtonTextColor: colors.prefBtnText, fontWeight: bannerWeight, textAlign: bannerTextAlign }} />
         </div> :
 
         isPref ? (

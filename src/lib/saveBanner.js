@@ -8,7 +8,7 @@
 // the Customize screen, so by the time they save, a Site row exists).
 
 import { getWebflowSiteContext, getWebflowSiteStatus, saveWebappBannerCustomization } from "./api.js";
-import { buildCustomizationPayload } from "./buildCustomizationPayload.js";
+import { buildCustomizationPayload, isDangerousUrl } from "./buildCustomizationPayload.js";
 
 // template (+ IAB) → compliance array. Matches the webapp:
 //   IAB on or "both"  → ['gdpr', 'us']
@@ -30,6 +30,13 @@ function complianceFromTemplate(template, iab = false) {
  * @returns {Promise<object>} the worker response ({ success, ... } or { success:false, error }).
  */
 export async function saveBanner(ctx = {}) {
+  // Refuse to persist a script-bearing privacy-policy URL — it would render as an
+  // <a href> on the live banner. Only matters when the policy link is actually shown.
+  // (buildCustomizationPayload still strips it as a final defense for other sources.)
+  if (ctx.showPolicy && isDangerousUrl(ctx.bannerContent?.policyUrl)) {
+    return { success: false, error: "The privacy-policy URL uses a link type that isn't allowed. Enter an https:// URL." };
+  }
+
   const { wfSiteId } = await getWebflowSiteContext();
   if (!wfSiteId) {
     return { success: false, error: "Couldn't read your Webflow site. Open this inside the Designer." };

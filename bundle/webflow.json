@@ -1,0 +1,14 @@
+{
+  "name": "consentbit-webflow-app",
+  "publicDir": "public",
+  "size": "comfortable",
+  "apiVersion": "2",
+  "dataConnections": [
+    {
+      "url": "https://manager.consentbit.com"
+    },
+    {
+      "url": "https://accounts.consentbit.com"
+    }
+  ]
+}

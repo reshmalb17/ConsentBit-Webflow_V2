@@ -1,69 +1,72 @@
-# ConsentBit — Webflow App Submission Notes (for reviewer)
+# ConsentBit — Submission Notes
 
-ConsentBit adds a GDPR/CCPA cookie-consent banner to a Webflow site and lets the user
-customize it, scan cookies, view consent logs, and manage their plan — all inside the
-Designer panel. Below is how each item from the previous review was resolved.
+## Note for the reviewer (paste as-is)
 
-## Fixes since last review
+UI update only. In the banner editor, selecting the combined GDPR+CCPA consent
+template on a plan that does not include it now shows an "Upgrade to Pro" popup beside
+the dropdown instead of applying the selection. The dropdown also now defaults to
+GDPR.
 
-1. **Raw email in PostHog `identify` → removed.** No analytics library is bundled at all.
-   Events are a single first-party `fetch()` to the capture endpoint. The account email is
-   **SHA-256 hashed** and used only as an opaque `distinct_id`; email/name are never sent.
-   ([src/lib/analytics.js](src/lib/analytics.js))
+No new permissions, OAuth scopes, or outbound origins. No change to the consent banner
+served to site visitors.
 
-2. **Google Fonts (googleapis/gstatic, no SRI, undeclared) → removed.** No external fonts
-   load. UI text uses the system font stack; all icons are **inline SVGs**. No font origins
-   remain in `index.html` or `webflow.json`.
+Contact: web@consentbit.com
 
-3. **Inline styles / strict CSP → moved to static CSS.** UI styling lives in static CSS
-   classes ([src/styles/](src/styles/) + per-component `.css`). The only remaining inline
-   styles are **dynamic runtime values** (the user's chosen banner colors/fonts rendered in
-   the live preview), which cannot be static classes.
+---
 
-4. **Auto `app_opened` telemetry on load → deferred.** `app_opened` fires only on the
-   **first explicit user interaction** (pointer/key), never automatically on load.
+## What changed in this version
 
-5. **Checkout hidden-form DOM injection → removed.** No hidden form / `document.body`
-   append. Checkout opens on a click-gated navigation carrying a **short-lived opaque
-   token** (`?t=`); the server exchanges it into a same-origin cookie and redirects to a
-   clean URL. No PII or params in any URL.
+**"Upgrade to Pro" popup on the consent template.** The combined "CCPA+GDPR" template
+runs both regimes on one site and is included on the Essential and Growth plans.
+Selecting it on a lower plan is now refused: the dropdown returns to its previous
+value and a small "Upgrade to Pro" card appears beside it, explaining the requirement
+with a button to the in-app Upgrade tab.
 
-6. **Heavy PostHog modules (autocapture/session-recording/heatmaps) → gone.** Removing the
-   library dropped all of that code from the bundle (bundle size reduced accordingly).
+The option stays listed and readable — it is not hidden or greyed out — so the user
+can see what the higher plan includes. The card is a positioned popover next to the
+dropdown rather than a full-screen dialog, so the user keeps their place in the
+editor, and it matches the existing IAB TCF upsell already shown on the same screen.
 
-7. **Hardcoded client-ID install snippet → per-site + placeholder.** The production install
-   screen generates the script URL **per site** from the API
-   (`https://manager.consentbit.com/consentbit/<siteId>/script.js`). No real tenant ID is
-   hardcoded; any illustrative snippet uses a non-functional `YOUR_SITE_ID` placeholder.
+The same dropdown and behaviour appear in two places: **General → Consent template**
+and **Content → Localization**.
 
-8. **Competitor `cdn-cookieyes` demo snippet → removed.** No third-party provider strings
-   remain anywhere in the source.
+**Consent-template default.** The dropdown started on "CCPA+GDPR" for every new site.
+It now starts on "GDPR (EU)". Sites with a template already saved are unaffected —
+their saved value is loaded over the default, so nothing changes for an existing
+install.
 
-9. **PostHog public key → treated as public.** It is a publishable project key; nothing
-   secret depends on it.
+## Outbound origins
 
-## How the banner is installed (no API script injection)
-The app does **not** auto-inject scripts. The user **manually copies one `<script>` tag**
-into their site's Custom Code → `<head>` and publishes; the app then verifies it is live by
-fetching the published page. No `document.createElement('script')` runtime injection.
+Unchanged from the previous submission.
 
-## Outbound origins (declared in `webflow.json` → `dataConnections`)
-| Origin | Purpose |
+| Origin | Use |
 |---|---|
-| `https://manager.consentbit.com` | Backend API (Cloudflare Worker): auth, billing, scans, banner config, publish, verify. Also serves the per-site banner script the user installs (`/consentbit/<siteId>/script.js`, loaded on the user's own site, not the panel). Holds all secrets. |
-| `https://accounts.consentbit.com` | Hosted checkout page (paid plans). |
-| `https://us.i.posthog.com` | Product analytics (privacy-hardened, see item 1/4/6/9). |
+| `manager.consentbit.com` | Worker API — OAuth status, banner config, scans, billing, plan changes |
+| `accounts.consentbit.com` | Hosted checkout page |
+| `www.consentbit.com` | Privacy-policy link on the first screen |
 
-## OAuth scopes
-- `sites:read` — read domains / publish state to guide install & verify.
-- `sites:write` — publish the site from the "Publish" button.
-- `authorized_user:read` — read the authorizing user's email to label the account.
+## Review findings
 
-The OAuth token is exchanged and stored **server-side** (our worker); it is never exposed
-to the client or persisted in web storage.
+- No new permissions or OAuth scopes; the manifest is unchanged.
+- No new network destinations — the upsell button navigates to the existing in-app
+  Upgrade tab, it does not open an external page.
+- The popup renders through a React portal into `document.body`. It contains static
+  text and one in-app button; no HTML is injected and no user input is rendered into
+  it.
+- No `createElement("script"|"form"|"textarea")`, no `execCommand`, no `eval`.
+- No external fonts or third-party scripts; the arrow icon is an inline SVG.
+- No change to the consent banner delivered to end users.
 
-## How to review
-Open the app in the Designer on a test site → **Authorize** → choose **Free** (or start a
-paid trial) → customize the banner → copy the snippet into `<head>` → **Publish** → **Verify**.
+## How to verify
+
+Open the app in the Designer on a test site on the Free or Basic plan, then go to
+**General → Consent template**. It reads "GDPR (EU)". Open the dropdown and choose
+"CCPA+GDPR": the dropdown returns to "GDPR (EU)" and the "Upgrade to Pro" popup
+appears to the right of it. **Get Pro Plan** switches to the Upgrade tab. Clicking
+anywhere else, pressing Escape, or picking a different template dismisses it.
+
+The same behaviour appears under **Content → Localization**.
+
+On an Essential or Growth site, "CCPA+GDPR" is selected normally and no popup appears.
 
 Contact: web@consentbit.com

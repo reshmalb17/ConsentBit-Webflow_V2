@@ -20,6 +20,50 @@
   padding: 14px;
 }
 
+/* ── Font card ─────────────────────────────────────────────────────────────── */
+.cb-edtype-font-card {
+  margin-bottom: 12px;
+}
+
+.cb-edtype-font-title {
+  font-weight: 600;
+  font-size: 12.5px;
+}
+
+.cb-edtype-font-opts {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+
+.cb-edtype-font-opt {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  cursor: pointer;
+  font-size: 12.5px;
+}
+
+/* The box sits on the first text line, not centred against the hint below it. */
+.cb-edtype-font-opt .checkbox {
+  margin-top: 1px;
+}
+
+.cb-edtype-font-opt-label {
+  display: block;
+}
+
+.cb-edtype-font-opt-hint {
+  display: block;
+  font-size: 11px;
+  color: var(--text-muted);
+  line-height: 1.5;
+  margin-top: 2px;
+}
+
 .cb-edtype-label {
   margin-bottom: 6px;
 }

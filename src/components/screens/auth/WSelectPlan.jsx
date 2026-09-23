@@ -3,7 +3,7 @@ import "./WSelectPlan.css";
 import { WAuthShell } from "../../kit/WAuthShell.jsx";
 import { Page } from "../../primitives/Page.jsx";
 import { WToast } from "../../kit/WToast.jsx";
-import { getWebflowSiteContext, getWebflowSiteStatus, registerWebflowFree, trackWebflowEvent } from "../../../lib/api.js";
+import { getWebflowSiteContext, getWebflowSiteStatus, registerWebflowFree } from "../../../lib/api.js";
 import { startCheckout } from "../../../lib/webflowAuth.js";
 import { useNav } from "../../../nav.jsx";
 
@@ -24,13 +24,14 @@ function WSelectPlan({ freeDisabled = false, onSelectPlan, onFreeRegistered, onF
   const priceSuffix = billing === "yearly" ? " /mo billed yearly" : " /month";
 
   const rows = [
-  { label: "No of Domains", vals: ["01", "01", "01", "01"] },
-  { label: "No of Scans", vals: ["100", "750", "5000 scans", "100,000 pages views/m"] },
-  { label: "No of Page views", vals: [
-    "PAID",
+  { label: "No. of domains", vals: ["01", "01", "01", "01"] },
+  { label: "No. of scans", vals: ["100 scans", "750 scans", "5000 scans", "10000 scans"] },
+  { label: "No. of page views", vals: [
+    "7500 page views/m",
     "100,000 page views/m",
-    <><div>500,000 page views/m</div><div className="cb-selplan-pageview-note">+ $0.05 / additional 1000 page views</div></>,
-    <><div>2 Million page views/m</div><div className="cb-selplan-pageview-note">+ $0.05 / additional 1000 page views</div></>]
+    <><div>500,000 page views/m</div></>,
+    <><div>2 Million page views/m</div></>
+    ]
   },
   { label: "IAB / TCF", vals: ["NIL", "NIL", "Yes", "Yes"] },
   { label: "Compliance", vals: ["GDPR/CCPA", "GDPR/CCPA", "GDPR+CCPA", "GDPR+CCPA"] }];
@@ -87,7 +88,7 @@ function WSelectPlan({ freeDisabled = false, onSelectPlan, onFreeRegistered, onF
       const email = await resolveEmail(wfSiteId);
       // Use the read-only checkout-plan page (same as the upgrade flow) — the plan +
       // interval are already chosen here in the plugin, so both flows share one page.
-      await startCheckout({ plan, interval: billing, email, dest: "checkout-plan" });
+      await startCheckout({ plan, interval: billing, email });
       // Stripe checkout opened in a new tab — show the payment-processing popup
       // here, which polls until the subscription lands then routes to install.
       if (nav?.startPaymentFlow) await nav.startPaymentFlow();
@@ -99,7 +100,7 @@ function WSelectPlan({ freeDisabled = false, onSelectPlan, onFreeRegistered, onF
   };
 
   return (
-    <WAuthShell step={2} topAlign noScroll title="Choose your plan">
+    <WAuthShell step={2} topAlign noScroll wide title="Choose your plan">
       <div className="cb-selplan-toolbar">
         <div className="cb-selplan-billing-toggle">
           <button
@@ -117,9 +118,6 @@ function WSelectPlan({ freeDisabled = false, onSelectPlan, onFreeRegistered, onF
           href="#"
           onClick={(e) => {
             e.preventDefault();
-            // plan_selected (Option B — Skip clicked): funnel step 3. Sent via the
-            // first-party /track endpoint; the worker emits it to PostHog server-side.
-            trackWebflowEvent("plan_selected", { plan_tier: "skipped", billing_cycle: null, plan_price: 0 });
             if (onSkip) onSkip();
           }}
           className="cb-selplan-skip"
