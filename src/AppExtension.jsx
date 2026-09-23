@@ -21,8 +21,14 @@ import { WProfile } from "./components/screens/profile/WProfile.jsx";
 import { WNotificationsPanel } from "./components/kit/WNotificationsPanel.jsx";
 import { WLoading } from "./components/screens/modals/WLoading.jsx";
 import { WPaymentProcessing } from "./components/screens/modals/WPaymentProcessing.jsx";
-import { getWebflowSiteContext, getWebflowSiteStatus, getPaymentSubscription, getBannerCustomization } from "./lib/api.js";
+import { getWebflowSiteContext, getWebflowSiteStatus, getPaymentSubscription, getBannerCustomization, getWebflowBilling } from "./lib/api.js";
+
 import { mapCustomizationToState } from "./lib/loadCustomization.js";
+import { DEFAULT_TEMPLATE, BOTH_TEMPLATE, canUseBothRegions, canUseTcf } from "./lib/planGate.js";
+// `status.plan` cannot tell whether the plan has lapsed: oauth/status falls back to a
+// cancelled subscription row, then to a sibling site's active one, so a lapsed site
+// still reports its old tier. The shared rule reads this site's own billing row.
+import { subscriptionHasEnded } from "./lib/subscriptionState.js";
 
 // What the Webflow Designer Extension panel renders: the main app, opening on
 // the Cookie Banner editor (General tab). The top tab bar (WMainTabs) and the
@@ -34,9 +40,14 @@ export default function AppExtension() {
   const [subTab, setSubTab] = React.useState("general");  // general | content | layout | colors | type
   const [profileOpen, setProfileOpen] = React.useState(false); // avatar -> Profile Settings
   const [notifOpen, setNotifOpen] = React.useState(false);     // bell -> Notifications
-  const [template, setTemplate] = React.useState("CCPA+GDPR"); // consent template -> preview regions
+  const [template, setTemplate] = React.useState(DEFAULT_TEMPLATE); // consent template -> preview regions
   const [iab, setIab] = React.useState(false);                 // IAB TCF -> preview shows IAB banner
   const [gac, setGac] = React.useState(false);                 // Google Additional Consent -> Vendors > Google Partners
+  // Language of the IAB/TCF banner, as an ISO code (see IAB_LANGUAGE_OPTIONS).
+  // Deliberately separate from `language` below: that one is the GDPR/CCPA Content
+  // editor's language and switching it rewrites editable copy, whereas the IAB
+  // banner has no editable copy — its language only selects a string table.
+  const [iabLang, setIabLang] = React.useState("en");
   const [bannerPos, setBannerPos] = React.useState("box");     // Layout: box | banner | popup
   const [bannerAlign, setBannerAlign] = React.useState("left"); // Layout: left | right (box only)
   const [bannerRadius, setBannerRadius] = React.useState(12);   // Layout: border radius (max 25)
@@ -76,6 +87,7 @@ export default function AppExtension() {
   const [floatPos, setFloatPos] = React.useState("left");        // Content: floating button position (left | right)
   const [bannerWeight, setBannerWeight] = React.useState("700");  // Type: font weight (heading + text)
   const [bannerTextAlign, setBannerTextAlign] = React.useState("left"); // Type: left | center | right
+  const [bannerFontEnabled, setBannerFontEnabled] = React.useState(false); // Type: checked = the banner's own injected font, unchecked (default) = inherit the site's
   const [bannerColors, setBannerColors] = React.useState({       // Colors tab -> preview banners
     bannerBg: "#FFFFFF",
     textColor: "#374151",
@@ -97,6 +109,10 @@ export default function AppExtension() {
   const [bannerCreated, setBannerCreated] = React.useState(false); // a banner was already saved → CTA shows "Update Banner"
   const [plan, setPlan] = React.useState(null); // current plan — null until resolved (blank in the top bar); then 'free' or a paid tier
   const [registered, setRegistered] = React.useState(false); // has the site taken a plan (free or paid)? Gates Install & verify.
+  const [subEnded, setSubEnded] = React.useState(false); // paid period lapsed — top bar offers Subscribe instead of a plan pill
+  // False until the billing check answers. The top bar waits on it rather than
+  // painting "Plan <tier>" and swapping it for Subscribe a moment later.
+  const [subEndedKnown, setSubEndedKnown] = React.useState(false);
   const [accountEmail, setAccountEmail] = React.useState(""); // account owner email (from status)
   // Payment-processing popup state. Opened by startPaymentFlow() when a paid
   // checkout link is clicked; it self-polls while open (see WPaymentProcessing).
@@ -125,6 +141,17 @@ export default function AppExtension() {
         setAccountEmail(status.email ?? "");
         // Disable the free plan upfront if this account already used its free site.
         if (status.freeUsed) setFreeUsed(true);
+        // Whether the paid period has lapsed — non-blocking, the screen never waits on it.
+        if (status.registered) {
+          getWebflowBilling(wfSiteId)
+            .then((b) => { if (!cancelled) setSubEnded(subscriptionHasEnded(b)); })
+            .catch(() => { /* keep the current value */ })
+            .finally(() => { if (!cancelled) setSubEndedKnown(true); });
+        } else {
+          // Unregistered sites never fetch billing, so mark the check answered or the
+          // top bar would wait on a call that is never made.
+          setSubEndedKnown(true);
+        }
         if (!status.authorized) setScreen("landing");
         else if (!status.registered) setScreen("select-plan");
         else setScreen("app");
@@ -150,6 +177,7 @@ export default function AppExtension() {
             if (m.bannerAnim) setBannerAnim(m.bannerAnim);
             if (m.bannerWeight) setBannerWeight(m.bannerWeight);
             if (m.bannerTextAlign) setBannerTextAlign(m.bannerTextAlign);
+            if (m.bannerFontEnabled !== undefined) setBannerFontEnabled(m.bannerFontEnabled);
             if (m.closeBtn !== undefined) setCloseBtn(m.closeBtn);
             if (m.showReject !== undefined) setShowReject(m.showReject);
             if (m.showCustomize !== undefined) setShowCustomize(m.showCustomize);
@@ -160,6 +188,7 @@ export default function AppExtension() {
             if (m.template) setTemplate(m.template);
             if (m.iab !== undefined) setIab(m.iab);
             if (m.gac !== undefined) setGac(m.gac);
+            if (m.iabLang) setIabLang(m.iabLang);
           }
         } catch { /* keep editor defaults */ }
       } catch {
@@ -263,9 +292,39 @@ export default function AppExtension() {
         onSkip={() => setScreen("app")}
       />
     ) : (
-      <WLanding onAuthorize={() => setScreen("select-plan")} />
+      // Called only once the worker confirms the site is authorized (WLanding polls for
+      // it after the consent tab). Route on the REAL status — an already-registered site
+      // re-authorizing must land back in the app, not on the plan picker.
+      <WLanding onAuthorize={(status) => {
+        if (status) {
+          setBannerCreated(!!status.bannerCreated);
+          setRegistered(!!status.registered);
+          setAccountEmail(status.email ?? "");
+          setPlan(status.registered ? (status.plan ?? "Free") : null);
+          if (status.freeUsed) setFreeUsed(true);
+        }
+        setScreen(status?.registered ? "app" : "select-plan");
+      }} />
     );
   //-------------------------------------------------------------------------
+
+  // CCPA+GDPR (both regimes) and IAB/TCF are Essential/Growth only. The dropdowns gate
+  // PICKING them, but a site that already had them kept showing — and saving — them after
+  // a downgrade, because nothing re-checked the saved value when the plan changed. Clamp
+  // on every plan change so the editor, the preview and the saved payload agree with the
+  // plan. The worker enforces the same rule (cdnM.js at serve time), so this is the UI
+  // half of one decision, not a second source of truth.
+  // What the site is ENTITLED to right now. Not `plan`: for a site whose subscription
+  // has ended, oauth/status still reports the old tier (it falls back to a cancelled row,
+  // or to a sibling site's plan), so gating on `plan` left CCPA+GDPR and IAB selectable
+  // — and unclamped — on a site with no live plan at all.
+  const entitlementPlan = subEnded ? "free" : plan;
+
+  React.useEffect(() => {
+    if (!plan) return;                       // not resolved yet — don't touch anything
+    if (!canUseBothRegions(entitlementPlan)) setTemplate((t) => (t === BOTH_TEMPLATE ? DEFAULT_TEMPLATE : t));
+    if (!canUseTcf(entitlementPlan)) { setIab(false); setGac(false); }
+  }, [plan, entitlementPlan]);
 
   React.useEffect(() => {
     // Size the Designer panel to the design's 800×560 (Designer-only API —
@@ -294,6 +353,9 @@ export default function AppExtension() {
       setRegistered(!!status.registered);
       setAccountEmail(status.email ?? "");
       if (status.freeUsed) setFreeUsed(true);
+      // Re-check the paid period too, so resubscribing clears the Subscribe button
+      // without a relaunch (this also runs on tab focus).
+      try { setSubEnded(subscriptionHasEnded(await getWebflowBilling(wfSiteId))); } catch { /* keep */ } finally { setSubEndedKnown(true); }
     } catch { /* ignore — keep current values */ }
   }, []);
 
@@ -318,7 +380,7 @@ export default function AppExtension() {
   }, [refreshAccount]);
 
   const app = (
-    <NavContext.Provider value={{ mainTab, setMainTab, subTab, setSubTab, profileOpen, setProfileOpen, notifOpen, setNotifOpen, template, setTemplate, iab, setIab, gac, setGac, bannerPos, setBannerPos, bannerAlign, setBannerAlign, bannerRadius, setBannerRadius, bannerAnim, setBannerAnim, bannerBtnRadius, setBannerBtnRadius, bannerColors, setBannerColors, bannerWeight, setBannerWeight, bannerTextAlign, setBannerTextAlign, bannerContent, setBannerContent, prefContent, setPrefContent, closeBtn, setCloseBtn, language, setLanguage, showReject, setShowReject, showCustomize, setShowCustomize, showPolicy, setShowPolicy, floating, setFloating, floatPos, setFloatPos, activeRegion, setActiveRegion, ccpaContent, setCcpaContent, bannerCreated, setBannerCreated, plan, setPlan, registered, setRegistered, startPaymentFlow, accountEmail, refreshAccount, goToInstallVerify, goToApp, installVerifyFromApp }}>
+    <NavContext.Provider value={{ mainTab, setMainTab, subTab, setSubTab, profileOpen, setProfileOpen, notifOpen, setNotifOpen, template, setTemplate, iab, setIab, gac, setGac, iabLang, setIabLang, bannerPos, setBannerPos, bannerAlign, setBannerAlign, bannerRadius, setBannerRadius, bannerAnim, setBannerAnim, bannerBtnRadius, setBannerBtnRadius, bannerColors, setBannerColors, bannerWeight, setBannerWeight, bannerTextAlign, setBannerTextAlign, bannerFontEnabled, setBannerFontEnabled,bannerContent, setBannerContent, prefContent, setPrefContent, closeBtn, setCloseBtn, language, setLanguage, showReject, setShowReject, showCustomize, setShowCustomize, showPolicy, setShowPolicy, floating, setFloating, floatPos, setFloatPos, activeRegion, setActiveRegion, ccpaContent, setCcpaContent, bannerCreated, setBannerCreated, plan, setPlan, entitlementPlan, subEnded, setSubEnded, subEndedKnown, registered, setRegistered, startPaymentFlow, accountEmail, refreshAccount, goToInstallVerify, goToApp, installVerifyFromApp }}>
       <div style={{ position: "relative", height: "100%" }}>
         {current}
         {paymentFlow.open &&

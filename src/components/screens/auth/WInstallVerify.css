@@ -7,6 +7,12 @@
 .cb-install-head-title { font-weight: 600; font-size: 13px; }
 .cb-install-copy-btn { display: inline-flex; align-items: center; gap: 6px; }
 .cb-install-code-block { background: var(--bg-2); border: 1px solid var(--border); border-radius: 8px; padding: 10px; font-size: 9.5px; line-height: 1.5; word-break: break-all; }
+/* Smoothly reveal the real snippet once the script URL resolves — fade + a small
+   rise. Scoped with :not(.cb-install-code-loading) so only the code animates,
+   not the loading placeholder that shares the base class. */
+.cb-install-code-block:not(.cb-install-code-loading) { animation: cb-install-code-reveal 0.35s ease-out both; }
+@keyframes cb-install-code-reveal { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+@media (prefers-reduced-motion: reduce) { .cb-install-code-block:not(.cb-install-code-loading) { animation: none; } }
 .cb-install-code-comment { color: #6E6890; }
 .cb-install-code-tag { color: #FF9F45; }
 .cb-install-code-attr { color: #5AE497; }
@@ -27,3 +33,35 @@
 .cb-install-domain-opt-title { font-size: 12.5px; font-weight: 600; }
 .cb-install-domain-opt-sub { font-size: 11px; color: var(--text-muted); word-break: break-all; }
 .cb-install-domain-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 14px; }
+
+/* Loading state for the install-code block — shown until the script URL resolves,
+   instead of a snippet with a broken src="loading…". */
+.cb-install-code-loading {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--text-muted);
+  font-style: normal;
+}
+.cb-install-code-spinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--border);
+  border-top-color: var(--purple);
+  border-radius: 50%;
+  flex-shrink: 0;
+  animation: cb-install-spin 0.7s linear infinite;
+}
+@keyframes cb-install-spin { to { transform: rotate(360deg); } }
+/* Spinner inside the Publish button — white, on the purple primary button. */
+.cb-install-btn-spinner {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  margin-right: 8px;
+  vertical-align: -2px;
+  border: 2px solid rgba(255, 255, 255, 0.4);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: cb-install-spin 0.7s linear infinite;
+}

@@ -10,9 +10,9 @@ function WMainTabs({ active, right, left }) {
   const current = nav ? nav.mainTab : active;
 
   const tabs = [
-  { id: "cookie", label: "Cookie Banner" },
+  { id: "cookie", label: "Cookie banner" },
   { id: "scan", label: "Scan" },
-  { id: "logs", label: "Consent Logs" },
+  { id: "logs", label: "Consent logs" },
   { id: "upgrade", label: "Upgrade" }];
 
   return (

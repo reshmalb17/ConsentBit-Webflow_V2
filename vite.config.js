@@ -18,5 +18,11 @@ export default defineConfig({
   build: {
     outDir: "public",
     emptyOutDir: !isWatch,
+    // Inline assets up to 12 kB as data URIs. The default (4 kB) leaves logo.svg
+    // (8.66 kB) as a separate file, so the launch splash could not paint its logo
+    // until a SECOND request completed — after the 367 kB bundle had already
+    // downloaded and executed. Inlining removes that round-trip entirely.
+    // The PNGs (34–47 kB) stay as files; they are below-the-fold help images.
+    assetsInlineLimit: 12288,
   },
 });

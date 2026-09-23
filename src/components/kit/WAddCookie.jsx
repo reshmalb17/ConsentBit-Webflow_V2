@@ -1,5 +1,5 @@
 import React from "react";
-import { cookieCategories } from "../../lib/bannerContent.js";
+import { scanCookieCategories } from "../../lib/bannerContent.js";
 import { addCustomCookieRule } from "../../lib/api.js";
 import { WToast } from "./WToast.jsx";
 import "./modal.css";
@@ -8,12 +8,12 @@ import "./WAddCookie.css";
 // Add Cookie modal — matches the project's dark theme + purple accents
 // (mirrors WScheduleScan). On save it creates a DRAFT rule on the backend
 // (published=0) via /api/custom-cookie-rules, then the parent reloads the list.
-function WAddCookie({ siteId, domain = "testsite123.com", onClose, onSaved }) {
+function WAddCookie({ siteId, domain = "", onClose, onSaved }) {
   const [form, setForm] = React.useState({
     name: "",
     provider: "",
     duration: "",
-    category: cookieCategories[0].name,
+    category: scanCookieCategories[0].name,
     scriptUrlPattern: "",
     description: "",
   });
@@ -57,7 +57,7 @@ function WAddCookie({ siteId, domain = "testsite123.com", onClose, onSaved }) {
   return (
     <div onClick={onClose} className="cb-modal-overlay cb-modal-overlay--soft cb-addck-overlay">
       <div onClick={(e) => e.stopPropagation()} className="cb-addck-card">
-        <div className="cb-addck-title">Add Cookie</div>
+        <div className="cb-addck-title">Add cookie</div>
 
         <WToast message={error} type="error" onClose={() => setError(null)} />
 
@@ -68,7 +68,7 @@ function WAddCookie({ siteId, domain = "testsite123.com", onClose, onSaved }) {
           </div>
           <div>
             <div className="field-label cb-addck-label">Domain</div>
-            <input className="input cb-addck-readonly" value={domain} readOnly />
+            <input className="input cb-addck-readonly" value={domain} readOnly placeholder="Detected after you publish your site" />
           </div>
           <div>
             <div className="field-label cb-addck-label">Provider {optional}</div>
@@ -81,13 +81,13 @@ function WAddCookie({ siteId, domain = "testsite123.com", onClose, onSaved }) {
           <div>
             <div className="field-label cb-addck-label">Category</div>
             <select className="select" value={form.category} onChange={(e) => set("category", e.target.value)}>
-              {cookieCategories.map((c) => <option key={c.id} value={c.name}>{c.name}</option>)}
+              {scanCookieCategories.map((c) => <option key={c.id} value={c.name}>{c.name}</option>)}
             </select>
           </div>
         </div>
 
         <div className="cb-addck-mt">
-          <div className="field-label cb-addck-label">Script URL Pattern <span className="cb-addck-optional">(optional — match scripts that set this cookie)</span></div>
+          <div className="field-label cb-addck-label">Script URL pattern <span className="cb-addck-optional">(optional — match scripts that set this cookie)</span></div>
           <input className="input" placeholder="e.g. google-analytics.com/analytics.js" value={form.scriptUrlPattern} onChange={(e) => set("scriptUrlPattern", e.target.value)} />
         </div>
 

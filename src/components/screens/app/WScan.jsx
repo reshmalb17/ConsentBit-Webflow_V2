@@ -3,7 +3,7 @@ import "./WScan.css";
 import { WMainTabs } from "../../kit/WMainTabs.jsx";
 import { WPage } from "../../kit/WPage.jsx";
 import { WTopBar } from "../../kit/WTopBar.jsx";
-import { cookieCategories } from "../../../lib/bannerContent.js";
+import { scanCookieCategories } from "../../../lib/bannerContent.js";
 import { WScheduleScan } from "../../kit/WScheduleScan.jsx";
 import { WAddCookie } from "../../kit/WAddCookie.jsx";
 import { WToast } from "../../kit/WToast.jsx";
@@ -20,10 +20,8 @@ import {
   deleteCustomCookieRule,
 } from "../../../lib/api.js";
 
-const SITE_DOMAIN = "testsite123.com";
-
 // Canonical scanner categories (count is filled in live from the scan results).
-const SCAN_CATS = cookieCategories.map((c) => ({
+const SCAN_CATS = scanCookieCategories.map((c) => ({
   id: c.name,
   key: c.id,
   desc: c.description,
@@ -32,7 +30,7 @@ const SCAN_CATS = cookieCategories.map((c) => ({
 // Known category keys (every canonical category except Uncategorized). Any scanned
 // cookie whose category doesn't match one of these falls into the Uncategorized bucket.
 const KNOWN_CAT_KEYS = new Set(
-  cookieCategories.map((c) => c.id.toLowerCase()).filter((k) => k !== "uncategorized")
+  scanCookieCategories.map((c) => c.id.toLowerCase()).filter((k) => k !== "uncategorized")
 );
 
 // Does a cookie's category belong to the given canonical category key?
@@ -234,12 +232,24 @@ function WScan() {
       let elapsed = 0;
       pollRef.current = setInterval(async () => {
         elapsed += 5000;
+
+        // Timeout bailout runs FIRST, outside the try: if getScanHistory keeps
+        // rejecting (worker unreachable), the check below would never be reached
+        // and the poll would run forever with the UI stuck on "Scanning…".
+        if (elapsed >= 120000) {
+          clearInterval(pollRef.current);
+          pollRef.current = null;
+          setScanning(false);
+          setScanError("Scan is taking longer than expected. Refresh to check the result.");
+          return;
+        }
+
         try {
           const hist = await getScanHistory(sid);
           if (Array.isArray(hist?.scans)) setScans(hist.scans);
 
           const row = (hist?.scans || []).find((s) => !targetId || String(s.id) === targetId);
-          if ((row && isTerminalStatus(row.scanStatus)) || elapsed >= 120000) {
+          if (row && isTerminalStatus(row.scanStatus)) {
             clearInterval(pollRef.current);
             pollRef.current = null;
 
@@ -321,7 +331,7 @@ function WScan() {
               </div>
             </div>
             <button className="btn btn-primary btn-sm" disabled={scanning} onClick={handleScanNow}>
-              {scanning ? "Scanning…" : "Scan Now"}
+              {scanning ? "Scanning…" : "Scan now"}
             </button>
           </div>
 
@@ -338,19 +348,19 @@ function WScan() {
               )}
             </div>
             <button className="btn btn-primary btn-sm cb-scan-btn-pad" onClick={() => setSchedule(true)}>
-              Schedule Scan
+              Schedule scan
             </button>
           </div>
         </div>
 
         <div className="cb-scan-row-head">
-          <div className="cb-scan-section-title">Cookie List</div>
+          <div className="cb-scan-section-title">Cookie list</div>
           <div className="cb-scan-btn-group">
             <button className="btn btn-secondary btn-sm cb-scan-btn-pad" onClick={() => setAddCookie(true)}>
-              Add Cookie <span className="cb-scan-plus">+</span>
+              Add cookie <span className="cb-scan-plus">+</span>
             </button>
             <button className="btn btn-success btn-sm cb-scan-btn-pad" disabled={publishing} onClick={handlePublishRules}>
-              {publishing ? "Publishing…" : "Publish Changes"}
+              {publishing ? "Publishing…" : "Publish changes"}
             </button>
           </div>
         </div>
@@ -393,8 +403,8 @@ function WScan() {
 
         <div ref={historyRef} className="cb-scan-tabbar">
           {[
-            { id: "history", label: "Scan History" },
-            { id: "rules", label: "My Cookie Rules" },
+            { id: "history", label: "Scan history" },
+            { id: "rules", label: "My cookie rules" },
           ].map((t) => {
             const on = bottomTab === t.id;
             return (
@@ -420,9 +430,9 @@ function WScan() {
               <table className="tbl">
                 <thead>
                   <tr>
-                    <th>Scan Date (UTC ± 00:00)</th>
-                    <th>Scan Status</th>
-                    <th>Urls Scanned</th>
+                    <th>Scan date (UTC ± 00:00)</th>
+                    <th>Scan status</th>
+                    <th>URLs scanned</th>
                     <th>Categories</th>
                     <th>Cookies</th>
                     <th>Scripts</th>
@@ -450,7 +460,7 @@ function WScan() {
                           className="cb-scan-link"
                           style={{ cursor: scanning ? "default" : "pointer", opacity: scanning ? 0.6 : 1 }}
                         >
-                          Scan Now
+                          Scan now
                         </b>{" "}
                         to scan your site.
                       </td>
@@ -509,7 +519,7 @@ function WScan() {
                   }}
                   className="cb-scan-link-static"
                 >
-                  Add Cookie
+                  Add cookie
                 </b>{" "}
                 to create one.
               </div>
@@ -520,10 +530,10 @@ function WScan() {
                     <thead>
                       <tr>
                         <th>Cookie ID</th>
-                        <th>Domain (Provider)</th>
+                        <th>Domain (provider)</th>
                         <th>Category</th>
                         <th>Duration</th>
-                        <th>Script Pattern</th>
+                        <th>Script pattern</th>
                         <th></th>
                       </tr>
                     </thead>
@@ -596,7 +606,7 @@ function WScan() {
       {addCookie && (
         <WAddCookie
           siteId={siteId}
-          domain={domain || SITE_DOMAIN}
+          domain={domain}
           onClose={() => setAddCookie(false)}
           onSaved={() => {
             loadData(siteId);

@@ -13,6 +13,16 @@ const WORKER_BASE_URL =
   import.meta.env.VITE_WORKER_BASE_URL ||
   "https://manager.consentbit.com";
 
+// Where the OAuth flow starts. Normally the same worker as everything else, but the
+// redirect_uri Webflow sends the user back to must be REGISTERED on the Webflow App,
+// and only the production callback is. Pointing just this step at production lets the
+// test build authorize without registering a second redirect URI: both workers share
+// the same D1 and the same WEBFLOW_AUTHENTICATION store, and production uses the same
+// Webflow client id — so the token it saves is immediately visible to the test worker.
+const OAUTH_BASE_URL =
+  import.meta.env.VITE_OAUTH_BASE_URL ||
+  WORKER_BASE_URL;
+
 // Front-end webapp that hosts the /checkoutplan page (paid-plan checkout).
 const CHECKOUT_BASE_URL =
   import.meta.env.VITE_CHECKOUT_BASE_URL ||
@@ -32,19 +42,25 @@ const CHECKOUT_API_BASE =
  * current page) with the result in the query string.
  */
 export function startWebflowInstall(returnTo = window.location.href) {
-  const url = new URL(`${WORKER_BASE_URL}/api/webflow/oauth/authorize`);
+  const url = new URL(`${OAUTH_BASE_URL}/api/webflow/oauth/authorize`);
   url.searchParams.set("returnTo", returnTo);
   const href = url.toString();
 
   // Inside an embedded context (the Webflow Designer iframe) open a top-level
   // tab — Webflow's consent screen sets X-Frame-Options and can't load in an
   // iframe. Standalone, a normal redirect is fine.
+  //
+  // Returns { href, opened }. The Designer's iframe is sandboxed, so window.open
+  // can be blocked and returns null; the caller then offers `href` as a link the
+  // user can open manually instead of leaving them on a button that did nothing.
   const inIframe = window.self !== window.top;
   if (inIframe) {
-    window.open(href, "_blank", "noopener,noreferrer");
-  } else {
-    window.location.href = href;
+    let win = null;
+    try { win = window.open(href, "_blank", "noopener,noreferrer"); } catch { win = null; }
+    return { href, opened: !!win };
   }
+  window.location.href = href;
+  return { href, opened: true };
 }
 
 /**
@@ -112,13 +128,10 @@ async function currentSiteDomain(info) {
  *
  *   plan     — optional: 'basic' | 'essential' | 'growth' (omit → page default)
  *   interval — 'monthly' | 'yearly'
- *   dest     — which checkout page to land on (allow-listed server-side):
- *                'checkoutplan'  → interactive plan picker (install / plan page) [default]
- *                'checkout-plan' → read-only, shows the plan already chosen here (upgrade page)
  *
  * The extension runs in the Designer iframe, so this opens a top-level tab.
  */
-export async function startCheckout({ plan, interval = "monthly", email, dest } = {}) {
+export async function startCheckout({ plan, interval = "monthly", email } = {}) {
   const info = await window.webflow?.getSiteInfo?.().catch(() => null);
   const wfSiteId = info?.siteId || info?.id || null;
   const domain = await currentSiteDomain(info);
@@ -156,14 +169,13 @@ export async function startCheckout({ plan, interval = "monthly", email, dest } 
 
   if (!token) throw new Error("Couldn't start checkout. Please try again.");
 
-  // Open the hosted checkout in a new top-level tab with a plain navigation — no
-  // hidden form or DOM injection. Only the SHORT-LIVED OPAQUE token travels in the
-  // URL (never PII or Stripe data). /api/checkout-open exchanges it into a
-  // same-origin cookie and redirects to the clean checkout page. `dest` picks the
-  // page: install/plan → /checkoutplan, upgrade → /checkout-plan.
+  // Open the hosted checkout page DIRECTLY in a new top-level tab — no intermediate
+  // /api/checkout-open redirect, so the address bar shows the real checkout page
+  // from the start. Only the SHORT-LIVED OPAQUE token travels in the URL (never PII
+  // or Stripe data); the page exchanges it server-side for the checkout context and
+  // strips it from the address bar on load.
   const params = new URLSearchParams({ t: token });
-  if (dest) params.set("dest", dest);
-  const href = `${CHECKOUT_BASE_URL}/api/checkout-open?${params.toString()}`;
+  const href = `${CHECKOUT_BASE_URL}/checkout-plan?${params.toString()}`;
   window.open(href, "_blank", "noopener,noreferrer");
   return href;
 }
@@ -225,7 +237,12 @@ export async function publishSite({ publishToWebflowSubdomain = false, customDom
       (data && (data.code || data.error || data.message || data.msg)) ||
       raw ||
       "";
-    throw new Error(`Publish failed (HTTP ${res.status})${detail ? ": " + detail : ""}`);
+    const err = new Error(`Publish failed (HTTP ${res.status})${detail ? ": " + detail : ""}`);
+    // Attach the HTTP status and worker `code` so callers can branch without
+    // string-matching (e.g. RATE_LIMITED / 429 → friendly "already published").
+    err.status = res.status;
+    if (data && data.code) err.code = data.code;
+    throw err;
   }
   return data;
 }

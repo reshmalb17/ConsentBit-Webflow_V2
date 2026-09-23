@@ -20,7 +20,7 @@ function WEdLayout() {
   const setBtnRadius = (v) => nav && nav.setBannerBtnRadius(v);
 
   const [animOpen, setAnimOpen] = React.useState(false);
-  const animLabels = { "fade-in": "Fade In", "slide-up": "Slide Up", "slide-down": "Slide In", "zoom-in": "Zoom In" };
+  const animLabels = { "fade-in": "Fade in", "slide-up": "Slide up", "slide-down": "Slide in", "zoom-in": "Zoom in" };
 
   // Reset all Layout settings to their defaults.
   const resetLayout = () => {
@@ -43,7 +43,7 @@ function WEdLayout() {
             {[
             { l: "Box", kind: "box" },
             { l: "Banner", kind: "banner" },
-            { l: "Bottom Center", kind: "popup" }].
+            { l: "Bottom center", kind: "popup" }].
             map((p, i) => {
               const selected = pos === p.kind;
               return (
@@ -87,7 +87,7 @@ function WEdLayout() {
 
           {/* Border Radius — editable value field (0–25) */}
           <div className="card cb-edlayout-card">
-            <div className="cb-edlayout-card-title">Border Radius</div>
+            <div className="cb-edlayout-card-title">Border radius</div>
             <input
               type="number" min={0} max={25} value={radius} className="input"
               onChange={(e) => setRadius(Math.min(25, Math.max(0, Number(e.target.value) || 0)))} />
@@ -95,7 +95,7 @@ function WEdLayout() {
 
           {/* Button Radius — editable value field (0–24) */}
           <div className="card cb-edlayout-card">
-            <div className="cb-edlayout-card-title">Button Radius</div>
+            <div className="cb-edlayout-card-title">Button radius</div>
             <input
               type="number" min={0} max={24} value={btnRadius} className="input"
               onChange={(e) => setBtnRadius(Math.min(24, Math.max(0, Number(e.target.value) || 0)))} />

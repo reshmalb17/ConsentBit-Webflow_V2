@@ -16,6 +16,12 @@
   min-height: 0;
 }
 
+/* Wide variant — the panel is 800px and .cb-auth-center adds 22px of padding a
+   side, so 740px fills the row while keeping a small gutter. */
+.cb-auth-card-wide {
+  max-width: 740px;
+}
+
 .cb-auth-title {
   text-align: center;
   font-size: 16px;

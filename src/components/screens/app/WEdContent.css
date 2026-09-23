@@ -281,3 +281,13 @@
   color: #FF8A8A;
   border: 1px solid rgba(255, 107, 107, 0.4);
 }
+
+/* Invalid privacy-policy URL — red border persists through focus, with helper text. */
+.input.is-invalid,
+.input.is-invalid:focus { border-color: var(--red); }
+.cb-field-error {
+  margin-top: 6px;
+  font-size: 12px;
+  line-height: 1.35;
+  color: #FF8A8A;
+}

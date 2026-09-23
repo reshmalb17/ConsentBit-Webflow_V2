@@ -7,12 +7,12 @@ import { useNav } from "../../../nav.jsx";
 import "./WEdColors.css";
 
 const groups = [
-{ title: "General Colors", rows: [
+{ title: "General colors", rows: [
   { id: "bannerBg", l: "Banners background" },
   { id: "textColor", l: "Text color" },
   { id: "headingColor", l: "Heading color" }] },
 
-{ title: "Buttons colors", subgroups: [
+{ title: "Button colors", subgroups: [
   { sub: "Accept/Reject/Cancel", rows: [
     { id: "btnBg", l: "Background" },
     { id: "btnText", l: "Text" }] },
@@ -44,7 +44,9 @@ function ColorField({ value, onChange }) {
     inst.on("color:change", (c) => onChange(c.hexString.toUpperCase()));
     instRef.current = inst;
     return () => {
-      if (pickerRef.current) pickerRef.current.innerHTML = "";
+      // Tear down the iro.js-injected DOM, scoped to this picker's own ref container.
+      // replaceChildren() clears child nodes directly, with no HTML-string sink.
+      if (pickerRef.current) pickerRef.current.replaceChildren();
       instRef.current = null;
     };
   }, [open]); // eslint-disable-line react-hooks/exhaustive-deps

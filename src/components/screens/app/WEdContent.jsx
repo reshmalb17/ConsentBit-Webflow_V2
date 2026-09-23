@@ -4,11 +4,27 @@ import { WEdPreview } from "../../kit/WEdPreview.jsx";
 import { WEdReset } from "../../kit/WEdReset.jsx";
 import { WEdRow } from "../../kit/WEdRow.jsx";
 import { WEdShell } from "../../kit/WEdShell.jsx";
+import { WTemplateSelect } from "../../kit/WTemplateSelect.jsx";
 import { Field } from "../../primitives/Field.jsx";
 import { Radio } from "../../primitives/Radio.jsx";
 import { Toggle } from "../../primitives/Toggle.jsx";
 import { useNav } from "../../../nav.jsx";
 import { localization as T, languageCodes as codes, editorDefaults, preferenceBanner, prefCategories, ccpaBanner, preferenceLocalization as PL, categoryLocalization as CL, ccpaLocalization as CCL } from "../../../lib/bannerContent.js";
+import { isDangerousUrl } from "../../../lib/buildCustomizationPayload.js";
+import { BOTH_TEMPLATE, DEFAULT_TEMPLATE, TEMPLATE_OPTIONS, canUseBothRegions } from "../../../lib/planGate.js";
+
+// Classify the policy URL for inline feedback. "dangerous" blocks the save (handled in
+// saveBanner); "malformed" only warns. The banner renders this as a target="_blank"
+// link on the customer's site, so we require a FULL absolute http(s):// URL with a host
+// — relative paths (/privacy) resolve inconsistently (they break in the Designer preview)
+// and bare domains are ambiguous. This matches Webflow's "https://" link-field convention.
+function classifyPolicyUrl(raw) {
+  const s = String(raw ?? "").trim();
+  if (!s) return "empty";
+  if (isDangerousUrl(s)) return "dangerous";
+  if (/^https?:\/\/[^\s./]+\.[^\s]+/i.test(s)) return "ok";
+  return "malformed";
+}
 
 function WEdContent() {
   const nav = useNav();
@@ -19,8 +35,10 @@ function WEdContent() {
   const floatPos = nav ? nav.floatPos : "left";
   const setFloatPos = (v) => nav && nav.setFloatPos(v);
   // Content character limits (match the consentwebapp project).
-  const LIMITS = { title: 50, message: 320, button: 20, policyLabel: 30, name: 20, desc: 300, label: 20 };
+  const LIMITS = { title: 50, message: 320, button: 20, policyLabel: 30, policyUrl: 300, name: 20, desc: 300, label: 20 };
   const [cookieListOpen, setCookieListOpen] = React.useState(false);
+  // CCPA+GDPR (both regimes) is Essential/Growth only — same gate as the General tab.
+  const canUseBoth = canUseBothRegions(nav?.entitlementPlan ?? nav?.plan);
   // Seed from the already-loaded banner content (synced from the webapp on launch)
   // so opening this tab doesn't overwrite it with defaults — fall back to the
   // editor defaults only when a field isn't present.
@@ -34,7 +52,7 @@ function WEdContent() {
   const setCat = (i, patch) => { if (nav) nav.setPrefContent((c) => ({ ...c, cats: c.cats.map((cat, j) => j === i ? { ...cat, ...patch } : cat) })); markEditedKeys(patch, `cat${i}_`); };
   // Active region: CCPA shows CCPA-specific content in this editor.
   const isCCPA = nav ? nav.activeRegion === "CCPA" : false;
-  const ccpaContent = nav ? nav.ccpaContent : { doNotShare: "", optOutTitle: "", optOutBody: "", cancel: "", save: "" };
+  const ccpaContent = nav ? nav.ccpaContent : { message: ccpaBanner.message, doNotShare: "", optOutTitle: "", optOutBody: "", cancel: "", save: "" };
   const setCcpa = (patch) => { if (nav) nav.setCcpaContent((c) => ({ ...c, ...patch })); markEditedKeys(patch, "ccpa_"); };
 
   // Per-language banner copy + ISO codes come from the shared content source.
@@ -84,11 +102,15 @@ function WEdContent() {
     nav.setCcpaContent((c) => ({ ...c, ...(cc.message ? { message: cc.message } : {}), optOutTitle: cc.optOutTitle, optOutBody: cc.optOutBody, doNotShare: cc.doNotShare, cancel: cc.cancel, save: cc.save }));
   };
 
-  // Apply a language's button labels (reject/customize) — these live in their own
-  // state, so they must be updated alongside `fields` on every language change.
+  // Apply a language's button labels (reject/customize) and the privacy-policy link
+  // label — these live in their own state, so they must be updated alongside `fields`
+  // on every language change. Without the policy line the link stayed on the English
+  // editorDefaults fallback in every language, so a German banner linked out via the
+  // English word "Policy".
   const applyLangButtons = (src) => {
     setRejectLabel(src?.reject ?? editorDefaults.default.rejectLabel);
     setCustomizeLabel(src?.customize ?? editorDefaults.default.customizeLabel);
+    setPolicyLabel(src?.policy ?? editorDefaults.default.policyLinkLabel);
   };
 
   const applyTranslation = (l) => {
@@ -184,7 +206,10 @@ function WEdContent() {
       nav.setShowCustomize(true);
       nav.setShowPolicy(false);  // matches the launch default (policy link OFF)
       nav.setPrefContent({ title: preferenceBanner.title, overview: preferenceBanner.overview, save: preferenceBanner.buttons.save, alwaysActive: "Always Active", cats: prefCategories.map((c) => ({ name: c.l, desc: c.desc, always: !!c.always })) });
-      nav.setCcpaContent({ doNotShare: ccpaBanner.doNotShare, optOutTitle: ccpaBanner.optOutTitle, optOutBody: ccpaBanner.optOutBody, cancel: ccpaBanner.buttons.cancel, save: ccpaBanner.buttons.save });
+      // `message` is the CCPA notice body. Leaving it out of this object DELETED it
+      // from state, and the notice then fell back to the GDPR copy — which reads
+      // 'By clicking "Accept"' on a banner that has no Accept button.
+      nav.setCcpaContent({ message: ccpaBanner.message, doNotShare: ccpaBanner.doNotShare, optOutTitle: ccpaBanner.optOutTitle, optOutBody: ccpaBanner.optOutBody, cancel: ccpaBanner.buttons.cancel, save: ccpaBanner.buttons.save });
     }
   };
 
@@ -195,6 +220,37 @@ function WEdContent() {
   // Localized fields use the per-language edit tracking; other fields compare to their default.
   const editedChip = (k) => langEdited[k] ? EDITED_CHIP : null;
   const diffChip = (v, d) => v !== d ? EDITED_CHIP : null;
+
+  // ── Cookie-notice message, per region ──────────────────────────────────────
+  // GDPR and CCPA have SEPARATE notice bodies in the payload (`description` vs
+  // `ccpaDescription`). The editor used to show `fields.message` in both regions,
+  // so in CCPA mode the field displayed the GDPR default ('By clicking "Accept"…')
+  // and edits to it never reached the CCPA banner. The title IS shared — the
+  // payload has only one `title` — so only the message splits here.
+  const noticeMessage = isCCPA ? (ccpaContent.message ?? ccpaBanner.message) : fields.message;
+  const setNoticeMessage = (v) => { if (isCCPA) setCcpa({ message: v }); else editField("message", v); };
+  const noticeMessageChip = editedChip(isCCPA ? "ccpa_message" : "message");
+
+  // Privacy-policy URL field — shared by both region variants below. Keeps the raw
+  // value (so the user sees what they typed) and shows inline validation. A dangerous
+  // scheme is also refused at save time by saveBanner.
+  const showPolicy = nav ? nav.showPolicy : false;
+  const policyStatus = classifyPolicyUrl(policyUrl);
+  const policyUrlMsg =
+    policyStatus === "dangerous" ? "That link type isn't allowed. Use an https:// URL." :
+    policyStatus === "malformed" ? "Enter a full URL starting with https://" : "";
+  const policyUrlField = (
+    <Field label={<>URL {editedChip("policyUrl")}</>} help={false}>
+      <input
+        className={"input" + (policyUrlMsg ? " is-invalid" : "")}
+        type="url" inputMode="url" maxLength={LIMITS.policyUrl}
+        aria-invalid={policyUrlMsg ? "true" : undefined}
+        value={policyUrl}
+        onChange={(e) => { setPolicyUrl(e.target.value); markEdited("policyUrl"); }}
+      />
+      {policyUrlMsg ? <div className="cb-field-error" role="alert">{policyUrlMsg}</div> : null}
+    </Field>
+  );
 
   return (
     <WEdShell active="content">
@@ -210,7 +266,13 @@ function WEdContent() {
             <div className="cb-edcontent-grid-2-sm">
               <div>
                 <div className="field-label cb-edcontent-mb5">Consent template</div>
-                <select className="select" value={nav ? nav.template : "CCPA+GDPR"} onChange={(e) => nav && nav.setTemplate(e.target.value)}><option>CCPA (USA)</option><option>GDPR (EU)</option><option>CCPA+GDPR</option></select>
+                <WTemplateSelect
+                  value={nav ? nav.template : DEFAULT_TEMPLATE}
+                  onChange={(v) => nav && nav.setTemplate(v)}
+                  options={TEMPLATE_OPTIONS}
+                  gatedValue={BOTH_TEMPLATE}
+                  gateAllowed={canUseBoth}
+                />
               </div>
               <div>
                 <div className="field-label cb-edcontent-mb5">Language</div>
@@ -227,8 +289,8 @@ function WEdContent() {
           {/* Banner type sub-tabs */}
           <div className="cb-edcontent-subtabs">
             {[
-              { id: "default", label: "Default Banner" },
-              { id: "pref", label: "Preference Banner" }].
+              { id: "default", label: "Default banner" },
+              { id: "pref", label: "Preference banner" }].
               map((t) =>
               <button key={t.id} onClick={() => setTab(t.id)} className="cb-edcontent-subtab-btn" style={{
                 background: tab === t.id ? "var(--purple)" : "transparent",
@@ -240,7 +302,7 @@ function WEdContent() {
           {tab === "default" &&
             <div className="card cb-edcontent-card">
             <div className="cb-edcontent-row-center-mb12">
-              <div className="cb-edcontent-heading">Cookie Notice</div>
+              <div className="cb-edcontent-heading">Cookie notice</div>
             </div>
             <div className="cb-edcontent-row-between-mb4">
               <span className="field-label cb-edcontent-field-label-chip">Title {editedChip("title")}</span>
@@ -248,10 +310,10 @@ function WEdContent() {
             </div>
             <input className="input cb-edcontent-mb12" maxLength={LIMITS.title} value={fields.title} onChange={(e) => editField("title", e.target.value)} />
             <div className="cb-edcontent-row-between-mb4">
-              <span className="field-label cb-edcontent-field-label-chip">Message {editedChip("message")}</span>
-              <span className="cb-edcontent-counter">{fields.message.length}/{LIMITS.message}</span>
+              <span className="field-label cb-edcontent-field-label-chip">Message {noticeMessageChip}</span>
+              <span className="cb-edcontent-counter">{noticeMessage.length}/{LIMITS.message}</span>
             </div>
-            <textarea className="input cb-edcontent-mb12" rows="4" maxLength={LIMITS.message} value={fields.message} onChange={(e) => editField("message", e.target.value)} />
+            <textarea className="input cb-edcontent-mb12" rows="4" maxLength={LIMITS.message} value={noticeMessage} onChange={(e) => setNoticeMessage(e.target.value)} />
 
             <WEdRow label="Close button" checked={nav ? nav.closeBtn : false} onChange={(v) => nav && nav.setCloseBtn(v)} />
 
@@ -259,14 +321,16 @@ function WEdContent() {
             <>
             <Field label={<>{'"Do Not Share" link'} {editedChip("ccpa_doNotShare")}</>} help={false}><input className="input" maxLength={50} value={ccpaContent.doNotShare} onChange={(e) => setCcpa({ doNotShare: e.target.value })} /></Field>
 
-            <WEdRow label={<>{'"Cookie policy" Link'} {editedChip("policy")}</>} checked={nav ? nav.showPolicy : false} onChange={(v) => nav && nav.setShowPolicy(v)} />
+            <WEdRow label={<>{'"Cookie policy" link'} {editedChip("policy")}</>} checked={showPolicy} onChange={(v) => nav && nav.setShowPolicy(v)} />
+            {showPolicy && <>
             <input className="input cb-edcontent-mb12" maxLength={LIMITS.policyLabel} value={policyLabel} onChange={(e) => { setPolicyLabel(e.target.value); markEdited("policy"); }} />
 
-            <Field label={<>URL {editedChip("policyUrl")}</>} help={false}><input className="input" value={policyUrl} onChange={(e) => { setPolicyUrl(e.target.value); markEdited("policyUrl"); }} /></Field>
+            {policyUrlField}
+            </>}
             </>
             : <>
             <div className="cb-edcontent-row-between-mb4">
-              <span className="field-label cb-edcontent-field-label-chip">Accept All {editedChip("accept")}</span>
+              <span className="field-label cb-edcontent-field-label-chip">Accept all {editedChip("accept")}</span>
               <span className="cb-edcontent-counter">{fields.accept.length}/{LIMITS.button}</span>
             </div>
             <input className="input cb-edcontent-mb12" maxLength={LIMITS.button} value={fields.accept} onChange={(e) => editField("accept", e.target.value)} />
@@ -277,10 +341,12 @@ function WEdContent() {
             <WEdRow label={<>{'"Customize" button'} {editedChip("customize")}</>} checked={nav ? nav.showCustomize : true} onChange={(v) => nav && nav.setShowCustomize(v)} />
             <input className="input cb-edcontent-mb12" maxLength={LIMITS.button} value={customizeLabel} onChange={(e) => { setCustomizeLabel(e.target.value); markEdited("customize"); }} />
 
-            <WEdRow label={<>{'"Cookie policy" Link'} {editedChip("policy")}</>} checked={nav ? nav.showPolicy : false} onChange={(v) => nav && nav.setShowPolicy(v)} />
+            <WEdRow label={<>{'"Cookie policy" link'} {editedChip("policy")}</>} checked={showPolicy} onChange={(v) => nav && nav.setShowPolicy(v)} />
+            {showPolicy && <>
             <input className="input cb-edcontent-mb12" maxLength={LIMITS.policyLabel} value={policyLabel} onChange={(e) => { setPolicyLabel(e.target.value); markEdited("policy"); }} />
 
-            <Field label={<>URL {editedChip("policyUrl")}</>} help={false}><input className="input" value={policyUrl} onChange={(e) => { setPolicyUrl(e.target.value); markEdited("policyUrl"); }} /></Field>
+            {policyUrlField}
+            </>}
             </>
             }
           </div>
@@ -289,7 +355,7 @@ function WEdContent() {
           {tab === "pref" && (isCCPA ?
           /* CCPA · Opt-out Preference editor */
           <div className="card cb-edcontent-card">
-            <div className="cb-edcontent-heading-mb12">Opt-out Preference</div>
+            <div className="cb-edcontent-heading-mb12">Opt-out preference</div>
             <Field label={<>Title {editedChip("ccpa_optOutTitle")}</>} help={false}><input className="input" maxLength={LIMITS.title} value={ccpaContent.optOutTitle} onChange={(e) => setCcpa({ optOutTitle: e.target.value })} /></Field>
             <Field label={<>Description {editedChip("ccpa_optOutBody")}</>} help={false}><textarea className="input" rows="4" maxLength={LIMITS.message} value={ccpaContent.optOutBody} onChange={(e) => setCcpa({ optOutBody: e.target.value })} /></Field>
             <Field label={<>{'"Do Not Share" checkbox label'} {editedChip("ccpa_doNotShare")}</>} help={false}><input className="input" maxLength={50} value={ccpaContent.doNotShare} onChange={(e) => setCcpa({ doNotShare: e.target.value })} /></Field>
@@ -300,7 +366,7 @@ function WEdContent() {
           {/* Preference Banner — expanded */}
           <div className="card cb-edcontent-card">
             <div className="cb-edcontent-row-between-mb12">
-              <div className="cb-edcontent-heading">Preference Banner</div>
+              <div className="cb-edcontent-heading">Preference banner</div>
             </div>
             <Field label={<>Title {editedChip("pref_title")}</>} help={false}><input className="input" maxLength={LIMITS.title} value={prefContent.title} onChange={(e) => setPref({ title: e.target.value })} /></Field>
             <Field label={<>Privacy overview {editedChip("pref_overview")}</>} help={false}>
@@ -313,7 +379,7 @@ function WEdContent() {
           {/* Cookie List — accordion with editable category name + description */}
           <div className="card cb-edcontent-card">
             <div onClick={() => setCookieListOpen((o) => !o)} className="cb-edcontent-accordion-head">
-              <div className="cb-edcontent-heading">Cookie List</div>
+              <div className="cb-edcontent-heading">Cookie list</div>
               <span className="cb-edcontent-chevron" style={{ transform: cookieListOpen ? "rotate(90deg)" : "none" }}>›</span>
             </div>
             {cookieListOpen &&

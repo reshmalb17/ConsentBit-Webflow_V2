@@ -17,6 +17,27 @@
 .cb-upgrade-switch-text { color: var(--text-muted); font-size: 12.5px; line-height: 1.55; margin-bottom: 20px; }
 .cb-upgrade-switch-actions { display: flex; gap: 8px; }
 .cb-upgrade-modal-btn { flex: 1; justify-content: center; }
+/* The app has no global .btn:disabled style, so a disabled button is otherwise
+   indistinguishable from a live one — it reads as "clicking does nothing". Make the
+   modal's disabled state unmistakable, since Confirm & Pay is disabled for the whole
+   time the prorated amount is loading. */
+.cb-upgrade-modal-btn:disabled,
+.cb-upgrade-modal-btn[disabled] {
+  opacity: 0.45;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+/* Upgrade popup — the prorated amount is the one thing the user is agreeing to,
+   so it reads as the headline; the explanation sits under it in muted text. */
+.cb-upgrade-modal-amount {
+  font-size: 26px;
+  font-weight: 700;
+  line-height: 1.2;
+  margin-bottom: 8px;
+  color: var(--text);
+}
+.cb-upgrade-modal-error { color: var(--red); }
 
 .cb-upgrade-body { flex: 1; min-height: 0; overflow-y: auto; padding-top: 16px; }
 
@@ -59,8 +80,10 @@
   padding: 3px;
   align-items: center;
 }
-.cb-upgrade-toggle-btn,
-.cb-upgrade-toggle-btn-yearly { flex: 1 1 0; min-width: 82px; display: flex; align-items: center; justify-content: center; }
+/* Identical to the plan page's toggle (.cb-selplan-toggle-btn-yearly): buttons size
+   to their own content — the old `flex: 1 1 0; min-width: 82px` squeezed the Yearly
+   button once the "Save 20%" badge was added and wrapped it onto two lines. */
+.cb-upgrade-toggle-btn-yearly { display: flex; align-items: center; gap: 6px; }
 /* Beat the base `.cb-widget-wrap .btn { border-radius: 7px }` (specificity 0,0,2,0). */
 .cb-widget-wrap .cb-upgrade-billing-toggle .cb-upgrade-toggle-btn,
 .cb-widget-wrap .cb-upgrade-billing-toggle .cb-upgrade-toggle-btn-yearly { border-radius: 13px; }
@@ -71,6 +94,7 @@
   background: var(--green-soft);
   padding: 2px 7px;
   border-radius: 999px;
+  white-space: nowrap; /* never break "Save 20%" onto two lines */
 }
 
 /* Pricing table */
@@ -151,8 +175,9 @@
 
 .cb-upgrade-row-label { padding: 7px 12px; font-size: 11px; color: var(--text); font-weight: 500; display: flex; align-items: center; }
 .cb-upgrade-cell {
-  padding: 7px 10px;
-  font-size: 11px;
+  /* narrow side padding so "2 Million page views/m" stays on one line at 12.5px */
+  padding: 7px 6px;
+  font-size: 12.5px;
   text-align: center;
   color: var(--text);
   display: flex;

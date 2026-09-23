@@ -6,11 +6,11 @@ import "./WVerifyResult.css";
 // Gallery screen: the Install & verify page WITH the result modal layered on
 // top. The modal markup lives in WVerifyModal so the live flow (WInstallVerify)
 // can reuse it without re-rendering the page behind it.
-function WVerifyResult({ mode }) {
+function WVerifyResult({ mode, previewUrl }) {
   return (
     <div className="cb-verify-result">
       <WInstallVerify />
-      <WVerifyModal mode={mode} position="absolute" />
+      <WVerifyModal mode={mode} previewUrl={previewUrl} position="absolute" />
     </div>);
 
 }

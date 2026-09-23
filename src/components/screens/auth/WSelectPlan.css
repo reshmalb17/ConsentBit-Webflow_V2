@@ -74,7 +74,16 @@
   grid-template-columns: 120px repeat(4, 1fr);
   border-bottom: 1px solid var(--border);
 }
-.cb-selplan-col-head { padding: 14px 10px 10px; text-align: center; position: relative; }
+/* Flex column so the CTA can be pinned to the bottom: on the yearly toggle the
+   longer " /mo billed yearly" suffix wraps to a second line on some columns
+   (Essential/Growth) and not others, which used to push their buttons down. */
+.cb-selplan-col-head {
+  padding: 14px 10px 10px;
+  text-align: center;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
 .cb-selplan-reco-badge {
   position: absolute;
   top: -12px;
@@ -91,15 +100,18 @@
   box-shadow: 0 4px 12px rgba(124, 92, 252, 0.4);
 }
 .cb-selplan-col-name { font-size: 12px; color: var(--text-muted); margin-bottom: 4px; font-weight: 500; }
-.cb-selplan-col-price { font-size: 19px; font-weight: 700; line-height: 1; margin-bottom: 8px; }
+.cb-selplan-col-price { font-size: 19px; font-weight: 700; line-height: 1.15; margin-bottom: 8px; }
 .cb-selplan-price-suffix { font-size: 10px; color: var(--text-muted); font-weight: 400; }
-.cb-selplan-cta { width: 100%; justify-content: center; }
+/* margin-top:auto → every CTA sits on the same line regardless of how many lines
+   the price above it took (the grid stretches all four columns to equal height). */
+.cb-selplan-cta { width: 100%; justify-content: center; margin-top: auto; }
 
 .cb-selplan-grid-row { display: grid; grid-template-columns: 120px repeat(4, 1fr); }
-.cb-selplan-row-label { padding: 7px 12px; font-size: 11.5px; color: var(--text-muted); display: flex; align-items: center; }
+.cb-selplan-row-label { padding: 13px 12px; font-size: 11px; color: var(--text-muted); display: flex; align-items: center; }
 .cb-selplan-cell {
-  padding: 7px 10px;
-  font-size: 11.5px;
+  /* narrow side padding so "2 Million page views/m" stays on one line at 12.5px */
+  padding: 13px 6px;
+  font-size: 12.5px;
   text-align: center;
   border-left: 1px solid var(--border);
   display: flex;

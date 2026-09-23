@@ -3,17 +3,26 @@ import "./WInstallVerify.css";
 import { WAuthShell } from "../../kit/WAuthShell.jsx";
 import { Icon } from "../../lib/icons.jsx";
 import { WVerifyModal } from "../../kit/WVerifyModal.jsx";
-import { verifyInstallation, getWebflowSiteContext, getWebflowSiteStatus, getLegacyScriptStatus, removeLegacyScripts, trackWebflowEvent } from "../../../lib/api.js";
+import { verifyInstallation, getWebflowSiteContext, getWebflowSiteStatus, getLegacyScriptStatus, removeLegacyScripts } from "../../../lib/api.js";
 import { isTrustedScriptUrl } from "../../../lib/scriptUrl.js";
 import { publishSite, listSiteDomains } from "../../../lib/webflowAuth.js";
 import { useNav } from "../../../nav.jsx";
+
+// Webflow rate-limits site publishes to ~once per minute. Re-publishing sooner
+// returns HTTP 429 — and there's nothing to gain from it, since the first
+// publish already pushed the banner live. Block a re-publish within this window
+// so a rapid second click never hits Webflow's limit.
+const PUBLISH_COOLDOWN_MS = 60_000;
 
 function WInstallVerify() {
   const nav = useNav();
   const [copied, setCopied] = React.useState(false);
   const [publishing, setPublishing] = React.useState(false);
   const [showPopup, setShowPopup] = React.useState(false);
-  const [verifyMode, setVerifyMode] = React.useState("success"); // success | error | unpublished
+  const [verifyMode, setVerifyMode] = React.useState("success"); // success | error | unpublished | ratelimited
+  // Timestamp of the last publish that actually reached Webflow (success OR a
+  // 429). Used to short-circuit an immediate re-click before it hits the limit.
+  const lastPublishAtRef = React.useRef(0);
   // Domain-selection UI — only shown when the site has custom domain(s) in addition
   // to the staging subdomain (so the user can choose where to publish).
   const [domainChoice, setDomainChoice] = React.useState(null); // { subdomain, customDomains } | null
@@ -96,10 +105,6 @@ function WInstallVerify() {
       await navigator.clipboard.writeText(installCode);
       setCopied(true);
       setTimeout(() => setCopied(false), 1200);
-      // installation_code_copied — funnel step 4. Sent via the first-party /track endpoint
-      // (the worker emits it to PostHog server-side). script_id is parsed from the URL.
-      const scriptId = (String(scriptUrl || "").match(/\/(?:consentbit|client_data)\/([^/]+)\/script\.js/) || [])[1] || null;
-      trackWebflowEvent("installation_code_copied", { script_id: scriptId });
     } catch {
       /* clipboard blocked — leave the button label unchanged */
     }
@@ -111,14 +116,26 @@ function WInstallVerify() {
     setPublishing(true);
     try {
       await publishSite({ publishToWebflowSubdomain, customDomains });
+      lastPublishAtRef.current = Date.now();
       // The publish is tracked server-side (banner_changes_published in the publish
       // handler) — no client analytics here.
       await new Promise((r) => setTimeout(r, 2500));
       const result = await verifyInstallation();
+      // Label/preview the domain we actually verified (custom-preferred; staging only
+      // when that's all that exists) rather than the generically-resolved site URL.
+      if (result.verifiedUrl) setSiteUrl(result.verifiedUrl);
       if (!result.published) setVerifyMode("unpublished");
       else setVerifyMode(result.found ? "success" : "error");
-    } catch {
-      setVerifyMode("error");
+    } catch (e) {
+      // Webflow's once-per-minute publish limit (429) isn't a real failure — the
+      // site was already published moments ago. Show a distinct, friendly popup
+      // instead of the alarming "couldn't verify / Retry" error.
+      if (e && (e.status === 429 || e.code === "RATE_LIMITED")) {
+        lastPublishAtRef.current = Date.now();
+        setVerifyMode("ratelimited");
+      } else {
+        setVerifyMode("error");
+      }
     } finally {
       setPublishing(false);
       setDomainChoice(null);
@@ -130,8 +147,16 @@ function WInstallVerify() {
   // away; if custom domain(s) also exist, open the target-selection panel.
   const handlePublish = async () => {
     if (publishing) return;
+    // Guard the rapid second click: Webflow won't accept another publish within a
+    // minute of the last one, and the banner is already live from it. Surface the
+    // friendly "already published" popup rather than firing a doomed 429 request.
+    if (Date.now() - lastPublishAtRef.current < PUBLISH_COOLDOWN_MS) {
+      setVerifyMode("ratelimited");
+      setShowPopup(true);
+      return;
+    }
     setPublishing(true);
- 
+
     const clean = await ensureLegacyRemoved();
     if (!clean) { setPublishing(false); return; }
     let targets = null;
@@ -178,13 +203,14 @@ function WInstallVerify() {
           {/* Heading + Copy button */}
           <div className="cb-install-head-row">
             <div className="cb-install-head-title">Copy this banner installation code</div>
-            <button className="btn btn-secondary btn-sm cb-install-copy-btn" onClick={copyCode}>
+            <button className="btn btn-secondary btn-sm cb-install-copy-btn" onClick={copyCode} disabled={!scriptUrl}>
               <Icon.copy />{copied ? "Copied ✓" : "Copy"}
             </button>
           </div>
 
           {/* Code block — line breaks match the design: opening tag, indented src
               (closing with >), then </script> on its own line. */}
+          {scriptUrl ?
           <div className="mono cb-install-code-block">
             <div className="cb-install-code-comment">&lt;!-- Start ConsentBit banner --&gt;</div>
             <div>
@@ -192,12 +218,18 @@ function WInstallVerify() {
               <span className="cb-install-code-attr">id="consentbit" type="text/javascript"</span>
             </div>
             <div>
-              <span className="cb-install-code-attr">{`  src="${scriptUrl || "loading…"}"`}</span>
+              <span className="cb-install-code-attr">{`  src="${scriptUrl}"`}</span>
               <span className="cb-install-code-tag">&gt;</span>
             </div>
             <div className="cb-install-code-tag">&lt;/script&gt;</div>
             <div className="cb-install-code-comment">&lt;!-- End ConsentBit banner --&gt;</div>
           </div>
+          :
+          <div className="mono cb-install-code-block cb-install-code-loading">
+            <span className="cb-install-code-spinner" aria-hidden="true" />
+            Generating your install code…
+          </div>
+          }
 
           {/* Add-to-Webflow row: action + instructions on the left, screenshot on the right */}
           <div className="cb-install-row">
@@ -211,10 +243,15 @@ function WInstallVerify() {
               </div>
               <button
                 className="btn btn-primary cb-install-publish-btn"
-                disabled={publishing}
+                disabled={publishing || !scriptUrl}
                 onClick={handlePublish}
               >
-                {legacy.removing ? "Removing old code…" : publishing ? "Publishing…" : "Publish"}
+                {publishing || legacy.removing ? (
+                  <>
+                    <span className="cb-install-btn-spinner" aria-hidden="true" />
+                    Publishing…
+                  </>
+                ) : !scriptUrl ? "Preparing…" : "Publish"}
               </button>
             </div>
             <div className="cb-install-shot">
@@ -273,6 +310,10 @@ function WInstallVerify() {
         onClose={() => setShowPopup(false)}
         onPrimary={() => {
           setShowPopup(false);
+          if (verifyMode === "ratelimited") {
+            // Already published — nothing to retry; just dismiss.
+            return;
+          }
           if (verifyMode === "error" || verifyMode === "unpublished") {
             handlePublish(); // "Retry"
           } else if (nav && nav.goToApp) {

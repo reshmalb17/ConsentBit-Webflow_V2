@@ -5,6 +5,9 @@
 // Every mapped object is pruned to DEFINED values only — callers merge it onto
 // the existing defaults, so a missing field keeps its default instead of blanking.
 
+import { languageCodes } from "./bannerContent.js";
+import { resolveIabLang } from "./iabTranslations.js";
+
 function remToPx(rem) {
   if (rem == null) return null;
   const s = String(rem).trim();
@@ -55,6 +58,10 @@ export function mapCustomizationToState(c) {
   // ── Typography ──────────────────────────────────────────────────────────
   if (cfg.bannerFontWeight) out.bannerWeight = String(cfg.bannerFontWeight);
   if (cfg.bannerTextAlign) out.bannerTextAlign = cfg.bannerTextAlign;
+  // Font card. bannerFontMode is what the CDN actually reads, so it wins when both
+  // keys are present; bannerFontEnabled is the fallback for configs saved without it.
+  if (cfg.bannerFontMode !== undefined) out.bannerFontEnabled = String(cfg.bannerFontMode).toLowerCase() !== "inherit";
+  else if (cfg.bannerFontEnabled !== undefined) out.bannerFontEnabled = truthy(cfg.bannerFontEnabled);
 
   // ── Toggles ─────────────────────────────────────────────────────────────
   if (cfg.closeButtonEnabled !== undefined) out.closeBtn = truthy(cfg.closeButtonEnabled);
@@ -76,9 +83,28 @@ export function mapCustomizationToState(c) {
   // languageSelected is a lowercase ISO code (see buildCustomizationPayload);
   // map it back to the display name the Content dropdown uses so a saved
   // non-English banner reopens on the right language instead of "English".
-  const CODE_TO_LANG = { en: "English", es: "Spanish", fr: "French", de: "German", nl: "Dutch" };
+  // Derived from languageCodes so adding a language to bannerContent.js is enough —
+  // this map can no longer drift behind the dropdown.
+  const CODE_TO_LANG = Object.fromEntries(
+    Object.entries(languageCodes).map(([name, code]) => [code.toLowerCase(), name]),
+  );
   const langCode = String(en.languageSelected || "").toLowerCase();
-  if (CODE_TO_LANG[langCode]) out.language = CODE_TO_LANG[langCode];
+
+  if (out.iab) {
+    // IAB on: languageSelected is the IAB banner's language, so it restores the
+    // General tab's picker. Normalised on the way in so a stored browser-style tag
+    // ("de-AT") or an unknown code lands on a language the string table has.
+    if (langCode) out.iabLang = resolveIabLang(langCode);
+    // The Content tab's own language then has to come from the `language` column
+    // rather than from languageSelected, which no longer describes that copy.
+    // Reading it back from languageSelected would relabel the GDPR/CCPA banner in
+    // the IAB language while its copy stayed English — visible the moment IAB is
+    // switched back off.
+    const named = String(c.language || "");
+    if (Object.prototype.hasOwnProperty.call(languageCodes, named)) out.language = named;
+  } else if (CODE_TO_LANG[langCode]) {
+    out.language = CODE_TO_LANG[langCode];
+  }
 
   // ── Template (from compliance) ──────────────────────────────────────────
   const comp = String(en.compliance || c.compliance || "").toUpperCase();
@@ -113,7 +139,32 @@ export function mapCustomizationToState(c) {
   });
 
   // ── CCPA content ────────────────────────────────────────────────────────
+  // `ccpaDescription` is the CCPA notice body. Rows saved by older builds of this
+  // app hold the opt-out panel's intro there instead (it was mapped from
+  // `optOutBody`), and a few older rows hold the GDPR "By clicking Accept" default.
+  // Reading either back would put the wrong paragraph in the notice field and let
+  // the next save re-commit it, so both shapes are dropped and the caller keeps the
+  // default. Same two signatures the worker guards on (cdnM.js CCPA_NOTICE_DEFAULTS):
+  // identical to the opt-out intro, or the GDPR default's opening clause.
+  const GDPR_ACCEPT_DEFAULT_PREFIXES = [
+    "We use cookies to enhance your browsing experience, serve personalised ads or content",
+    "We gebruiken cookies om uw browse-ervaring te verbeteren",
+    "Nous utilisons des cookies pour améliorer votre expérience de navigation",
+    "Wir verwenden Cookies, um Ihr Surferlebnis zu verbessern",
+    "Utilizziamo i cookie per migliorare la tua esperienza di navigazione",
+    "Używamy plików cookie, aby ulepszyć Twoje doświadczenie przeglądania",
+    "Utilizamos cookies para melhorar a sua experiência de navegação",
+    "Usamos cookies para mejorar su experiencia de navegación",
+    "Vi använder cookies för att förbättra din surfupplevelse",
+  ];
+  const rawCcpaNotice = String(en.ccpaDescription ?? "").trim();
+  const ccpaNoticeIsWrongField =
+    !rawCcpaNotice ||
+    rawCcpaNotice === String(en.ccpaOptOutPreferenceIntro ?? "").trim() ||
+    GDPR_ACCEPT_DEFAULT_PREFIXES.some((p) => rawCcpaNotice.indexOf(p) === 0);
+
   out.ccpaContent = defined({
+    message: ccpaNoticeIsWrongField ? undefined : rawCcpaNotice,
     doNotShare: en.doNotSell,
     optOutTitle: en.optOutPreference,
     optOutBody: en.ccpaOptOutPreferenceIntro,

@@ -4,12 +4,14 @@ import { WPage } from "./WPage.jsx";
 import { WSteps } from "./WSteps.jsx";
 import { WTopBar } from "./WTopBar.jsx";
 
-function WAuthShell({ step, title, subtitle, children, labels, hideSteps, topAlign, noScroll }) {
+// `wide` opens the card up to nearly the full 800px panel — used by the plan
+// table, whose four columns are cramped at the default 640px.
+function WAuthShell({ step, title, subtitle, children, labels, hideSteps, topAlign, noScroll, wide }) {
   return (
     <WPage scroll={false} className="cb-auth-page">
       <WTopBar minimal />
       <div className="w-auth-center cb-auth-center" style={{ alignItems: topAlign ? "flex-start" : "center" }}>
-        <div className="cb-auth-card">
+        <div className={"cb-auth-card" + (wide ? " cb-auth-card-wide" : "")}>
           {/* Fixed header — stays put while the content below scrolls */}
           <div className="cb-auth-title" style={{ marginBottom: subtitle ? 4 : 14 }}>{title}</div>
           {subtitle && <div className="cb-auth-subtitle">{subtitle}</div>}

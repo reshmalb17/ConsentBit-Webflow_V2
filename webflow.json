@@ -1,17 +1,17 @@
 {
   "name": "consentbit-webflow-app",
   "publicDir": "public",
-  "size": "comfortable",
+  "size": "large",
   "apiVersion": "2",
   "dataConnections": [
-    { "url": "https://manager.consentbit.com" },
-    { "url": "https://accounts.consentbit.com" }
-  ],
-  "telemetry": {
-    "global": {
-      "allowTelemetry": true,
-      "lastPrompted": 1782150248308,
-      "version": "2.1.1"
+    {
+      "url": "https://manager.consentbit.com"
+    },
+    {
+      "url": "https://accounts.consentbit.com"
+    },
+    {
+      "url": "https://www.consentbit.com"
     }
-  }
+  ]
 }

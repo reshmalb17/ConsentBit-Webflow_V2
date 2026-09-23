@@ -160,7 +160,7 @@ const [month, setMonth] = React.useState(currentMonth);
       <WMainTabs active="logs" left />
       <div className="cb-page cb-logs-page">
         <div className="cb-logs-head">
-          <div className="cb-logs-title">Consent Logs</div>
+          <div className="cb-logs-title">Consent logs</div>
           <div className="cb-logs-toolbar">
             <select className="select cb-dd cb-logs-select" value={year} onChange={(e) => onYear(e.target.value)}>
               {/* <option value="">All years</option> */}
@@ -191,7 +191,7 @@ const [month, setMonth] = React.useState(currentMonth);
                 <th>Consent ID</th>
                 <th>Time (UTC)</th>
                 <th>Status</th>
-                <th>Banner Type</th>
+                <th>Banner type</th>
                 <th>Download</th>
               </tr>
             </thead>

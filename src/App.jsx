@@ -8,7 +8,7 @@ import { WSelectPlanFreeUsed } from "./components/screens/auth/WSelectPlanFreeUs
 import { WInstallVerify } from "./components/screens/auth/WInstallVerify.jsx";
 import { WInstallVerifyCompact } from "./components/screens/auth/WInstallVerifyCompact.jsx";
 import { WInstallVerifyTwoCol } from "./components/screens/auth/WInstallVerifyTwoCol.jsx";
-import { WVerifySuccess } from "./components/screens/auth/WVerifySuccess.jsx";
+import { WVerifySuccess, WVerifySuccessStaging } from "./components/screens/auth/WVerifySuccess.jsx";
 import { WVerifyError } from "./components/screens/auth/WVerifyError.jsx";
 import { WEdGeneral } from "./components/screens/app/WEdGeneral.jsx";
 import { WEdLayout } from "./components/screens/app/WEdLayout.jsx";
@@ -36,6 +36,7 @@ const GROUPS = [
     { id: "install-verify-compact", label: "Install & verify · Compact",    Cmp: WInstallVerifyCompact },
     { id: "install-verify-twocol",  label: "Install & verify · Two-column", Cmp: WInstallVerifyTwoCol },
     { id: "verify-success",         label: "Verify success",                Cmp: WVerifySuccess },
+    { id: "verify-success-staging", label: "Verify success · Staging",      Cmp: WVerifySuccessStaging },
     { id: "verify-error",           label: "Verify error",                  Cmp: WVerifyError },
   ]},
   { title: "02 · Main app", screens: [

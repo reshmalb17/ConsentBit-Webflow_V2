@@ -123,6 +123,30 @@ body, html { margin: 0; padding: 0; }
   color: var(--text-muted);
 }
 .cb-plan-pill b { color: var(--text); font-weight: 600; }
+/* Same pill shape, but it's a real action: shown in place of the plan name once the
+   paid period has lapsed. Inherits .cb-plan-pill sizing so the two never jump. */
+.cb-plan-pill-cta {
+  cursor: pointer;
+  color: #fff;
+  background: var(--purple, #7C5CFF);
+  border-color: transparent;
+  padding: 6px 14px;
+  font: inherit;
+  font-size: 16px;
+  font-weight: 600;
+}
+.cb-plan-pill-cta:hover { filter: brightness(1.08); }
+/* The plan pill is a <div> whose content is a label + a <b>; the CTA is a <button>
+   with one text node, so it needs its own centring: without justify-content the text
+   sits at the flex start, and the inherited line-height pushes it off the vertical
+   middle. Doubled class so the .cb-ext / .cb-widget-wrap size overrides (which are
+   two-class selectors) can't win over these. */
+.cb-plan-pill.cb-plan-pill-cta {
+  justify-content: center;
+  text-align: center;
+  line-height: 1;
+  gap: 0;
+}
 .cb-icon-btn {
   width: 36px; height: 36px;
   border-radius: 8px;
